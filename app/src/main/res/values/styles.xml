@@ -1,0 +1,7 @@
+<resources>
+  <style name="Theme.Slots" parent="android:Theme.Material.NoActionBar">
+    <item name="android:windowBackground">@android:color/black</item>
+    <item name="android:statusBarColor">#1A0B2E</item>
+    <item name="android:navigationBarColor">#1A0B2E</item>
+  </style>
+</resources>
