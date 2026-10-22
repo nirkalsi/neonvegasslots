@@ -10,7 +10,9 @@ import java.util.Random;
 public class SlotsView extends View {
     public interface Listener {
         void onOutOfCoins();
-        void onSpinComplete(int spinsDone);
+        void onSpinComplete(int spinsDone, long win, long bet);
+        void onBigWin(long win, long bet);
+        void onLevelUp(int level, long reward);
         void saveState();
     }
 
@@ -35,6 +37,9 @@ public class SlotsView extends View {
     private int betIdx = 1;                    // 10
     private long spinsDone = 0;
     private long lastRegenAt = System.currentTimeMillis();
+    private long xp = 0;
+    private int level = 1;
+    private long levelFlashUntil = 0;
 
     private boolean spinning = false;
     private long[] stopAt = new long[5];
@@ -47,8 +52,11 @@ public class SlotsView extends View {
     public void setListener(Listener l) { listener = l; }
     public void addCoins(long n) { balance += n; persist(); invalidate(); }
     public long getBalance() { return balance; }
+    public int getLevel() { return level; }
+    public long getSpinsDone() { return spinsDone; }
+    private long xpNeeded() { return level * 500L; }
 
-    public String serialize() { return balance + ";" + spinsDone + ";" + betIdx + ";" + lastRegenAt; }
+    public String serialize() { return balance + ";" + spinsDone + ";" + betIdx + ";" + lastRegenAt + ";" + xp + ";" + level; }
     public void restore(String s) {
         try {
             String[] a = s.split(";");
@@ -56,6 +64,8 @@ public class SlotsView extends View {
             spinsDone = Long.parseLong(a[1]);
             betIdx = Math.min(BETS.length - 1, Math.max(0, Integer.parseInt(a[2])));
             if (a.length > 3) lastRegenAt = Long.parseLong(a[3]);
+            if (a.length > 4) xp = Long.parseLong(a[4]);
+            if (a.length > 5) level = Math.max(1, Integer.parseInt(a[5]));
         } catch (Exception ignored) {}
     }
 
@@ -88,6 +98,7 @@ public class SlotsView extends View {
         long bet = BETS[betIdx];
         if (balance < bet) { if (listener != null) listener.onOutOfCoins(); return; }
         balance -= bet;
+        xp += bet;
         lastWin = 0;
         spinning = true;
         long now = System.currentTimeMillis();
@@ -114,8 +125,19 @@ public class SlotsView extends View {
             }
         }
         if (win > 0) { balance += win; lastWin = win; winFlashUntil = System.currentTimeMillis() + 1600; }
+        while (xp >= xpNeeded()) {
+            xp -= xpNeeded();
+            level++;
+            long reward = 150L * level;
+            balance += reward;
+            levelFlashUntil = System.currentTimeMillis() + 2000;
+            if (listener != null) listener.onLevelUp(level, reward);
+        }
         persist();
-        if (listener != null) listener.onSpinComplete((int) spinsDone);
+        if (listener != null) {
+            if (win >= 25 * bet) listener.onBigWin(win, bet);
+            listener.onSpinComplete((int) spinsDone, win, bet);
+        }
         invalidate();
     }
 
@@ -146,7 +168,24 @@ public class SlotsView extends View {
         // balance / win
         p.setTextSize(w * 0.05f);
         p.setColor(0xFFFFFFFF);
-        cv.drawText("COINS  " + balance, w / 2, gridTop * 0.72f, p);
+        cv.drawText("COINS  " + balance, w / 2, gridTop * 0.66f, p);
+        // level + xp bar
+        p.setTextSize(w * 0.034f);
+        p.setColor(0xFFB9A8D8);
+        cv.drawText("LV " + level, w * 0.14f, gridTop * 0.90f, p);
+        float barL = w * 0.24f, barR = w * 0.76f, barY = gridTop * 0.855f, barH = w * 0.022f;
+        rf.set(barL, barY, barR, barY + barH);
+        p.setColor(0xFF3A1F66); cv.drawRoundRect(rf, 8, 8, p);
+        float frac = Math.min(1f, xp / (float) xpNeeded());
+        rf.set(barL, barY, barL + (barR - barL) * frac, barY + barH);
+        p.setColor(0xFFFFD700); cv.drawRoundRect(rf, 8, 8, p);
+        if (now < levelFlashUntil) {
+            p.setTextSize(w * 0.055f);
+            p.setColor(0xFFFFD700);
+            p.setFakeBoldText(true);
+            cv.drawText("LEVEL UP!", w / 2, gridTop * 0.30f + w * 0.07f, p);
+            p.setFakeBoldText(false);
+        }
         if (lastWin > 0 && now < winFlashUntil) {
             p.setColor(0xFF7CFC00);
             p.setTextSize(w * 0.06f);
