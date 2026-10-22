@@ -13,13 +13,18 @@ import com.google.android.ump.*;
 /** Policy-safe ads: banner always bottom, interstitial at most every 3rd completed spin
  *  (min 90s apart, never on first spins, never back-to-back), rewarded only user-initiated. */
 public class AdsManager {
+    public interface AdEvents { void onInterstitialShown(); }
     private final Activity act;
     private InterstitialAd inter;
     private RewardedAd rewarded;
     private long lastInterAt = 0;
     private boolean initialized = false;
+    private boolean adsRemoved = false;
+    private AdEvents events;
 
     public AdsManager(Activity a) { act = a; }
+    public void setAdEvents(AdEvents e) { events = e; }
+    public void setAdsRemoved(boolean removed) { adsRemoved = removed; }
 
     public void initWithConsent(Runnable ready) {
         ConsentRequestParameters params = new ConsentRequestParameters.Builder().build();
@@ -43,7 +48,7 @@ public class AdsManager {
     }
 
     public void attachBanner(LinearLayout box) {
-        if (!initialized) return;
+        if (!initialized || adsRemoved) return;
         AdView av = new AdView(act);
         av.setAdSize(AdSize.BANNER);
         av.setAdUnitId(BuildConfig.BANNER_ID);
@@ -69,10 +74,11 @@ public class AdsManager {
 
     /** Show interstitial if pacing allows. Call with the completed-order count. */
     public void maybeShowInterstitial(int spinsDone) {
-        if (inter == null || spinsDone < 6 || spinsDone % 6 != 0) return;
+        if (adsRemoved || inter == null || spinsDone < 6 || spinsDone % 6 != 0) return;
         long now = System.currentTimeMillis();
         if (now - lastInterAt < 120000) return;
         lastInterAt = now;
+        if (events != null) events.onInterstitialShown();
         InterstitialAd ad = inter; inter = null;
         ad.setFullScreenContentCallback(new FullScreenContentCallback() {
             @Override public void onAdDismissedFullScreenContent() { loadInter(); }
