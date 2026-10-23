@@ -131,7 +131,7 @@ public class AdsManager {
         }
         rewarded = null;
         ad.setFullScreenContentCallback(new FullScreenContentCallback() {
-            @Override public void onAdDismissedFullScreenContent() { flow.onDismissedWithoutEarn(); loadRewarded(); }
+            @Override public void onAdDismissedFullScreenContent() { flow.onDismissed(); loadRewarded(); }
             @Override public void onAdFailedToShowFullScreenContent(AdError e) {
                 flow.onShowFailed();
                 loadRewarded();
