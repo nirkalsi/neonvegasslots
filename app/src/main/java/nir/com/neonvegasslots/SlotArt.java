@@ -183,6 +183,7 @@ final class SlotArt {
     void trail(Canvas c, float w, float top, float bottom, int level, long xp, long needed, int selected, String justUnlocked, int trophyMask) {
         if(bottom-top < w*.30f) return;
         float height=Math.min(bottom-top,w*.68f);
+        float rs=Math.min(1f,height/(w*.68f)); // rhythm scale: shrink card interior proportionally when vertical space is squeezed (insets, small screens)
         Theme cur=THEMES[selected];
         box.set(w*.05f,top,w*.95f,top+height);
         ink.setShader(new LinearGradient(0,top,w,top+height,cur.panelBg,0xFF0C1120,Shader.TileMode.CLAMP));
@@ -195,58 +196,63 @@ final class SlotArt {
 
         // connector
         float ny=top+height*.38f;
-        line(c,nodeX(w,0),ny,nodeX(w,THEMES.length-1),ny,cur.panelLine,w*.007f);
+        line(c,nodeX(w,0),ny,nodeX(w,THEMES.length-1),ny,cur.panelLine,w*.007f*rs);
         for(int i=0;i<THEMES.length;i++){
             Theme t=THEMES[i]; float x=nodeX(w,i);
             boolean open=level>=t.unlockLevel, sel=i==selected;
             // node disc shows the theme's own colors
-            color(open?t.neon:0xFF2A3244); c.drawCircle(x,ny,w*.048f,ink);
-            color(open?t.skyTop:0xFF3A4458); c.drawCircle(x,ny,w*.036f,ink);
-            if(open){ color(t.lit); c.drawRect(x-w*.016f,ny-w*.010f,x+w*.016f,ny+w*.004f,ink); color(t.neon); c.drawRect(x-w*.010f,ny+w*.008f,x+w*.010f,ny+w*.016f,ink); }
+            color(open?t.neon:0xFF2A3244); c.drawCircle(x,ny,w*.048f*rs,ink);
+            color(open?t.skyTop:0xFF3A4458); c.drawCircle(x,ny,w*.036f*rs,ink);
+            if(open){ color(t.lit); c.drawRect(x-w*.016f*rs,ny-w*.010f*rs,x+w*.016f*rs,ny+w*.004f*rs,ink); color(t.neon); c.drawRect(x-w*.010f*rs,ny+w*.008f*rs,x+w*.010f*rs,ny+w*.016f*rs,ink); }
             else {
                 color(0xFF7C8AA6); // padlock
-                box.set(x-w*.014f,ny-w*.004f,x+w*.014f,ny+w*.016f); c.drawRoundRect(box,w*.006f,w*.006f,ink);
-                ink.setStyle(Paint.Style.STROKE); ink.setStrokeWidth(w*.005f); c.drawArc(x-w*.011f,ny-w*.020f,x+w*.011f,ny+w*.002f,180,180,false,ink); ink.setStyle(Paint.Style.FILL);
+                box.set(x-w*.014f*rs,ny-w*.004f*rs,x+w*.014f*rs,ny+w*.016f*rs); c.drawRoundRect(box,w*.006f*rs,w*.006f*rs,ink);
+                ink.setStyle(Paint.Style.STROKE); ink.setStrokeWidth(w*.005f*rs); c.drawArc(x-w*.011f*rs,ny-w*.020f*rs,x+w*.011f*rs,ny+w*.002f*rs,180,180,false,ink); ink.setStyle(Paint.Style.FILL);
             }
-            if(sel){ ink.setStyle(Paint.Style.STROKE); ink.setStrokeWidth(w*.006f); ink.setShadowLayer(w*.012f,0,0,cur.neon); color(0xFFFFFFFF); c.drawCircle(x,ny,w*.055f,ink); ink.clearShadowLayer(); ink.setStyle(Paint.Style.FILL); }
+            if(sel){ ink.setStyle(Paint.Style.STROKE); ink.setStrokeWidth(w*.006f*rs); ink.setShadowLayer(w*.012f*rs,0,0,cur.neon); color(0xFFFFFFFF); c.drawCircle(x,ny,w*.055f*rs,ink); ink.clearShadowLayer(); ink.setStyle(Paint.Style.FILL); }
             if((((trophyMask>>(i*3))&7)==7)){ // full set: gold star badge
-                color(0xFFFFD700); ink.setShadowLayer(w*.008f,0,0,0xFFFF9D00);
-                float bx2=x+w*.040f,by2=ny-w*.040f,r1=w*.016f,r2=w*.007f;
+                color(0xFFFFD700); ink.setShadowLayer(w*.008f*rs,0,0,0xFFFF9D00);
+                float bx2=x+w*.040f*rs,by2=ny-w*.040f*rs,r1=w*.016f*rs,r2=w*.007f*rs;
                 shape.reset(); for(int k=0;k<10;k++){double a=-Math.PI/2+k*Math.PI/5; float rr=k%2==0?r1:r2; float px=bx2+(float)Math.cos(a)*rr,py=by2+(float)Math.sin(a)*rr; if(k==0)shape.moveTo(px,py);else shape.lineTo(px,py);} shape.close(); c.drawPath(shape,ink);
                 ink.clearShadowLayer();
             }
             // label
             ink.setTextAlign(Paint.Align.CENTER); ink.setTypeface(Typeface.create("sans-serif",Typeface.BOLD));
-            ink.setTextSize(w*.024f); color(open?(sel?0xFFFFFFFF:cur.soft):0xFF6C7890);
-            c.drawText(t.tag,x,ny+w*.088f,ink);
-            if(!open){ ink.setTextSize(w*.020f); color(0xFF8A96AC); c.drawText("Lv "+t.unlockLevel,x,ny+w*.118f,ink); }
+            ink.setTextSize(w*.024f*rs); color(open?(sel?0xFFFFFFFF:cur.soft):0xFF6C7890);
+            c.drawText(t.tag,x,ny+w*.088f*rs,ink);
+            if(!open){ ink.setTextSize(w*.020f*rs); color(0xFF8A96AC); c.drawText("Lv "+t.unlockLevel,x,ny+w*.118f*rs,ink); }
         }
 
         // status line
         ink.setTextAlign(Paint.Align.LEFT); ink.setTypeface(Typeface.create("sans-serif",Typeface.NORMAL));
-        ink.setTextSize(w*.025f);
         if(justUnlocked!=null && justUnlocked.startsWith("TROPHY:")){
             color(0xFFFFD700); ink.setTypeface(Typeface.create("sans-serif",Typeface.BOLD));
-            c.drawText("TROPHY FOUND: "+justUnlocked.substring(7)+"!",w*.09f,top+height*.66f,ink);
+            statusText(c,"TROPHY FOUND: "+justUnlocked.substring(7)+"!",w*.09f,top+height*.66f,w,rs);
         } else if(justUnlocked!=null){
             color(cur.title); ink.setTypeface(Typeface.create("sans-serif",Typeface.BOLD));
-            c.drawText("NEW STOP UNLOCKED: "+justUnlocked+"!",w*.09f,top+height*.66f,ink);
+            statusText(c,"NEW STOP UNLOCKED: "+justUnlocked+"!",w*.09f,top+height*.66f,w,rs);
         } else {
             Theme next=null; for(Theme t:THEMES) if(level<t.unlockLevel){next=t;break;}
             color(cur.soft);
-            if(next!=null) c.drawText("Playing: "+cur.name+"  •  Next stop: "+next.name+" at Lv "+next.unlockLevel+"  ("+xp+" / "+needed+" XP)",w*.09f,top+height*.66f,ink);
-            else c.drawText("Playing: "+cur.name+"  •  Every stop unlocked. The city is yours.",w*.09f,top+height*.66f,ink);
+            if(next!=null) statusText(c,"Playing: "+cur.name+"  •  Next stop: "+next.name+" at Lv "+next.unlockLevel+"  ("+xp+" / "+needed+" XP)",w*.09f,top+height*.66f,w,rs);
+            else statusText(c,"Playing: "+cur.name+"  •  Every stop unlocked. The city is yours.",w*.09f,top+height*.66f,w,rs);
         }
 
         // trophy shelf: 12 cups grouped by stop; collected cups take their stop's color
-        ink.setTextSize(w*.020f); color(cur.soft); ink.setTypeface(Typeface.create("sans-serif",Typeface.BOLD));
+        ink.setTextSize(w*.020f*rs); color(cur.soft); ink.setTypeface(Typeface.create("sans-serif",Typeface.BOLD));
         int got=Integer.bitCount(trophyMask);
         c.drawText("TROPHY SHELF  "+got+" / 12",w*.09f,top+height*.77f,ink);
         for(int i=0;i<12;i++){
             float x=w*(.11f+i*.0675f), y=top+height*.90f;
             boolean on=(trophyMask&(1<<i))!=0;
-            trophyCup(c,x,y,w*.052f,on,THEMES[i/3]);
+            trophyCup(c,x,y,w*.052f*rs,on,THEMES[i/3]);
         }
+    }
+    private void statusText(Canvas c, String s, float x, float y, float w, float rs) {
+        ink.setTextSize(w*.025f*rs);
+        float tw = ink.measureText(s);
+        if (tw > w*.86f) ink.setTextSize(w*.025f*rs*w*.86f/tw); // shrink-to-fit: never clip or wrap into neighbours
+        c.drawText(s, x, y, ink);
     }
 
     // ---------- trophy cup glyph + machine ornament ----------

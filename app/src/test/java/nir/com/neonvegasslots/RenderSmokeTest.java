@@ -408,7 +408,8 @@ public class RenderSmokeTest {
         assertEquals(6, root.getPaddingRight());
     }
 
-    @Test @Config(sdk = 35) public void renderWithSystemBarInsets() throws Exception {
+    @Test @Config(sdk = 35) @GraphicsMode(GraphicsMode.Mode.NATIVE) // Android 15 runtime + native rasterizer: real edge-to-edge evidence
+    public void renderWithSystemBarInsets() throws Exception {
         MainActivity a = activity();
         View content = a.findViewById(android.R.id.content);
         android.view.ViewGroup root = (android.view.ViewGroup) ((android.view.ViewGroup) content).getChildAt(0);
