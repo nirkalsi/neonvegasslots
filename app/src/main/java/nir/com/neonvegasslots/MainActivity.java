@@ -216,15 +216,13 @@ public class MainActivity extends Activity implements SlotsView.Listener, Billin
         head.setTextSize(16);
         head.setPadding(0, 0, 0, 12);
         box.addView(head);
-        String[] tag = {null, null, "POPULAR", "BEST VALUE"};
+        // neutral labels only: no popularity/value claims without real usage or per-coin price facts
         for (int i = 0; i < BillingManager.PACK_IDS.length; i++) {
             String id = BillingManager.PACK_IDS[i];
             String price = billing.priceOf(id);
             if (price == null) continue;
             Button b = new Button(this);
-            String label = String.format("%,d", BillingManager.PACK_COINS[i]) + " coins - " + price;
-            if (i < tag.length && tag[i] != null) label += "  (" + tag[i] + ")";
-            b.setText(label);
+            b.setText(String.format("%,d", BillingManager.PACK_COINS[i]) + " coins - " + price);
             b.setSingleLine(false); // wrap instead of clipping on narrow screens
             b.setOnClickListener(v -> billing.buy(this, id));
             box.addView(b);
