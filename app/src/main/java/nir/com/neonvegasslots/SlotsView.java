@@ -60,6 +60,8 @@ public class SlotsView extends View {
 
     public SlotsView(Context c) { super(c); randomizeAll(); }
 
+    long nowMillis() { return System.currentTimeMillis(); } // overridable for tests
+
     public void setListener(Listener l) { listener = l; }
     public void addCoins(long n) { balance += n; persist(); invalidate(); }
     public long getBalance() { return balance; }
@@ -224,7 +226,7 @@ public class SlotsView extends View {
     }
 
     @Override protected void onDraw(Canvas cv) {
-        long now = System.currentTimeMillis();
+        long now = nowMillis();
         regen();
         SlotArt.Theme th = SlotArt.THEMES[themeIdx];
         int phase = (int) (now / 350);
@@ -246,7 +248,7 @@ public class SlotsView extends View {
         float gridH = cellW * 3 + 16;
 
         // title
-        titleGlow = (titleGlow + 0.03f) % 6.28f;
+        titleGlow = (float) ((now % 4000L) / 4000.0 * 6.2832); // elapsed-time pulse: same speed at any redraw cadence
         p.setTextAlign(Paint.Align.CENTER);
         p.setTextSize(w * 0.075f);
         p.setFakeBoldText(true);

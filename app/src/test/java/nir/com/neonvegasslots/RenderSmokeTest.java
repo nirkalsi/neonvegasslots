@@ -372,4 +372,25 @@ public class RenderSmokeTest {
         for (int c = 0; c < 5; c++) wc[1][c] = true;
         renderView(v, 720, 1480, "/tmp/renders/neonvegasslots-frame-win.png");
     }
+
+    @Test public void titleGlowIsElapsedTimeDriven() throws Exception {
+        final long[] now = {0};
+        SlotsView v = new SlotsView(RuntimeEnvironment.getApplication()) {
+            @Override long nowMillis() { return now[0]; }
+        };
+        v.measure(View.MeasureSpec.makeMeasureSpec(900, View.MeasureSpec.EXACTLY),
+                  View.MeasureSpec.makeMeasureSpec(1600, View.MeasureSpec.EXACTLY));
+        v.layout(0, 0, 900, 1600);
+        Bitmap bmp = Bitmap.createBitmap(900, 1600, Bitmap.Config.ARGB_8888);
+        java.lang.reflect.Field f = SlotsView.class.getDeclaredField("titleGlow");
+        f.setAccessible(true);
+        v.draw(new Canvas(bmp));
+        float g1 = f.getFloat(v);
+        v.draw(new Canvas(bmp));
+        v.draw(new Canvas(bmp));
+        assertEquals("title glow must not advance per redraw", g1, f.getFloat(v), 0.0001f);
+        now[0] = 2000;
+        v.draw(new Canvas(bmp));
+        assertEquals("title glow follows elapsed time", (float) Math.PI, f.getFloat(v), 0.001f);
+    }
 }
