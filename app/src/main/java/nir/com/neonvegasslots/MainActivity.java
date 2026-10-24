@@ -81,25 +81,43 @@ public class MainActivity extends Activity implements SlotsView.Listener, Billin
         addRowButton(row, "MORE GAMES", v ->
             startActivity(new Intent(Intent.ACTION_VIEW, Uri.parse(BuildConfig.DEV_PAGE_URL))));
         removeAdsBtn = addRowButton(row, "NO ADS", v -> buyRemoveAds());
+        fitRowButtons(row);
         return row;
     }
 
     private Button addRowButton(LinearLayout row, String label, View.OnClickListener l) {
         Button btn = new Button(this);
         btn.setText(label);
-        btn.setTextSize(9f);
+        btn.setTextSize(11f);
         btn.setTypeface(Typeface.DEFAULT_BOLD);
         btn.setTextColor(Color.WHITE);
         btn.setBackgroundColor(0xFF3A1F66);
         btn.setMinHeight(0); btn.setMinimumHeight(0);
         btn.setPadding(6, 0, 6, 0);
         btn.setSingleLine(true);
-        if (android.os.Build.VERSION.SDK_INT >= 26) btn.setAutoSizeTextTypeUniformWithConfiguration(7, 11, 1, android.util.TypedValue.COMPLEX_UNIT_SP);
         LinearLayout.LayoutParams lp = new LinearLayout.LayoutParams(0, (int) (48 * getResources().getDisplayMetrics().density), 1f);
         lp.setMargins(4, 0, 4, 0);
         row.addView(btn, lp);
         btn.setOnClickListener(l);
         return btn;
+    }
+
+    private void fitRowButtons(LinearLayout row) {
+        int count = row.getChildCount();
+        if (count == 0) return;
+        android.util.DisplayMetrics dm = getResources().getDisplayMetrics();
+        // each button's usable text width: equal weight share minus margins (4+4) and padding (6+6)
+        float avail = (dm.widthPixels - row.getPaddingLeft() - row.getPaddingRight()) / (float) count - 8 - 12;
+        android.graphics.Paint m = new android.graphics.Paint(android.graphics.Paint.ANTI_ALIAS_FLAG);
+        m.setTypeface(Typeface.DEFAULT_BOLD);
+        float maxPx = android.util.TypedValue.applyDimension(android.util.TypedValue.COMPLEX_UNIT_SP, 11f, dm);
+        float minPx = android.util.TypedValue.applyDimension(android.util.TypedValue.COMPLEX_UNIT_SP, 7f, dm);
+        m.setTextSize(maxPx);
+        float need = 0;
+        for (int i = 0; i < count; i++)
+            need = Math.max(need, m.measureText(((Button) row.getChildAt(i)).getText().toString()));
+        float size = need > avail ? Math.max(minPx, maxPx * avail / need) : maxPx;
+        for (int i = 0; i < count; i++) ((Button) row.getChildAt(i)).setTextSize(android.util.TypedValue.COMPLEX_UNIT_PX, size);
     }
 
     private GameDialog.Builder dlg() { return new GameDialog.Builder(this, GameDialog.fromTheme(SlotArt.THEMES[game.getThemeIdx()])); }

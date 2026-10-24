@@ -132,6 +132,32 @@ public class RenderSmokeTest {
         d.dismiss();
     }
 
+
+    @GraphicsMode(GraphicsMode.Mode.NATIVE)
+    @Test public void renderMissionsComposed() throws Exception {
+        MainActivity a = activity();
+        callPrivate(a, "showMissions");
+        renderComposed(a, latestDialog(), "/tmp/renders/neonvegasslots-missions-composed.png");
+    }
+
+    @GraphicsMode(GraphicsMode.Mode.NATIVE)
+    @Test public void renderOutOfCoinsComposed() throws Exception {
+        MainActivity a = activity();
+        a.onOutOfCoins();
+        renderComposed(a, latestDialog(), "/tmp/renders/neonvegasslots-outofcoins-composed.png");
+    }
+
+    @GraphicsMode(GraphicsMode.Mode.NATIVE)
+    @Test public void renderRemoveAdsComposed() throws Exception {
+        MainActivity a = activity();
+        BillingManager bm = injectTestPrices(a);
+        bm.testPrices.put("remove_ads", "$4.99");
+        java.lang.reflect.Method m = MainActivity.class.getDeclaredMethod("offerRemoveAds", String.class);
+        m.setAccessible(true);
+        m.invoke(a, "test");
+        renderComposed(a, latestDialog(), "/tmp/renders/neonvegasslots-removeads-composed.png");
+    }
+
     private android.widget.Button findButton(View root, String text) {
         java.util.ArrayList<View> stack = new java.util.ArrayList<>();
         stack.add(root);
