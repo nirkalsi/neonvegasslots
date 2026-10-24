@@ -127,16 +127,17 @@ final class GameDialog {
                 attrs.dimAmount = 0.6f;
                 w.setAttributes(attrs);
             }
-            d.setOnShowListener(x -> {
-                int sw = activity.getResources().getDisplayMetrics().widthPixels;
-                int sh = activity.getResources().getDisplayMetrics().heightPixels;
-                int width = (int) (sw * 0.88f);
-                d.getWindow().setLayout(width, WindowManager.LayoutParams.WRAP_CONTENT);
-                sv.measure(View.MeasureSpec.makeMeasureSpec(width, View.MeasureSpec.EXACTLY),
-                           View.MeasureSpec.makeMeasureSpec(0, View.MeasureSpec.UNSPECIFIED));
-                int max = (int) (sh * 0.78f);
-                if (sv.getMeasuredHeight() > max) d.getWindow().setLayout(width, max);
-            });
+            // size eagerly at build: 88% width, wrap height, cap at 78% of screen with scroll
+            int sw = activity.getResources().getDisplayMetrics().widthPixels;
+            int sh = activity.getResources().getDisplayMetrics().heightPixels;
+            int width = (int) (sw * 0.88f);
+            sv.measure(View.MeasureSpec.makeMeasureSpec(width, View.MeasureSpec.EXACTLY),
+                       View.MeasureSpec.makeMeasureSpec(0, View.MeasureSpec.UNSPECIFIED));
+            int max = (int) (sh * 0.78f);
+            if (w != null) {
+                if (sv.getMeasuredHeight() > max) w.setLayout(width, max);
+                else w.setLayout(width, WindowManager.LayoutParams.WRAP_CONTENT);
+            }
             return d;
         }
     }

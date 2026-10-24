@@ -60,6 +60,67 @@ public class RenderSmokeTest {
         renderView(d.getWindow().getDecorView(), w, h, "/tmp/renders/" + tag + ".png");
     }
 
+    /** Composed render: activity content + dim + dialog decor at its real window size/position. */
+    private void renderComposed(MainActivity a, Dialog d, int w, int h, String path) throws Exception {
+        View root = a.findViewById(android.R.id.content);
+        root.measure(View.MeasureSpec.makeMeasureSpec(w, View.MeasureSpec.EXACTLY),
+                     View.MeasureSpec.makeMeasureSpec(h, View.MeasureSpec.EXACTLY));
+        root.layout(0, 0, w, h);
+        Bitmap bmp = Bitmap.createBitmap(w, h, Bitmap.Config.ARGB_8888);
+        Canvas cv = new Canvas(bmp);
+        root.draw(cv);
+        android.view.WindowManager.LayoutParams lp = d.getWindow().getAttributes();
+        assertTrue("dialog must dim the game behind it",
+            (lp.flags & android.view.WindowManager.LayoutParams.FLAG_DIM_BEHIND) != 0);
+        cv.drawColor(0x99000000); // dimAmount 0.6
+        int dw = lp.width > 0 ? lp.width : (int) (w * 0.88f);
+        View dv = d.getWindow().getDecorView();
+        int maxH = (int) (h * 0.78f);
+        dv.measure(View.MeasureSpec.makeMeasureSpec(dw, View.MeasureSpec.EXACTLY),
+                   View.MeasureSpec.makeMeasureSpec(0, View.MeasureSpec.UNSPECIFIED));
+        int dh = Math.min(dv.getMeasuredHeight(), lp.height > 0 ? lp.height : maxH);
+        if (lp.height > 0) dh = lp.height;
+        dv.layout(0, 0, dw, dh);
+        cv.save();
+        cv.translate((w - dw) / 2f, (h - dh) / 2f);
+        dv.draw(cv);
+        cv.restore();
+        FileOutputStream fos = new FileOutputStream(path);
+        bmp.compress(Bitmap.CompressFormat.PNG, 100, fos);
+        fos.close();
+        assertTrue(path + " too small", new File(path).length() > 5000);
+    }
+
+    @GraphicsMode(GraphicsMode.Mode.NATIVE)
+    @Test public void renderShopComposed() throws Exception {
+        MainActivity a = activity();
+        injectTestPrices(a);
+        callPrivate(a, "showShop");
+        Dialog d = latestDialog();
+        int expectedW = (int) (a.getResources().getDisplayMetrics().widthPixels * 0.88f);
+        assertEquals("dialog width must be 88% of screen", expectedW, d.getWindow().getAttributes().width);
+        renderComposed(a, d, 720, 1480, "/tmp/renders/neonvegasslots-shop-composed.png");
+    }
+
+    @GraphicsMode(GraphicsMode.Mode.NATIVE)
+    @Test public void renderDailyComposed() throws Exception {
+        MainActivity a = activity();
+        callPrivate(a, "maybeDailyBonus");
+        renderComposed(a, latestDialog(), 720, 1480, "/tmp/renders/neonvegasslots-daily-composed.png");
+    }
+
+    @Test public void tallDialogIsCappedAndScrollable() throws Exception {
+        MainActivity a = activity();
+        android.widget.LinearLayout tall = new android.widget.LinearLayout(a);
+        tall.setOrientation(android.widget.LinearLayout.VERTICAL);
+        for (int i = 0; i < 60; i++) { android.widget.TextView t = new android.widget.TextView(a); t.setText("Row " + i); t.setTextSize(16f); tall.addView(t); }
+        Dialog d = new GameDialog.Builder(a, GameDialog.fromTheme(SlotArt.THEMES[0]))
+            .title("Tall").content(tall).add(GameDialog.Btn.secondary("Close", null)).show();
+        int sh = a.getResources().getDisplayMetrics().heightPixels;
+        assertEquals("tall dialog height capped at 78% of screen", (int) (sh * 0.78f), d.getWindow().getAttributes().height);
+        d.dismiss();
+    }
+
     private android.widget.Button findButton(View root, String text) {
         java.util.ArrayList<View> stack = new java.util.ArrayList<>();
         stack.add(root);

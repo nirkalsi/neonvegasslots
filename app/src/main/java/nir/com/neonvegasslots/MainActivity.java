@@ -114,7 +114,7 @@ public class MainActivity extends Activity implements SlotsView.Listener, Billin
         int streak = yesterday().equals(last) ? sp.getInt("daily_streak", 0) + 1 : 1;
         long bonus = DAILY_BONUS[Math.min(streak, DAILY_BONUS.length) - 1];
         dlg().title("Daily bonus - day " + streak)
-            .body("Your day " + streak + " gift is ready: +" + bonus + " coins!\nCome back tomorrow to grow your streak.\n\nAll coins are virtual and free.")
+            .body("Your day " + streak + " gift is ready: +" + bonus + " coins - free, no purchase needed.\nCome back tomorrow to grow your streak.\n\nCoins are virtual only - no cash value, no prizes.")
             .add(GameDialog.Btn.primary("Claim +" + bonus, () -> grantDaily(streak, bonus)))
             .add(GameDialog.Btn.secondary("Watch ad for 2X", () -> ads.showRewarded(() -> grantDaily(streak, bonus * 2))))
             .cancelable(false)
@@ -292,7 +292,7 @@ public class MainActivity extends Activity implements SlotsView.Listener, Billin
     // ---------- SlotsView.Listener ----------
     @Override public void onOutOfCoins() {
         GameDialog.Builder b = dlg().title("Out of coins")
-            .body("Watch a short ad for +300 free coins?\nCoins also refill slowly over time.\n\nAll coins are virtual and free.")
+            .body("Watch a short ad for +300 free coins?\nCoins also refill slowly over time.\n\nCoins are virtual only - no cash value, no prizes.")
             .add(GameDialog.Btn.primary("Watch ad  (+300)", () -> ads.showRewarded(() -> game.addCoins(300))));
         if (!sp.getBoolean("ads_removed", false))
             b.add(GameDialog.Btn.secondary("Remove all ads", () -> offerRemoveAds("outofcoins")));
