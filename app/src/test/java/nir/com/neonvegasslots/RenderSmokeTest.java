@@ -115,6 +115,20 @@ public class RenderSmokeTest {
     }
 
     @GraphicsMode(GraphicsMode.Mode.NATIVE)
+    @Test public void renderTrailTrophies720() throws Exception {
+        SlotsView v = new SlotsView(RuntimeEnvironment.getApplication());
+        v.restore("5000;0;1;0;0;12;0;15;20261024"); // 4 trophies: full DOWNTOWN set (star badge) + 1 SUNSET
+        renderView(v, 720, 1480, "/tmp/renders/neonvegasslots-trail-trophies-720x1480.png");
+    }
+
+    @GraphicsMode(GraphicsMode.Mode.NATIVE)
+    @Test public void renderTrailEmptyTrophies720() throws Exception {
+        SlotsView v = new SlotsView(RuntimeEnvironment.getApplication());
+        v.restore("5000;0;1;0;0;3;1;0;");
+        renderView(v, 720, 1480, "/tmp/renders/neonvegasslots-trail-empty-720x1480.png");
+    }
+
+    @GraphicsMode(GraphicsMode.Mode.NATIVE)
     @Test public void renderMotionFrames() throws Exception {
         SlotsView v = new SlotsView(RuntimeEnvironment.getApplication());
         v.restore("5000;0;1;0;0;10;3");

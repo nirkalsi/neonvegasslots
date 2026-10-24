@@ -32,6 +32,13 @@ final class SlotArt {
         new Theme("High Roller","ROYAL",10,     0xFF100C22,0xFF04030C, 0xFF241C3E,0xFF161028, 0xFFFFE9A0,0xFF2C2444, 0xFFFFD700, 0xFFFFF0B8,0xFFFFD700, 0xFF1C1430,0xFF6E5A2E, 0xFF3A2C58,0xFFFFD700, 0xFF18122C,0xFF8A7238, 0xFF2A2044, 0xFFB8860B,0xFF5E5230, 0xFFD8CBAA),
     };
 
+    static final String[][] TROPHY_NAMES = {
+        {"Neon Dice","Lucky Chip","Cherry Bell"},
+        {"Flamingo Sign","Sunset Key","Star Marquee"},
+        {"Lagoon Pearl","Wave Cup","Glow Fish"},
+        {"Gold Crown","Diamond Card","Vault Key"},
+    };
+
     private final Paint ink = new Paint(Paint.ANTI_ALIAS_FLAG);
     private final RectF box = new RectF();
     private final Path shape = new Path();
@@ -173,9 +180,9 @@ final class SlotArt {
     // ---------- progression trail: themes that unlock with level ----------
     static float nodeX(float w,int i){return w*(.16f+i*.226f);}
 
-    void trail(Canvas c, float w, float top, float bottom, int level, long xp, long needed, int selected, String justUnlocked) {
+    void trail(Canvas c, float w, float top, float bottom, int level, long xp, long needed, int selected, String justUnlocked, int trophyMask) {
         if(bottom-top < w*.30f) return;
-        float height=Math.min(bottom-top,w*.52f);
+        float height=Math.min(bottom-top,w*.62f);
         Theme cur=THEMES[selected];
         box.set(w*.05f,top,w*.95f,top+height);
         ink.setShader(new LinearGradient(0,top,w,top+height,cur.panelBg,0xFF0C1120,Shader.TileMode.CLAMP));
@@ -187,7 +194,7 @@ final class SlotArt {
         c.drawText("CITY TOUR - TAP A STOP YOU UNLOCKED",w*.09f,top+w*.058f,ink);
 
         // connector
-        float ny=top+height*.48f;
+        float ny=top+height*.40f;
         line(c,nodeX(w,0),ny,nodeX(w,THEMES.length-1),ny,cur.panelLine,w*.007f);
         for(int i=0;i<THEMES.length;i++){
             Theme t=THEMES[i]; float x=nodeX(w,i);
@@ -202,6 +209,12 @@ final class SlotArt {
                 ink.setStyle(Paint.Style.STROKE); ink.setStrokeWidth(w*.005f); c.drawArc(x-w*.011f,ny-w*.020f,x+w*.011f,ny+w*.002f,180,180,false,ink); ink.setStyle(Paint.Style.FILL);
             }
             if(sel){ ink.setStyle(Paint.Style.STROKE); ink.setStrokeWidth(w*.006f); ink.setShadowLayer(w*.012f,0,0,cur.neon); color(0xFFFFFFFF); c.drawCircle(x,ny,w*.055f,ink); ink.clearShadowLayer(); ink.setStyle(Paint.Style.FILL); }
+            if((((trophyMask>>(i*3))&7)==7)){ // full set: gold star badge
+                color(0xFFFFD700); ink.setShadowLayer(w*.008f,0,0,0xFFFF9D00);
+                float bx2=x+w*.040f,by2=ny-w*.040f,r1=w*.016f,r2=w*.007f;
+                shape.reset(); for(int k=0;k<10;k++){double a=-Math.PI/2+k*Math.PI/5; float rr=k%2==0?r1:r2; float px=bx2+(float)Math.cos(a)*rr,py=by2+(float)Math.sin(a)*rr; if(k==0)shape.moveTo(px,py);else shape.lineTo(px,py);} shape.close(); c.drawPath(shape,ink);
+                ink.clearShadowLayer();
+            }
             // label
             ink.setTextAlign(Paint.Align.CENTER); ink.setTypeface(Typeface.create("sans-serif",Typeface.BOLD));
             ink.setTextSize(w*.024f); color(open?(sel?0xFFFFFFFF:cur.soft):0xFF6C7890);
@@ -212,15 +225,49 @@ final class SlotArt {
         // status line
         ink.setTextAlign(Paint.Align.LEFT); ink.setTypeface(Typeface.create("sans-serif",Typeface.NORMAL));
         ink.setTextSize(w*.025f);
-        if(justUnlocked!=null){
+        if(justUnlocked!=null && justUnlocked.startsWith("TROPHY:")){
+            color(0xFFFFD700); ink.setTypeface(Typeface.create("sans-serif",Typeface.BOLD));
+            c.drawText("TROPHY FOUND: "+justUnlocked.substring(7)+"!",w*.09f,top+height*.62f,ink);
+        } else if(justUnlocked!=null){
             color(cur.title); ink.setTypeface(Typeface.create("sans-serif",Typeface.BOLD));
-            c.drawText("NEW STOP UNLOCKED: "+justUnlocked+"!",w*.09f,top+height-w*.045f,ink);
+            c.drawText("NEW STOP UNLOCKED: "+justUnlocked+"!",w*.09f,top+height*.62f,ink);
         } else {
             Theme next=null; for(Theme t:THEMES) if(level<t.unlockLevel){next=t;break;}
             color(cur.soft);
-            if(next!=null) c.drawText("Playing: "+cur.name+"  •  Next stop: "+next.name+" at Lv "+next.unlockLevel+"  ("+xp+" / "+needed+" XP)",w*.09f,top+height-w*.045f,ink);
-            else c.drawText("Playing: "+cur.name+"  •  Every stop unlocked. The city is yours.",w*.09f,top+height-w*.045f,ink);
+            if(next!=null) c.drawText("Playing: "+cur.name+"  •  Next stop: "+next.name+" at Lv "+next.unlockLevel+"  ("+xp+" / "+needed+" XP)",w*.09f,top+height*.62f,ink);
+            else c.drawText("Playing: "+cur.name+"  •  Every stop unlocked. The city is yours.",w*.09f,top+height*.62f,ink);
         }
+
+        // trophy shelf: 12 cups grouped by stop; collected cups take their stop's color
+        ink.setTextSize(w*.020f); color(cur.soft); ink.setTypeface(Typeface.create("sans-serif",Typeface.BOLD));
+        int got=Integer.bitCount(trophyMask);
+        c.drawText("TROPHY SHELF  "+got+" / 12",w*.09f,top+height*.72f,ink);
+        for(int i=0;i<12;i++){
+            float x=w*(.11f+i*.0675f), y=top+height*.86f;
+            boolean on=(trophyMask&(1<<i))!=0;
+            trophyCup(c,x,y,w*.052f,on,THEMES[i/3]);
+        }
+    }
+
+    // ---------- trophy cup glyph + machine ornament ----------
+    void trophyCup(Canvas c,float cx,float cy,float s,boolean on,Theme th){
+        c.save(); c.translate(cx,cy); c.scale(s/100f,s/100f);
+        if(on){ ink.setColor(th.title); ink.setShadowLayer(10,0,0,th.neon); } else { ink.setColor(0xFF39414F); }
+        polygon(c,-30,-38,30,-38,18,8,-18,8);                    // bowl
+        ink.setStyle(Paint.Style.STROKE); ink.setStrokeWidth(9);
+        c.drawArc(-46,-34,-12,6,90,270,false,ink);               // left handle
+        c.drawArc(12,-34,46,6,90,-270,false,ink);                // right handle
+        ink.setStyle(Paint.Style.FILL);
+        c.drawRect(-8,8,8,26,ink);                               // stem
+        box.set(-26,26,26,38); c.drawRoundRect(box,6,6,ink);     // base
+        if(on) ink.clearShadowLayer();
+        c.restore();
+    }
+
+    /** Set-completion ornament above the machine frame for the active theme. */
+    void frameOrnament(Canvas c,float cx,float cy,float s,Theme th){
+        trophyCup(c,cx,cy,s,true,th);
+        color(th.neon); ink.setTextAlign(Paint.Align.CENTER);
     }
 
     // ---------- symbols (unchanged art, kept from approved first increment) ----------

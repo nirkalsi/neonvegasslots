@@ -9,7 +9,7 @@ import org.robolectric.annotation.Config;
 @RunWith(RobolectricTestRunner.class) @Config(sdk=34)
 public class RedesignInputTest {
  private static MotionEvent down(float x,float y){return MotionEvent.obtain(0,0,MotionEvent.ACTION_DOWN,x,y,0);}
- private static float nodeY(){float w=720,h=1480;float top=h*.22f+(w/5f-8)*3+16+24+h*.07f+w*.055f;float bottom=h-w*.10f;return top+Math.min(bottom-top,w*.52f)*.48f;}
+ private static float nodeY(){float w=720,h=1480;float top=h*.22f+(w/5f-8)*3+16+24+h*.07f+w*.055f;float bottom=h-w*.10f;return top+Math.min(bottom-top,w*.62f)*.40f;}
  @Test public void artDoesNotMoveControlsOrChangeStartingEconomy(){
   SlotsView v=new SlotsView(RuntimeEnvironment.getApplication()); v.layout(0,0,720,1480);
   long original=v.getBalance(); assertEquals(500,original);
@@ -31,7 +31,7 @@ public class RedesignInputTest {
   v.restore("500;0;1;0;0;10;0"); // level 10 unlocks every stop
   v.onTouchEvent(down(SlotArt.nodeX(720,3),nodeY()));
   assertEquals(3,v.getThemeIdx());
-  assertTrue(v.serialize().endsWith(";3"));
+  assertEquals("3",v.serialize().split(";")[6]);
   SlotsView v2=new SlotsView(RuntimeEnvironment.getApplication());
   v2.restore(v.serialize());
   assertEquals("theme must survive save/restore",3,v2.getThemeIdx());
@@ -54,5 +54,45 @@ public class RedesignInputTest {
   assertFalse(v.selectTheme(-1));
   assertFalse(v.selectTheme(99));
   assertTrue(v.selectTheme(0));
+ }
+
+ @Test public void firstSpinOfDayGuaranteesTrophy(){
+  SlotsView v=new SlotsView(RuntimeEnvironment.getApplication());
+  assertTrue(v.tryTrophyDrop(0.99f,"2026-10-24")); // roll too high, but first-of-day wins
+  assertEquals(1,Integer.bitCount(v.getTrophyMask()));
+ }
+ @Test public void sameDayAboveChanceDropsNothing(){
+  SlotsView v=new SlotsView(RuntimeEnvironment.getApplication());
+  assertTrue(v.tryTrophyDrop(0.99f,"2026-10-24"));
+  assertFalse("same day, roll above chance must not drop",v.tryTrophyDrop(0.99f,"2026-10-24"));
+  assertEquals(1,Integer.bitCount(v.getTrophyMask()));
+ }
+ @Test public void chanceDropWithinBounds(){
+  SlotsView v=new SlotsView(RuntimeEnvironment.getApplication());
+  v.tryTrophyDrop(0.99f,"2026-10-24"); // daily guarantee consumed
+  assertFalse(v.tryTrophyDrop(0.08f,"2026-10-24")); // exactly at threshold: no drop
+  assertTrue(v.tryTrophyDrop(0.079f,"2026-10-24")); // under chance: drop
+  assertTrue(SlotsView.TROPHY_CHANCE>=0.05f && SlotsView.TROPHY_CHANCE<=0.15f);
+ }
+ @Test public void newDayGuaranteesAgain(){
+  SlotsView v=new SlotsView(RuntimeEnvironment.getApplication());
+  v.tryTrophyDrop(0.99f,"2026-10-24");
+  assertTrue(v.tryTrophyDrop(0.99f,"2026-10-25"));
+  assertEquals(2,Integer.bitCount(v.getTrophyMask()));
+ }
+ @Test public void fullShelfStopsDrops(){
+  SlotsView v=new SlotsView(RuntimeEnvironment.getApplication());
+  v.restore("500;0;1;0;0;10;0;4095;2026-10-24");
+  assertFalse(v.tryTrophyDrop(0.0f,"2026-10-24"));
+  assertTrue(v.setComplete(0) && v.setComplete(3));
+ }
+ @Test public void trophiesCostNothingAndSurviveSave(){
+  SlotsView v=new SlotsView(RuntimeEnvironment.getApplication());
+  long before=v.getBalance();
+  v.tryTrophyDrop(0.0f,"2026-10-24");
+  assertEquals("trophies must never change the balance",before,v.getBalance());
+  SlotsView v2=new SlotsView(RuntimeEnvironment.getApplication());
+  v2.restore(v.serialize());
+  assertEquals(v.getTrophyMask(),v2.getTrophyMask());
  }
 }

@@ -5,6 +5,9 @@ import android.graphics.*;
 import android.view.MotionEvent;
 import android.view.View;
 import java.util.Random;
+import java.text.SimpleDateFormat;
+import java.util.Date;
+import java.util.Locale;
 
 /** Neon Vegas Slots - free social slot machine. Virtual coins only, no real money, no prizes. */
 public class SlotsView extends View {
@@ -43,6 +46,10 @@ public class SlotsView extends View {
     private int themeIdx = 0;
     private long unlockFlashUntil = 0;
     private String unlockedName = null;
+    private int trophyMask = 0;            // 12 bits: 3 trophies per theme
+    private String trophyDay = "";
+    private long trophyFlashUntil = 0;
+    private String trophyNewName = null;
 
     private boolean spinning = false;
     private long[] stopAt = new long[5];
@@ -74,7 +81,43 @@ public class SlotsView extends View {
         return true;
     }
 
-    public String serialize() { return balance + ";" + spinsDone + ";" + betIdx + ";" + lastRegenAt + ";" + xp + ";" + level + ";" + themeIdx; }
+    static final float TROPHY_CHANCE = 0.08f;
+    static final int TROPHY_COUNT = 12;    // 4 themes x 3
+
+    public int getTrophyMask() { return trophyMask; }
+    public int trophiesOfTheme(int theme) { return Integer.bitCount((trophyMask >> (theme * 3)) & 7); }
+    public boolean setComplete(int theme) { return trophiesOfTheme(theme) == 3; }
+
+    /**
+     * Cosmetic collectible roll. Zero economy effect: identical at every bet size,
+     * grants no coins, changes no odds. First roll of each local day is guaranteed.
+     */
+    public boolean tryTrophyDrop(float roll, String today) {
+        if (Integer.bitCount(trophyMask) >= TROPHY_COUNT) return false;
+        boolean guaranteed = !today.equals(trophyDay);
+        if (!guaranteed && roll >= TROPHY_CHANCE) return false;
+        trophyDay = today;
+        int free = TROPHY_COUNT - Integer.bitCount(trophyMask);
+        int nth = Math.min(free - 1, (int) (roll * 9973 % free));
+        for (int i = 0, seen = 0; i < TROPHY_COUNT; i++) {
+            if ((trophyMask & (1 << i)) != 0) continue;
+            if (seen++ == nth) {
+                trophyMask |= (1 << i);
+                trophyNewName = SlotArt.TROPHY_NAMES[i / 3][i % 3];
+                trophyFlashUntil = System.currentTimeMillis() + 4000;
+                break;
+            }
+        }
+        persist();
+        return true;
+    }
+
+    private void maybeTrophy() {
+        String today = new SimpleDateFormat("yyyy-MM-dd", Locale.US).format(new Date());
+        tryTrophyDrop(rng.nextFloat(), today);
+    }
+
+    public String serialize() { return balance + ";" + spinsDone + ";" + betIdx + ";" + lastRegenAt + ";" + xp + ";" + level + ";" + themeIdx + ";" + trophyMask + ";" + trophyDay; }
     public void restore(String s) {
         try {
             String[] a = s.split(";");
@@ -88,6 +131,8 @@ public class SlotsView extends View {
                 int t = Integer.parseInt(a[6]);
                 themeIdx = (t >= 0 && t < SlotArt.THEMES.length && level >= SlotArt.THEMES[t].unlockLevel) ? t : 0;
             }
+            if (a.length > 7) trophyMask = Integer.parseInt(a[7]) & 0xFFF;
+            if (a.length > 8) trophyDay = a[8];
         } catch (Exception ignored) {}
     }
 
@@ -161,6 +206,7 @@ public class SlotsView extends View {
             unlockedName = SlotArt.THEMES[newUnlocks - 1].name;
             unlockFlashUntil = System.currentTimeMillis() + 4000;
         }
+        maybeTrophy();
         persist();
         if (listener != null) {
             if (win >= 25 * bet) listener.onBigWin(win, bet);
@@ -173,8 +219,8 @@ public class SlotsView extends View {
     private float trailTop() { return gridTop() + (getWidth() / 5f - 8) * 3 + 16 + 24 + getHeight() * 0.07f + getWidth() * 0.055f; }
     private float trailBottom() { return getHeight() - getWidth() * 0.10f; }
     private float trailNodeY() {
-        float top = trailTop(), height = Math.min(trailBottom() - top, getWidth() * .52f);
-        return top + height * .48f;
+        float top = trailTop(), height = Math.min(trailBottom() - top, getWidth() * .62f);
+        return top + height * .40f;
     }
 
     @Override protected void onDraw(Canvas cv) {
@@ -264,7 +310,7 @@ public class SlotsView extends View {
             for (int c = 0; c < 5; c++) if (now < stopAt[c]) allStopped = false;
             if (allStopped) { post(this::finishSpin); }
             else postInvalidateDelayed(30);
-        } else if (now < winFlashUntil || now < unlockFlashUntil || now < levelFlashUntil) {
+        } else if (now < winFlashUntil || now < unlockFlashUntil || now < levelFlashUntil || now < trophyFlashUntil) {
             postInvalidateDelayed(60);
         } else {
             postInvalidateDelayed(450); // idle ambient: chase bulbs and embers keep breathing
@@ -293,8 +339,11 @@ public class SlotsView extends View {
         cv.drawText(spinning ? "..." : "SPIN", w * 0.69f, ctrlY + btnH * 0.66f, p);
         p.setFakeBoldText(false);
 
-        String ju = now < unlockFlashUntil ? unlockedName : null;
-        art.trail(cv, w, trailTop(), trailBottom(), level, xp, xpNeeded(), themeIdx, ju);
+        String ju;
+        if (now < trophyFlashUntil) ju = "TROPHY:" + trophyNewName;
+        else ju = now < unlockFlashUntil ? unlockedName : null;
+        art.trail(cv, w, trailTop(), trailBottom(), level, xp, xpNeeded(), themeIdx, ju, trophyMask);
+        if (setComplete(themeIdx)) art.frameOrnament(cv, w / 2, gridTop - w * .022f, w * .05f, th);
 
         // disclaimer
         p.setTextSize(w * 0.028f);
@@ -354,7 +403,7 @@ public class SlotsView extends View {
         }
         // progression trail: tap an unlocked stop to apply its theme
         float tt = trailTop(), tb = trailBottom();
-        if (y >= tt && y <= Math.min(tb, tt + w * .52f)) {
+        if (y >= tt && y <= Math.min(tb, tt + w * .62f)) {
             float ny = trailNodeY();
             if (Math.abs(y - ny) <= w * .12f) {
                 int best = -1; float bd = Float.MAX_VALUE;
