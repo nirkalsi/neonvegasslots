@@ -57,7 +57,21 @@ final class GameDialog {
         Builder cancelable(boolean c) { cancelable = c; return this; }
         Builder add(Btn b) { buttons.add(b); return this; }
 
-        Dialog show() { Dialog d = build(); d.show(); return d; }
+        Dialog show() {
+            Dialog d = build();
+            d.show();
+            View content = d.getWindow() != null ? d.getWindow().getDecorView() : null;
+            if (content != null) {
+                content.setAlpha(0f);
+                content.setScaleX(0.88f);
+                content.setScaleY(0.88f);
+                content.animate().alpha(1f).scaleX(1f).scaleY(1f)
+                    .setDuration(230)
+                    .setInterpolator(new android.view.animation.OvershootInterpolator(1.1f))
+                    .start();
+            }
+            return d;
+        }
 
         Dialog build() {
             final Dialog d = new Dialog(activity);
@@ -74,10 +88,28 @@ final class GameDialog {
             card.setBackground(bg);
 
             if (title != null) {
+                LinearLayout header = new LinearLayout(activity);
+                header.setOrientation(LinearLayout.VERTICAL);
+                GradientDrawable hb = new GradientDrawable(GradientDrawable.Orientation.TOP_BOTTOM,
+                    new int[]{withAlpha(theme.neon, 0x2E), withAlpha(theme.neon, 0x00)});
+                hb.setCornerRadii(new float[]{18*density,18*density, 18*density,18*density, 0,0, 0,0});
+                header.setBackground(hb);
+                int hpad = (int) (14 * density);
+                header.setPadding(hpad, (int) (12 * density), hpad, (int) (10 * density));
                 TextView t = new TextView(activity);
                 t.setText(title); t.setTextSize(20f); t.setTypeface(Typeface.DEFAULT_BOLD);
                 t.setTextColor(theme.title); t.setSingleLine(false);
-                card.addView(t);
+                header.addView(t);
+                View divider = new View(activity);
+                GradientDrawable db = new GradientDrawable(GradientDrawable.Orientation.LEFT_RIGHT,
+                    new int[]{withAlpha(theme.neon, 0x00), withAlpha(theme.neon, 0xBB), withAlpha(theme.neon, 0x00)});
+                divider.setBackground(db);
+                LinearLayout.LayoutParams dlp = new LinearLayout.LayoutParams(-1, (int) (2 * density));
+                dlp.topMargin = (int) (8 * density);
+                header.addView(divider, dlp);
+                LinearLayout.LayoutParams hlp = new LinearLayout.LayoutParams(-1, -2);
+                hlp.setMargins(-pad / 2, -pad / 3, -pad / 2, 0);
+                card.addView(header, hlp);
             }
             if (body != null) {
                 TextView b = new TextView(activity);
@@ -143,4 +175,25 @@ final class GameDialog {
     }
 
     static int withAlpha(int color, int alpha) { return (color & 0x00FFFFFF) | (alpha << 24); }
+
+    /** Rounded track + themed fill progress bar for mission/quest rows. Visual only. */
+    static View progressBar(android.content.Context c, Palette theme, long progress, long goal) {
+        final float density = c.getResources().getDisplayMetrics().density;
+        final float frac = goal <= 0 ? 0f : Math.min(1f, progress / (float) goal);
+        final int track = withAlpha(theme.panelLine, 0x55), fill = theme.neon;
+        View v = new View(c) {
+            @Override protected void onDraw(android.graphics.Canvas cv) {
+                float h = getHeight(), w = getWidth();
+                android.graphics.Paint pt = new android.graphics.Paint(android.graphics.Paint.ANTI_ALIAS_FLAG);
+                android.graphics.RectF r = new android.graphics.RectF(0, h * 0.28f, w, h * 0.72f);
+                pt.setColor(track); cv.drawRoundRect(r, h / 2, h / 2, pt);
+                if (frac > 0) {
+                    r.set(0, h * 0.28f, Math.max(h * 0.72f, w * frac), h * 0.72f);
+                    pt.setColor(fill); cv.drawRoundRect(r, h / 2, h / 2, pt);
+                }
+            }
+        };
+        v.setMinimumHeight((int) (10 * density));
+        return v;
+    }
 }

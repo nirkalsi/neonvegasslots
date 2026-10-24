@@ -55,6 +55,10 @@ public class SlotsView extends View {
     private long[] stopAt = new long[5];
     private long winStartAt = 0;
     private long winFlashUntil = 0;
+    private long bigWinStartAt = 0;
+    private long bigWinUntil = 0;
+    private long bigWinAmount = 0;
+    private boolean anticipationGiven = false;
     private boolean[][] winCell = new boolean[3][5];
     private float titleGlow = 0f;
 
@@ -172,6 +176,7 @@ public class SlotsView extends View {
         spinning = true;
         long now = System.currentTimeMillis();
         for (int c = 0; c < 5; c++) stopAt[c] = now + 600 + c * 380;
+        anticipationGiven = false;
         for (int r = 0; r < 3; r++) for (int c = 0; c < 5; c++) winCell[r][c] = false;
         persist();
         invalidate();
@@ -193,7 +198,12 @@ public class SlotsView extends View {
                 for (int c = 0; c < run; c++) winCell[line[c]][c] = true;
             }
         }
-        if (win > 0) { balance += win; lastWin = win; winStartAt = System.currentTimeMillis(); winFlashUntil = winStartAt + 1600; }
+        if (win > 0) {
+            balance += win; lastWin = win;
+            winStartAt = System.currentTimeMillis();
+            if (win >= 25 * bet) { bigWinStartAt = winStartAt; bigWinUntil = winStartAt + 3000; bigWinAmount = win; winFlashUntil = winStartAt + 3000; }
+            else winFlashUntil = winStartAt + 1600;
+        }
         int oldUnlocks = unlockedCount(level);
         while (xp >= xpNeeded()) {
             xp -= xpNeeded();
@@ -272,11 +282,12 @@ public class SlotsView extends View {
         float frac = Math.min(1f, xp / (float) xpNeeded());
         rf.set(barL, barY, barL + (barR - barL) * frac, barY + barH);
         p.setColor(th.title); cv.drawRoundRect(rf, 8, 8, p);
-        if (lastWin > 0 && now < winFlashUntil) {
+        if (lastWin > 0 && now < winFlashUntil && now >= bigWinUntil) {
             p.setColor(0xFF7CFC00);
             p.setTextSize(w * 0.06f);
             p.setFakeBoldText(true);
-            cv.drawText("WIN +" + lastWin, w / 2, gridTop * 0.95f, p);
+            long shown = lastWin * Math.min(100, (now - winStartAt) / 9) / 100;
+            cv.drawText("WIN +" + shown, w / 2, gridTop * 0.95f, p);
             p.setFakeBoldText(false);
         }
 
@@ -304,20 +315,60 @@ public class SlotsView extends View {
                 p.setColor(hot ? th.cellHotStroke : th.cellStroke);
                 cv.drawRoundRect(rf, 12, 12, p);
                 p.setStyle(Paint.Style.FILL);
-                art.symbol(cv, grid[r][c], x + 2 + cellW / 2, y + cellW / 2, cellW * 0.82f);
+                if (spinning && now < stopAt[c]) {
+                    // scrolling strip: symbol + dimmed neighbours sliding upward, clipped to the cell
+                    float pitch = cellW * 0.82f;
+                    float scroll = (now * 1.15f + c * 173 + r * 61) % pitch;
+                    cv.save();
+                    cv.clipRect(x + 2, y, x + cellW + 2, y + cellW);
+                    int sym = grid[r][c];
+                    float cx = x + 2 + cellW / 2, cy = y + cellW / 2;
+                    art.symbol(cv, sym, cx, cy - pitch + scroll, cellW * 0.74f);
+                    p.setColor(0x30FFFFFF); cv.drawRect(x + 2, cy - pitch * 1.4f + scroll, x + cellW + 2, cy - pitch * 0.55f + scroll, p);
+                    art.symbol(cv, sym, cx, cy + scroll, cellW * 0.82f);
+                    art.symbol(cv, sym, cx, cy + pitch + scroll, cellW * 0.74f);
+                    p.setColor(0x30FFFFFF); cv.drawRect(x + 2, cy + pitch * 0.55f + scroll, x + cellW + 2, cy + pitch * 1.4f + scroll, p);
+                    cv.restore();
+                } else {
+                    art.symbol(cv, grid[r][c], x + 2 + cellW / 2, y + cellW / 2, cellW * 0.82f);
+                }
             }
         }
         if (spinning) {
             boolean allStopped = true;
             for (int c = 0; c < 5; c++) if (now < stopAt[c]) allStopped = false;
+            boolean firstFourStopped = true;
+            for (int c = 0; c < 4; c++) if (now < stopAt[c]) firstFourStopped = false;
+            if (firstFourStopped && now < stopAt[4]) {
+                int bestRun = 1;
+                for (int[] line : LINES) {
+                    int s = grid[line[0]][0], run = 1;
+                    for (int c = 1; c < 4; c++) { if (grid[line[c]][c] == s) run++; else break; }
+                    if (run > bestRun) bestRun = run;
+                }
+                if (bestRun >= 3) {
+                    if (!anticipationGiven) { stopAt[4] += 1100; anticipationGiven = true; }
+                    // pulsing glow ring around the spinning last column
+                    float cellWn = w / 5f - 8;
+                    float gx = 4 + 4 * (cellWn + 8);
+                    float pulse = 0.5f + 0.5f * (float) Math.sin(now / 90.0);
+                    p.setStyle(Paint.Style.STROKE);
+                    p.setStrokeWidth(3 + 3 * pulse);
+                    p.setColor(th.title & 0x00FFFFFF | ((int) (120 + 120 * pulse) << 24));
+                    rf.set(gx, gridTop - 2, gx + cellWn + 4, gridTop + cellWn * 3 + 22);
+                    cv.drawRoundRect(rf, 16, 16, p);
+                    p.setStyle(Paint.Style.FILL);
+                }
+            }
             if (allStopped) { post(this::finishSpin); }
             else postInvalidateDelayed(30);
-        } else if (now < winFlashUntil || now < unlockFlashUntil || now < levelFlashUntil || now < trophyFlashUntil) {
+        } else if (now < winFlashUntil || now < bigWinUntil || now < unlockFlashUntil || now < levelFlashUntil || now < trophyFlashUntil) {
             postInvalidateDelayed(60);
         } else {
             postInvalidateDelayed(450); // idle ambient: chase bulbs and embers keep breathing
         }
         if (now < winFlashUntil) coinShower(cv, w, gridTop, gridH, th, now);
+        if (now < bigWinUntil) bigWinOverlay(cv, w, th, now);
         if (now < levelFlashUntil) levelBurst(cv, w, gridTop, th, now);
 
         // bet selector
@@ -366,6 +417,30 @@ public class SlotsView extends View {
             p.setColor(0x66FFFFFF);
             cv.drawCircle(x - r * .3f, y - r * .3f, r * .35f, p);
         }
+    }
+
+    private void bigWinOverlay(Canvas cv, float w, SlotArt.Theme th, long now) {
+        float t = (now - bigWinStartAt) / 3000f;
+        if (t < 0 || t > 1) return;
+        float cy = getHeight() * 0.42f;
+        p.setColor(0x99000000);
+        cv.drawRect(0, 0, w, getHeight(), p);
+        float in = Math.min(1f, t / 0.12f);
+        float pop = in < 1f ? 0.6f + 0.4f * in : 1f + 0.05f * (float) Math.sin(now / 140.0);
+        p.setTextAlign(Paint.Align.CENTER);
+        p.setFakeBoldText(true);
+        p.setTextSize(w * 0.14f * pop);
+        p.setColor(0xFFFFD54A);
+        p.setShadowLayer(w * 0.03f * pop, 0, 0, 0xFFFFA000);
+        cv.drawText("BIG WIN!", w / 2, cy, p);
+        p.clearShadowLayer();
+        long shown = bigWinAmount * Math.min(100, (long) (t * 140)) / 100;
+        p.setTextSize(w * 0.10f * pop);
+        p.setColor(0xFFFFFFFF);
+        p.setShadowLayer(w * 0.02f, 0, 0, 0xFF7CFC00);
+        cv.drawText("+" + shown, w / 2, cy + w * 0.14f, p);
+        p.clearShadowLayer();
+        p.setFakeBoldText(false);
     }
 
     private void levelBurst(Canvas cv, float w, float gridTop, SlotArt.Theme th, long now) {

@@ -142,11 +142,48 @@ public class MainActivity extends Activity implements SlotsView.Listener, Billin
         int streak = yesterday().equals(last) ? sp.getInt("daily_streak", 0) + 1 : 1;
         long bonus = DAILY_BONUS[Math.min(streak, DAILY_BONUS.length) - 1];
         dlg().title("Daily bonus - day " + streak)
-            .body("Your day " + streak + " gift is ready: +" + bonus + " coins - free, no purchase needed.\nCome back tomorrow to grow your streak.\n\nCoins are virtual only - no cash value, no prizes.")
+            .body("Come back every day to grow your streak.\nCoins are virtual only - no cash value, no prizes.")
+            .content(dailyLadder(streak))
             .add(GameDialog.Btn.primary("Claim +" + bonus, () -> grantDaily(streak, bonus)))
             .add(GameDialog.Btn.secondary("Watch ad for 2X", () -> ads.showRewarded(() -> grantDaily(streak, bonus * 2))))
             .cancelable(false)
             .show();
+    }
+
+    private View dailyLadder(int streak) {
+        SlotArt.Theme th = SlotArt.THEMES[game.getThemeIdx()];
+        float density = getResources().getDisplayMetrics().density;
+        LinearLayout row = new LinearLayout(this);
+        row.setOrientation(LinearLayout.HORIZONTAL);
+        row.setGravity(Gravity.CENTER);
+        row.setPadding(0, (int) (6 * density), 0, (int) (2 * density));
+        for (int i = 0; i < DAILY_BONUS.length; i++) {
+            TextView chip = new TextView(this);
+            chip.setText("DAY " + (i + 1) + "\n+" + DAILY_BONUS[i]);
+            chip.setTextSize(10.5f);
+            chip.setTypeface(Typeface.DEFAULT_BOLD);
+            chip.setGravity(Gravity.CENTER);
+            chip.setSingleLine(false);
+            android.graphics.drawable.GradientDrawable g = new android.graphics.drawable.GradientDrawable();
+            g.setCornerRadius(10 * density);
+            if (i == streak - 1) {           // today
+                g.setColor(GameDialog.withAlpha(th.neon, 0x30));
+                g.setStroke((int) (2 * density), th.neon);
+                chip.setTextColor(th.title);
+            } else if (i < streak - 1) {     // already claimed
+                g.setColor(GameDialog.withAlpha(th.panelLine, 0x22));
+                chip.setTextColor(GameDialog.withAlpha(th.soft, 0x88));
+            } else {                          // future days
+                g.setColor(GameDialog.withAlpha(th.panelLine, 0x40));
+                g.setStroke((int) (1 * density), GameDialog.withAlpha(th.neon, 0x33));
+                chip.setTextColor(th.soft);
+            }
+            chip.setBackground(g);
+            LinearLayout.LayoutParams lp = new LinearLayout.LayoutParams(0, (int) (54 * density), 1f);
+            lp.setMargins((int) (2 * density), 0, (int) (2 * density), 0);
+            row.addView(chip, lp);
+        }
+        return row;
     }
 
     private void grantDaily(int streak, long coins) {
@@ -206,7 +243,18 @@ public class MainActivity extends Activity implements SlotsView.Listener, Billin
             t.setSingleLine(false);
             String status = i.claimed ? " (claimed)" : " - " + i.progress + "/" + i.goal;
             t.setText(i.title + status + "  [+" + i.reward + "]");
-            line.addView(t, new LinearLayout.LayoutParams(0, -2, 1f));
+            LinearLayout txt = new LinearLayout(this);
+            txt.setOrientation(LinearLayout.VERTICAL);
+            txt.addView(t);
+            if (!i.claimed) {
+                GameDialog.Palette pal = GameDialog.fromTheme(SlotArt.THEMES[game.getThemeIdx()]);
+                View bar = GameDialog.progressBar(this, pal, i.progress, i.goal);
+                LinearLayout.LayoutParams blp = new LinearLayout.LayoutParams(-1, (int) (10 * getResources().getDisplayMetrics().density));
+                blp.topMargin = (int) (3 * getResources().getDisplayMetrics().density);
+                blp.bottomMargin = (int) (4 * getResources().getDisplayMetrics().density);
+                txt.addView(bar, blp);
+            }
+            line.addView(txt, new LinearLayout.LayoutParams(0, -2, 1f));
             if (!i.claimed && i.done()) {
                 Button c = new Button(this);
                 c.setText("Claim");
