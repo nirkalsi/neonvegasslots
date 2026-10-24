@@ -407,4 +407,43 @@ public class RenderSmokeTest {
         assertEquals(6, root.getPaddingLeft());
         assertEquals(6, root.getPaddingRight());
     }
+
+    @Test @Config(sdk = 35) public void renderWithSystemBarInsets() throws Exception {
+        MainActivity a = activity();
+        View content = a.findViewById(android.R.id.content);
+        android.view.ViewGroup root = (android.view.ViewGroup) ((android.view.ViewGroup) content).getChildAt(0);
+        android.view.WindowInsets insets = new android.view.WindowInsets.Builder()
+            .setInsets(android.view.WindowInsets.Type.systemBars(), android.graphics.Insets.of(0, 88, 0, 132))
+            .build();
+        content.dispatchApplyWindowInsets(insets);
+        assertEquals(88, root.getPaddingTop());
+        assertEquals(132, root.getPaddingBottom());
+        // mark the banner container with a placeholder of standard banner height so its position is visible
+        android.view.ViewGroup bannerBox = (android.view.ViewGroup) root.getChildAt(root.getChildCount() - 1);
+        android.widget.TextView ph = new android.widget.TextView(a);
+        ph.setText("AD BANNER REGION (test placeholder)");
+        ph.setGravity(android.view.Gravity.CENTER);
+        ph.setTextColor(0xFFFFFFFF);
+        ph.setBackgroundColor(0xFF555555);
+        bannerBox.removeAllViews();
+        bannerBox.addView(ph, new android.view.ViewGroup.LayoutParams(-1, (int) (50 * a.getResources().getDisplayMetrics().density)));
+        android.util.DisplayMetrics dm = a.getResources().getDisplayMetrics();
+        int w = dm.widthPixels, h = dm.heightPixels;
+        content.measure(View.MeasureSpec.makeMeasureSpec(w, View.MeasureSpec.EXACTLY),
+                        View.MeasureSpec.makeMeasureSpec(h, View.MeasureSpec.EXACTLY));
+        content.layout(0, 0, w, h);
+        Bitmap bmp = Bitmap.createBitmap(w, h, Bitmap.Config.ARGB_8888);
+        Canvas cv = new Canvas(bmp);
+        content.draw(cv);
+        android.graphics.Paint p = new android.graphics.Paint();
+        p.setColor(0x66FF0000); cv.drawRect(0, 0, w, 88, p);
+        p.setColor(0x660000FF); cv.drawRect(0, h - 132, w, h, p);
+        p.setColor(0xFFFFFFFF); p.setTextSize(30); p.setTextAlign(android.graphics.Paint.Align.CENTER);
+        cv.drawText("INJECTED STATUS BAR 88px", w / 2, 60, p);
+        cv.drawText("INJECTED NAV BAR 132px", w / 2, h - 55, p);
+        FileOutputStream fos = new FileOutputStream("/tmp/renders/neonvegasslots-insets-composed.png");
+        bmp.compress(Bitmap.CompressFormat.PNG, 100, fos);
+        fos.close();
+        assertTrue(new File("/tmp/renders/neonvegasslots-insets-composed.png").length() > 5000);
+    }
 }
