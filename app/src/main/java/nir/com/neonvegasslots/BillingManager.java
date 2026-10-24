@@ -23,6 +23,10 @@ public class BillingManager implements PurchasesUpdatedListener {
     private final Map<String, ProductDetails> details = new HashMap<>();
     private boolean ready = false;
 
+    private final android.os.Handler handler = new android.os.Handler(android.os.Looper.getMainLooper());
+    private int retry = 0;
+    private boolean connecting = false;
+
     public BillingManager(Context c, Listener l) {
         ctx = c.getApplicationContext(); listener = l;
         bc = BillingClient.newBuilder(ctx)
@@ -33,16 +37,34 @@ public class BillingManager implements PurchasesUpdatedListener {
     }
 
     private void connect() {
+        if (connecting) return;
+        connecting = true;
         bc.startConnection(new BillingClientStateListener() {
             @Override public void onBillingSetupFinished(BillingResult r) {
+                connecting = false;
                 if (r.getResponseCode() == BillingClient.BillingResponseCode.OK) {
-                    ready = true;
+                    ready = true; retry = 0;
                     restorePurchases();
                     queryProducts();
+                } else {
+                    scheduleRetry();
                 }
             }
-            @Override public void onBillingServiceDisconnected() { ready = false; }
+            @Override public void onBillingServiceDisconnected() { ready = false; scheduleRetry(); }
         });
+    }
+
+    private void scheduleRetry() {
+        if (retry >= 5) return;
+        long delay = 2000L * (1 << retry); // 2s,4s,8s,16s,32s
+        retry++;
+        handler.postDelayed(() -> { if (!ready) connect(); else queryProducts(); }, delay);
+    }
+
+    /** Public kick so UI (shop) can recover after a failed or not-yet-finished load. */
+    public void refreshProducts() {
+        retry = 0;
+        if (ready) queryProducts(); else connect();
     }
 
     private void restorePurchases() {
@@ -61,7 +83,7 @@ public class BillingManager implements PurchasesUpdatedListener {
             .setProductId(id).setProductType(BillingClient.ProductType.INAPP).build());
         bc.queryProductDetailsAsync(QueryProductDetailsParams.newBuilder().setProductList(prods).build(),
             (r, result) -> {
-                if (r.getResponseCode() != BillingClient.BillingResponseCode.OK) return;
+                if (r.getResponseCode() != BillingClient.BillingResponseCode.OK) { scheduleRetry(); return; }
                 details.clear();
                 for (ProductDetails pd : result.getProductDetailsList()) details.put(pd.getProductId(), pd);
                 listener.onProductsReady();

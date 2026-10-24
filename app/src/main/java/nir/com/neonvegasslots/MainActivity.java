@@ -197,28 +197,42 @@ public class MainActivity extends Activity implements SlotsView.Listener, Billin
     // ---------- shop & remove ads ----------
     private void showShop() {
         if (!billing.hasProducts()) {
+            shopReopen = true;
+            billing.refreshProducts();
             new AlertDialog.Builder(this).setTitle("Coin shop")
-                .setMessage("The coin shop is not available yet. Coins are virtual only - no cash value, no prizes.")
-                .setPositiveButton("OK", null).show();
+                .setMessage("Loading the shop...\n\nIf packs don't show up, check your connection and tap TRY AGAIN.")
+                .setPositiveButton("TRY AGAIN", (d, w) -> showShop())
+                .setNegativeButton("Close", (d, w) -> shopReopen = false)
+                .show();
             return;
         }
         LinearLayout box = new LinearLayout(this);
         box.setOrientation(LinearLayout.VERTICAL);
         int pad = (int) (16 * getResources().getDisplayMetrics().density);
         box.setPadding(pad, pad / 2, pad, 0);
-        TextView note = new TextView(this);
-        note.setText("Coins are virtual only - no cash value, no prizes, 18+.");
-        note.setPadding(0, 0, 0, 12);
-        box.addView(note);
+        TextView head = new TextView(this);
+        head.setText("Running low? Top up your coins:");
+        head.setTextSize(16);
+        head.setPadding(0, 0, 0, 12);
+        box.addView(head);
+        String[] tag = {null, null, "POPULAR", "BEST VALUE"};
         for (int i = 0; i < BillingManager.PACK_IDS.length; i++) {
             String id = BillingManager.PACK_IDS[i];
             String price = billing.priceOf(id);
             if (price == null) continue;
             Button b = new Button(this);
-            b.setText(String.format("%,d", BillingManager.PACK_COINS[i]) + " coins - " + price);
+            String label = String.format("%,d", BillingManager.PACK_COINS[i]) + " coins - " + price;
+            if (i < tag.length && tag[i] != null) label += "  (" + tag[i] + ")";
+            b.setText(label);
+            b.setSingleLine(false); // wrap instead of clipping on narrow screens
             b.setOnClickListener(v -> billing.buy(this, id));
             box.addView(b);
         }
+        TextView note = new TextView(this);
+        note.setText("Coins are virtual only - no cash value, no prizes, 18+.");
+        note.setTextSize(12);
+        note.setPadding(0, 12, 0, 0);
+        box.addView(note);
         new AlertDialog.Builder(this).setTitle("Coin shop").setView(box)
             .setNegativeButton("Close", null).show();
     }
@@ -322,7 +336,10 @@ public class MainActivity extends Activity implements SlotsView.Listener, Billin
         });
     }
 
-    @Override public void onProductsReady() { }
+    private boolean shopReopen = false;
+    @Override public void onProductsReady() {
+        if (shopReopen && billing.hasProducts()) { shopReopen = false; showShop(); }
+    }
 
     @Override protected void onPause() { super.onPause(); saveState(); }
 }
