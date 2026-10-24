@@ -107,4 +107,10 @@ public class RenderSmokeTest {
         v.restore("5000;0;1;0;0;10;3");
         renderView(v, 720, 1480, "/tmp/renders/neonvegasslots-theme4-720x1480.png");
     }
+
+    @GraphicsMode(GraphicsMode.Mode.NATIVE)
+    @Test public void renderFullScreen720() throws Exception {
+        MainActivity a = activity();
+        renderView(a.findViewById(android.R.id.content), 720, 1480, "/tmp/renders/neonvegasslots-full-720x1480.png");
+    }
 }

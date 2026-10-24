@@ -46,6 +46,7 @@ public class SlotsView extends View {
 
     private boolean spinning = false;
     private long[] stopAt = new long[5];
+    private long winStartAt = 0;
     private long winFlashUntil = 0;
     private boolean[][] winCell = new boolean[3][5];
     private float titleGlow = 0f;
@@ -145,7 +146,7 @@ public class SlotsView extends View {
                 for (int c = 0; c < run; c++) winCell[line[c]][c] = true;
             }
         }
-        if (win > 0) { balance += win; lastWin = win; winFlashUntil = System.currentTimeMillis() + 1600; }
+        if (win > 0) { balance += win; lastWin = win; winStartAt = System.currentTimeMillis(); winFlashUntil = winStartAt + 1600; }
         int oldUnlocks = unlockedCount(level);
         while (xp >= xpNeeded()) {
             xp -= xpNeeded();
@@ -184,6 +185,11 @@ public class SlotsView extends View {
         art.backdrop(cv, getWidth(), getHeight(), th, phase);
 
         float w = getWidth();
+        // HUD veil: title and balance always sit on clean high-contrast ground
+        p.setShader(new LinearGradient(0, 0, 0, getHeight() * 0.175f,
+            th.skyTop & 0x00FFFFFF | 0xF2000000, 0x00000000, Shader.TileMode.CLAMP));
+        cv.drawRect(0, 0, w, getHeight() * 0.175f, p);
+        p.setShader(null);
         float cellW = w / 5f - 8;
         float gridTop = gridTop();
         float gridH = cellW * 3 + 16;
@@ -240,6 +246,9 @@ public class SlotsView extends View {
                 }
                 float x = 4 + c * (cellW + 8);
                 float y = gridTop + r * (cellW + 8);
+                // settle bounce: a just-stopped column drops in with a small overshoot
+                float settle = (now - stopAt[c]) / 260f;
+                if (settle >= 0 && settle < 1) y -= cellW * 0.06f * (1 - settle) * (float) Math.cos(settle * 6.9f);
                 rf.set(x + 2, y, x + cellW + 2, y + cellW);
                 boolean hot = winCell[r][c] && flash;
                 p.setColor(hot ? th.cellHot : th.cellBg);
@@ -257,9 +266,13 @@ public class SlotsView extends View {
             for (int c = 0; c < 5; c++) if (now < stopAt[c]) allStopped = false;
             if (allStopped) { post(this::finishSpin); }
             else postInvalidateDelayed(30);
-        } else if (now < winFlashUntil || now < unlockFlashUntil) {
-            postInvalidateDelayed(120);
+        } else if (now < winFlashUntil || now < unlockFlashUntil || now < levelFlashUntil) {
+            postInvalidateDelayed(60);
+        } else {
+            postInvalidateDelayed(450); // idle ambient: chase bulbs and embers keep breathing
         }
+        if (now < winFlashUntil) coinShower(cv, w, gridTop, gridH, th, now);
+        if (now < levelFlashUntil) levelBurst(cv, w, gridTop, th, now);
 
         // bet selector
         float ctrlY = gridTop + gridH + 24;
@@ -289,6 +302,32 @@ public class SlotsView extends View {
         p.setTextSize(w * 0.028f);
         p.setColor(th.soft);
         cv.drawText("Free play only. Virtual coins - no real money, no prizes.", w / 2, getHeight() - w * 0.03f, p);
+    }
+
+    private void coinShower(Canvas cv, float w, float gridTop, float gridH, SlotArt.Theme th, long now) {
+        float t = (now - winStartAt) / 1000f;
+        if (t < 0 || t > 1.6f) return;
+        for (int i = 0; i < 22; i++) {
+            float x = w * (((i * 73856093) & 0xFFFF) / 65535f);
+            float speed = gridH * (0.55f + (i % 5) * 0.16f);
+            float y = gridTop - w * .05f + ((t * speed + i * 37) % (gridH + w * .12f));
+            float r = w * (.009f + (i % 3) * .004f);
+            p.setColor(i % 4 == 0 ? 0xFFFFF0AA : th.title);
+            cv.drawCircle(x, y, r, p);
+            p.setColor(0x66FFFFFF);
+            cv.drawCircle(x - r * .3f, y - r * .3f, r * .35f, p);
+        }
+    }
+
+    private void levelBurst(Canvas cv, float w, float gridTop, SlotArt.Theme th, long now) {
+        float p1 = 1 - Math.max(0, (levelFlashUntil - now)) / 2000f;
+        if (p1 < 0 || p1 > 1) return;
+        float r = w * .10f + p1 * w * .45f;
+        p.setStyle(Paint.Style.STROKE);
+        p.setStrokeWidth(w * .012f * (1 - p1) + 1);
+        p.setColor(th.title & 0x00FFFFFF | ((int) ((1 - p1) * 160) << 24));
+        cv.drawCircle(w / 2, gridTop * 0.5f, r, p);
+        p.setStyle(Paint.Style.FILL);
     }
 
     @Override public boolean onTouchEvent(MotionEvent e) {

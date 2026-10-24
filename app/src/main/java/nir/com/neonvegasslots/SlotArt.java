@@ -54,8 +54,8 @@ final class SlotArt {
         color(t.soft);
         for(int i=0;i<26;i++){float x=w*((hash(i,1)&0xFFFF)/65535f),y=horizon*.14f+horizon*.5f*((hash(i,2)&0xFFFF)/65535f);c.drawCircle(x,y,w*.0016f,ink);}
         // moon / sun disc
-        if(t==THEMES[1]){ color(0xFFFFB35C); c.drawCircle(w*.80f,horizon*.60f,w*.070f,ink); color(0xFFFF8A5C);c.drawCircle(w*.80f,horizon*.60f,w*.052f,ink);}
-        else { color(0xFFF4F1DE); c.drawCircle(w*.80f,horizon*.48f,w*.034f,ink); color(t.skyTop); c.drawCircle(w*.822f,horizon*.445f,w*.030f,ink); }
+        if(t==THEMES[1]){ color(0xFFFFB35C); c.drawCircle(w*.80f,horizon*.72f,w*.062f,ink); color(0xFFFF8A5C);c.drawCircle(w*.80f,horizon*.72f,w*.046f,ink);}
+        else { color(0xFFF4F1DE); c.drawCircle(w*.80f,horizon*.74f,w*.028f,ink); color(t.skyTop); c.drawCircle(w*.818f,horizon*.705f,w*.024f,ink); }
 
         // back skyline (kept below the title band)
         drawSkyline(c,w,horizon,t.back,t.dark,false,3,.40f);
