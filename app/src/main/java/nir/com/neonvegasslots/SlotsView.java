@@ -26,6 +26,7 @@ public class SlotsView extends View {
     };
     private static final int[] BETS = {5, 10, 25, 50};
 
+    private final SlotArt art = new SlotArt();
     private final Random rng = new Random();
     private final Paint p = new Paint(Paint.ANTI_ALIAS_FLAG);
     private final RectF rf = new RectF();
@@ -144,10 +145,7 @@ public class SlotsView extends View {
     @Override protected void onDraw(Canvas cv) {
         long now = System.currentTimeMillis();
         regen();
-        // background
-        p.setShader(new LinearGradient(0, 0, 0, getHeight(), 0xFF2D1B4E, 0xFF120826, Shader.TileMode.CLAMP));
-        cv.drawRect(0, 0, getWidth(), getHeight(), p);
-        p.setShader(null);
+        art.backdrop(cv, getWidth(), getHeight());
 
         float w = getWidth();
         float cellW = w / 5f - 8;
@@ -223,7 +221,7 @@ public class SlotsView extends View {
                 p.setTextSize(cellW * 0.55f);
                 p.setColor(0xFFFFFFFF);
                 float cy = y + cellW / 2 - (p.descent() + p.ascent()) / 2;
-                cv.drawText(SYM[grid[r][c]], x + 2 + cellW / 2, cy, p);
+                art.symbol(cv, grid[r][c], x + 2 + cellW / 2, y + cellW / 2, cellW * 0.82f);
             }
         }
         if (spinning) {
@@ -255,6 +253,8 @@ public class SlotsView extends View {
         p.setFakeBoldText(true);
         cv.drawText(spinning ? "..." : "SPIN", w * 0.69f, ctrlY + btnH * 0.66f, p);
         p.setFakeBoldText(false);
+
+        art.journey(cv, w, ctrlY + btnH + w * 0.055f, getHeight() - w * 0.10f, level, xp, xpNeeded());
 
         // disclaimer
         p.setTextSize(w * 0.028f);
