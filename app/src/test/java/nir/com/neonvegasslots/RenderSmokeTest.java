@@ -393,4 +393,18 @@ public class RenderSmokeTest {
         v.draw(new Canvas(bmp));
         assertEquals("title glow follows elapsed time", (float) Math.PI, f.getFloat(v), 0.001f);
     }
+
+    @Test @Config(sdk = 35) public void rootPadsForSystemBarsWhenEdgeToEdge() {
+        MainActivity a = activity();
+        View content = a.findViewById(android.R.id.content);
+        View root = ((android.view.ViewGroup) content).getChildAt(0);
+        android.view.WindowInsets insets = new android.view.WindowInsets.Builder()
+            .setInsets(android.view.WindowInsets.Type.systemBars(), android.graphics.Insets.of(6, 88, 6, 42))
+            .build();
+        content.dispatchApplyWindowInsets(insets);
+        assertEquals("status bar inset must pad the top", 88, root.getPaddingTop());
+        assertEquals("nav bar inset must pad the bottom", 42, root.getPaddingBottom());
+        assertEquals(6, root.getPaddingLeft());
+        assertEquals(6, root.getPaddingRight());
+    }
 }

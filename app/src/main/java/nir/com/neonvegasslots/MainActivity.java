@@ -48,6 +48,13 @@ public class MainActivity extends Activity implements SlotsView.Listener, Billin
         bannerBox = new LinearLayout(this);
         root.addView(bannerBox, new LinearLayout.LayoutParams(-1, -2));
         setContentView(root);
+        if (android.os.Build.VERSION.SDK_INT >= 30) { // targetSdk 35+ forces edge-to-edge: keep content clear of system bars
+            root.setOnApplyWindowInsetsListener((v, insets) -> {
+                android.graphics.Insets bars = insets.getInsets(android.view.WindowInsets.Type.systemBars());
+                v.setPadding(bars.left, bars.top, bars.right, bars.bottom);
+                return insets;
+            });
+        }
 
         String s = sp.getString(KEY, null);
         if (s != null) game.restore(s);
