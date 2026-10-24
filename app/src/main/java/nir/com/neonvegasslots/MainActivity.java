@@ -1,7 +1,7 @@
 package nir.com.neonvegasslots;
 
 import android.app.Activity;
-import android.app.AlertDialog;
+import android.app.Dialog;
 import android.content.Intent;
 import android.content.SharedPreferences;
 import android.graphics.Color;
@@ -99,6 +99,8 @@ public class MainActivity extends Activity implements SlotsView.Listener, Billin
         return btn;
     }
 
+    private GameDialog.Builder dlg() { return new GameDialog.Builder(this, GameDialog.fromTheme(SlotArt.THEMES[game.getThemeIdx()])); }
+
     // ---------- daily bonus ----------
     private String today() { return new SimpleDateFormat("yyyy-MM-dd", Locale.US).format(new Date()); }
     private String yesterday() {
@@ -111,13 +113,11 @@ public class MainActivity extends Activity implements SlotsView.Listener, Billin
         if (today().equals(last)) return;
         int streak = yesterday().equals(last) ? sp.getInt("daily_streak", 0) + 1 : 1;
         long bonus = DAILY_BONUS[Math.min(streak, DAILY_BONUS.length) - 1];
-        new AlertDialog.Builder(this)
-            .setTitle("Daily bonus - day " + streak)
-            .setMessage("Your day " + streak + " gift: +" + bonus + " coins. Come back tomorrow to grow your streak!\n\nAll coins are virtual and free.")
-            .setPositiveButton("Claim +" + bonus, (d, w) -> grantDaily(streak, bonus))
-            .setNeutralButton("Watch ad for 2X", (d, w) ->
-                ads.showRewarded(() -> grantDaily(streak, bonus * 2)))
-            .setCancelable(false)
+        dlg().title("Daily bonus - day " + streak)
+            .body("Your day " + streak + " gift is ready: +" + bonus + " coins!\nCome back tomorrow to grow your streak.\n\nAll coins are virtual and free.")
+            .add(GameDialog.Btn.primary("Claim +" + bonus, () -> grantDaily(streak, bonus)))
+            .add(GameDialog.Btn.secondary("Watch ad for 2X", () -> ads.showRewarded(() -> grantDaily(streak, bonus * 2))))
+            .cancelable(false)
             .show();
     }
 
@@ -155,17 +155,17 @@ public class MainActivity extends Activity implements SlotsView.Listener, Billin
         box.setPadding(pad, pad / 2, pad, 0);
         addSection(box, "Daily missions", missions.dailyMissions());
         addSection(box, "Achievements", missions.achievements(game.getLevel(), game.getSpinsDone()));
-        ScrollView sv = new ScrollView(this);
-        sv.addView(box);
-        new AlertDialog.Builder(this).setTitle("Missions").setView(sv)
-            .setNegativeButton("Close", null).show();
+        dlg().title("Missions").content(box)
+            .add(GameDialog.Btn.secondary("Close", null)).show();
     }
 
     private void addSection(LinearLayout box, String title, List<MissionsManager.Item> items) {
+        SlotArt.Theme th = SlotArt.THEMES[game.getThemeIdx()];
         TextView h = new TextView(this);
         h.setText(title);
         h.setTypeface(Typeface.DEFAULT_BOLD);
         h.setTextSize(16f);
+        h.setTextColor(th.title);
         h.setPadding(0, 12, 0, 6);
         box.addView(h);
         for (MissionsManager.Item i : items) {
@@ -173,6 +173,9 @@ public class MainActivity extends Activity implements SlotsView.Listener, Billin
             line.setOrientation(LinearLayout.HORIZONTAL);
             line.setGravity(Gravity.CENTER_VERTICAL);
             TextView t = new TextView(this);
+            t.setTextSize(14f);
+            t.setTextColor(SlotArt.THEMES[game.getThemeIdx()].soft);
+            t.setSingleLine(false);
             String status = i.claimed ? " (claimed)" : " - " + i.progress + "/" + i.goal;
             t.setText(i.title + status + "  [+" + i.reward + "]");
             line.addView(t, new LinearLayout.LayoutParams(0, -2, 1f));
@@ -198,24 +201,19 @@ public class MainActivity extends Activity implements SlotsView.Listener, Billin
     private void showShop() {
         if (!billing.hasProducts()) {
             billing.refreshProducts();
-            AlertDialog dlg = new AlertDialog.Builder(this).setTitle("Coin shop")
-                .setMessage("Loading the shop...\n\nIf packs don't show up, check your connection and tap TRY AGAIN.")
-                .setPositiveButton("TRY AGAIN", (d, w) -> showShop())
-                .setNegativeButton("Close", null)
+            Dialog d = dlg().title("Coin shop")
+                .body("Loading the shop...\n\nIf packs don't show up, check your connection and tap TRY AGAIN.")
+                .add(GameDialog.Btn.primary("TRY AGAIN", this::showShop))
+                .add(GameDialog.Btn.secondary("Close", null))
                 .show();
-            shopLoadingDlg = dlg;
-            dlg.setOnDismissListener(d -> { if (shopLoadingDlg == dlg) shopLoadingDlg = null; });
+            shopLoadingDlg = d;
+            d.setOnDismissListener(x -> { if (shopLoadingDlg == d) shopLoadingDlg = null; });
             return;
         }
+        SlotArt.Theme th = SlotArt.THEMES[game.getThemeIdx()];
+        float density = getResources().getDisplayMetrics().density;
         LinearLayout box = new LinearLayout(this);
         box.setOrientation(LinearLayout.VERTICAL);
-        int pad = (int) (16 * getResources().getDisplayMetrics().density);
-        box.setPadding(pad, pad / 2, pad, 0);
-        TextView head = new TextView(this);
-        head.setText("Running low? Top up your coins:");
-        head.setTextSize(16);
-        head.setPadding(0, 0, 0, 12);
-        box.addView(head);
         // neutral labels only: no popularity/value claims without real usage or per-coin price facts
         for (int i = 0; i < BillingManager.PACK_IDS.length; i++) {
             String id = BillingManager.PACK_IDS[i];
@@ -224,16 +222,28 @@ public class MainActivity extends Activity implements SlotsView.Listener, Billin
             Button b = new Button(this);
             b.setText(String.format("%,d", BillingManager.PACK_COINS[i]) + " coins - " + price);
             b.setSingleLine(false); // wrap instead of clipping on narrow screens
+            b.setAllCaps(false);
+            b.setTextSize(15f); b.setTypeface(Typeface.DEFAULT_BOLD);
+            b.setTextColor(th.title);
+            android.graphics.drawable.GradientDrawable pb = new android.graphics.drawable.GradientDrawable();
+            pb.setColor(GameDialog.withAlpha(th.panelLine, 0x44)); pb.setCornerRadius(12 * density);
+            pb.setStroke((int) (1 * density), GameDialog.withAlpha(th.neon, 0x55));
+            b.setBackground(pb);
+            LinearLayout.LayoutParams lp = new LinearLayout.LayoutParams(-1, -2);
+            lp.topMargin = (int) (8 * density);
+            box.addView(b, lp);
             b.setOnClickListener(v -> billing.buy(this, id));
-            box.addView(b);
         }
         TextView note = new TextView(this);
         note.setText("Coins are virtual only - no cash value, no prizes, 18+.");
-        note.setTextSize(12);
-        note.setPadding(0, 12, 0, 0);
+        note.setTextSize(12f);
+        note.setTextColor(th.soft);
+        note.setPadding(0, (int) (12 * density), 0, 0);
         box.addView(note);
-        new AlertDialog.Builder(this).setTitle("Coin shop").setView(box)
-            .setNegativeButton("Close", null).show();
+        dlg().title("Coin shop")
+            .body("Running low? Top up your coins:")
+            .content(box)
+            .add(GameDialog.Btn.secondary("Close", null)).show();
     }
 
     private void buyRemoveAds() {
@@ -249,11 +259,10 @@ public class MainActivity extends Activity implements SlotsView.Listener, Billin
         String price = billing.priceOf(BillingManager.REMOVE_ADS);
         String text = "Enjoying Neon Vegas Slots? Remove banner and between-round ads forever with one small one-time purchase"
             + (price != null ? " (" + price + ")" : "") + ". Free rewarded ads for coins stay available either way.";
-        new AlertDialog.Builder(this)
-            .setTitle("Remove ads")
-            .setMessage(text)
-            .setPositiveButton(price != null ? "Remove ads - " + price : "Remove ads", (d, w) -> buyRemoveAds())
-            .setNegativeButton("No thanks", null)
+        dlg().title("Remove ads")
+            .body(text)
+            .add(GameDialog.Btn.primary(price != null ? "Remove ads - " + price : "Remove ads", this::buyRemoveAds))
+            .add(GameDialog.Btn.secondary("No thanks", null))
             .show();
     }
 
@@ -282,14 +291,12 @@ public class MainActivity extends Activity implements SlotsView.Listener, Billin
 
     // ---------- SlotsView.Listener ----------
     @Override public void onOutOfCoins() {
-        AlertDialog.Builder b = new AlertDialog.Builder(this)
-            .setTitle("Out of coins")
-            .setMessage("Watch a short ad for +300 free coins? Coins also refill slowly over time. All coins are virtual and free.")
-            .setPositiveButton("Watch ad", (d, w) -> ads.showRewarded(() -> game.addCoins(300)))
-            .setNegativeButton("Not now", null);
+        GameDialog.Builder b = dlg().title("Out of coins")
+            .body("Watch a short ad for +300 free coins?\nCoins also refill slowly over time.\n\nAll coins are virtual and free.")
+            .add(GameDialog.Btn.primary("Watch ad  (+300)", () -> ads.showRewarded(() -> game.addCoins(300))));
         if (!sp.getBoolean("ads_removed", false))
-            b.setNeutralButton("Remove all ads", (d, w) -> offerRemoveAds("outofcoins"));
-        b.show();
+            b.add(GameDialog.Btn.secondary("Remove all ads", () -> offerRemoveAds("outofcoins")));
+        b.add(GameDialog.Btn.secondary("Not now", null)).show();
     }
 
     @Override public void onSpinComplete(int spinsDone, long win, long bet) {
@@ -335,7 +342,7 @@ public class MainActivity extends Activity implements SlotsView.Listener, Billin
         });
     }
 
-    private AlertDialog shopLoadingDlg = null;
+    private Dialog shopLoadingDlg = null;
     @Override public void onProductsReady() {
         // only swap a still-visible loading dialog for the real shop; never reopen a dismissed one
         if (shopLoadingDlg != null && shopLoadingDlg.isShowing() && billing.hasProducts()) {

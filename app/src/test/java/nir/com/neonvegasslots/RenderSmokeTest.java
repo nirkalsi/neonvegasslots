@@ -1,7 +1,6 @@
 package nir.com.neonvegasslots;
 
 import static org.junit.Assert.*;
-import android.app.AlertDialog;
 import android.graphics.Bitmap;
 import android.graphics.Canvas;
 import android.view.View;
@@ -15,7 +14,8 @@ import org.robolectric.RobolectricTestRunner;
 import org.robolectric.RuntimeEnvironment;
 import org.robolectric.annotation.Config;
 import org.robolectric.annotation.GraphicsMode;
-import org.robolectric.shadows.ShadowAlertDialog;
+import android.app.Dialog;
+import org.robolectric.shadows.ShadowDialog;
 
 /** Pixel-render smoke: game view + full screen + reward/daily/missions/shop overlays. */
 @RunWith(RobolectricTestRunner.class)
@@ -44,10 +44,34 @@ public class RenderSmokeTest {
         m.invoke(o);
     }
 
+    private Dialog latestDialog() {
+        java.util.List<Dialog> ds = ShadowDialog.getShownDialogs();
+        assertFalse("no dialog shown", ds.isEmpty());
+        return ds.get(ds.size() - 1);
+    }
+
     private void renderLatestDialog(String tag) throws Exception {
-        AlertDialog d = ShadowAlertDialog.getLatestAlertDialog();
+        renderLatestDialog(tag, 1000, 1700);
+    }
+
+    private void renderLatestDialog(String tag, int w, int h) throws Exception {
+        Dialog d = latestDialog();
         assertNotNull("no dialog for " + tag, d);
-        renderView(d.getWindow().getDecorView(), 1000, 1700, "/tmp/renders/" + tag + ".png");
+        renderView(d.getWindow().getDecorView(), w, h, "/tmp/renders/" + tag + ".png");
+    }
+
+    private android.widget.Button findButton(View root, String text) {
+        java.util.ArrayList<View> stack = new java.util.ArrayList<>();
+        stack.add(root);
+        while (!stack.isEmpty()) {
+            View v = stack.remove(0);
+            if (v instanceof android.widget.Button && text.equals(((android.widget.Button) v).getText().toString()))
+                return (android.widget.Button) v;
+            if (v instanceof android.view.ViewGroup)
+                for (int i = 0; i < ((android.view.ViewGroup) v).getChildCount(); i++)
+                    stack.add(((android.view.ViewGroup) v).getChildAt(i));
+        }
+        return null;
     }
 
     @GraphicsMode(GraphicsMode.Mode.NATIVE)
@@ -150,13 +174,12 @@ public class RenderSmokeTest {
     @Test public void loadingShopSwapsToLoadedOnlyWhileVisible() throws Exception {
         MainActivity a = activity();
         callPrivate(a, "showShop"); // no products -> loading dialog
-        AlertDialog d1 = ShadowAlertDialog.getLatestAlertDialog();
-        assertNotNull("loading dialog", d1);
+        Dialog d1 = latestDialog();
         assertTrue(d1.isShowing());
         // products arrive while loading dialog visible -> swaps to loaded shop
         injectTestPrices(a);
         a.onProductsReady();
-        AlertDialog d2 = ShadowAlertDialog.getLatestAlertDialog();
+        Dialog d2 = latestDialog();
         assertNotSame(d1, d2);
         assertFalse("loading dialog dismissed", d1.isShowing());
         assertTrue("loaded shop showing", d2.isShowing());
@@ -166,22 +189,46 @@ public class RenderSmokeTest {
     @Test public void dismissedLoadingShopNeverAutoReopens() throws Exception {
         MainActivity a = activity();
         callPrivate(a, "showShop");
-        AlertDialog d1 = ShadowAlertDialog.getLatestAlertDialog();
-        assertNotNull(d1);
+        Dialog d1 = latestDialog();
         d1.dismiss(); // user closes the loading dialog
         injectTestPrices(a);
         a.onProductsReady();
-        assertSame("no new dialog after dismiss", d1, ShadowAlertDialog.getLatestAlertDialog());
+        assertSame("no new dialog after dismiss", d1, latestDialog());
     }
 
     @Test public void tryAgainDoesNotStackDialogs() throws Exception {
         MainActivity a = activity();
         callPrivate(a, "showShop");
-        ShadowAlertDialog.getLatestAlertDialog().getButton(AlertDialog.BUTTON_POSITIVE).performClick(); // TRY AGAIN
-        ShadowAlertDialog.getLatestAlertDialog().getButton(AlertDialog.BUTTON_POSITIVE).performClick(); // TRY AGAIN again
+        findButton(latestDialog().getWindow().getDecorView(), "TRY AGAIN").performClick(); // TRY AGAIN
+        findButton(latestDialog().getWindow().getDecorView(), "TRY AGAIN").performClick(); // TRY AGAIN again
         int showing = 0;
-        for (android.app.Dialog d : org.robolectric.shadows.ShadowDialog.getShownDialogs()) if (d.isShowing()) showing++;
+        for (Dialog d : ShadowDialog.getShownDialogs()) if (d.isShowing()) showing++;
         assertEquals("exactly one dialog showing", 1, showing);
+    }
+
+    @GraphicsMode(GraphicsMode.Mode.NATIVE)
+    @Test public void renderShopNarrowLargeFont() throws Exception {
+        MainActivity a = activity();
+        injectTestPrices(a);
+        RuntimeEnvironment.getApplication().getResources().getConfiguration().fontScale = 1.35f;
+        try {
+            callPrivate(a, "showShop");
+            renderLatestDialog("neonvegasslots-shop-narrow-largefont", 560, 1240);
+        } finally {
+            RuntimeEnvironment.getApplication().getResources().getConfiguration().fontScale = 1.0f;
+        }
+    }
+
+    @GraphicsMode(GraphicsMode.Mode.NATIVE)
+    @Test public void renderDailyNarrow() throws Exception {
+        MainActivity a = activity();
+        RuntimeEnvironment.getApplication().getResources().getConfiguration().fontScale = 1.35f;
+        try {
+            callPrivate(a, "maybeDailyBonus");
+            renderLatestDialog("neonvegasslots-daily-narrow", 560, 1240);
+        } finally {
+            RuntimeEnvironment.getApplication().getResources().getConfiguration().fontScale = 1.0f;
+        }
     }
 
     @GraphicsMode(GraphicsMode.Mode.NATIVE)
