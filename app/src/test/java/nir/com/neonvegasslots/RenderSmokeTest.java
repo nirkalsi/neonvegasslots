@@ -447,4 +447,72 @@ public class RenderSmokeTest {
         fos.close();
         assertTrue(new File("/tmp/renders/neonvegasslots-insets-composed.png").length() > 5000);
     }
+
+    @GraphicsMode(GraphicsMode.Mode.NATIVE)
+    @Test public void renderMotionSequence() throws Exception {
+        final long[] now = {100000};
+        SlotsView v = new SlotsView(RuntimeEnvironment.getApplication()) {
+            @Override long nowMillis() { return now[0]; }
+        };
+        v.restore("5000;0;1;0;0;10;3");
+        v.measure(View.MeasureSpec.makeMeasureSpec(720, View.MeasureSpec.EXACTLY),
+                  View.MeasureSpec.makeMeasureSpec(1480, View.MeasureSpec.EXACTLY));
+        v.layout(0, 0, 720, 1480);
+        java.lang.reflect.Field f = SlotsView.class.getDeclaredField("spinning"); f.setAccessible(true); f.setBoolean(v, true);
+        f = SlotsView.class.getDeclaredField("stopAt"); f.setAccessible(true);
+        long n = now[0];
+        f.set(v, new long[]{n + 4000, n + 4000, n + 4000, n + 4000, n + 4000});
+        // three successive frames of the same spin must differ (real motion, not a static pose)
+        renderView(v, 720, 1480, "/tmp/renders/neonvegasslots-motion-t0.png");
+        Bitmap b1 = Bitmap.createBitmap(720, 1480, Bitmap.Config.ARGB_8888); v.draw(new Canvas(b1));
+        now[0] += 130;
+        renderView(v, 720, 1480, "/tmp/renders/neonvegasslots-motion-t1.png");
+        Bitmap b2 = Bitmap.createBitmap(720, 1480, Bitmap.Config.ARGB_8888); v.draw(new Canvas(b2));
+        now[0] += 130;
+        renderView(v, 720, 1480, "/tmp/renders/neonvegasslots-motion-t2.png");
+        assertFalse("spin frame t1 must differ from t0 (scrolling motion)", b1.sameAs(b2));
+    }
+
+    @GraphicsMode(GraphicsMode.Mode.NATIVE)
+    @Test public void renderAnticipationFrame() throws Exception {
+        final long[] now = {100000};
+        SlotsView v = new SlotsView(RuntimeEnvironment.getApplication()) {
+            @Override long nowMillis() { return now[0]; }
+        };
+        v.restore("5000;0;1;0;0;10;3");
+        v.measure(View.MeasureSpec.makeMeasureSpec(720, View.MeasureSpec.EXACTLY),
+                  View.MeasureSpec.makeMeasureSpec(1480, View.MeasureSpec.EXACTLY));
+        v.layout(0, 0, 720, 1480);
+        long n = now[0];
+        java.lang.reflect.Field f = SlotsView.class.getDeclaredField("spinning"); f.setAccessible(true); f.setBoolean(v, true);
+        f = SlotsView.class.getDeclaredField("stopAt"); f.setAccessible(true);
+        f.set(v, new long[]{n - 500, n - 400, n - 300, n - 200, n + 4000}); // first four stopped, last spinning
+        f = SlotsView.class.getDeclaredField("grid"); f.setAccessible(true);
+        int[][] g = (int[][]) f.get(v);
+        g[1][0] = 0; g[1][1] = 0; g[1][2] = 0; g[1][3] = 0; // four-of-a-kind run on the middle line
+        renderView(v, 720, 1480, "/tmp/renders/neonvegasslots-frame-anticipation.png");
+        f = SlotsView.class.getDeclaredField("stopAt"); f.setAccessible(true);
+        long[] stops = (long[]) f.get(v);
+        assertTrue("anticipation extends the last reel", stops[4] >= n + 4000);
+    }
+
+    @GraphicsMode(GraphicsMode.Mode.NATIVE)
+    @Test public void renderBigWinFrame() throws Exception {
+        final long[] now = {100000};
+        SlotsView v = new SlotsView(RuntimeEnvironment.getApplication()) {
+            @Override long nowMillis() { return now[0]; }
+        };
+        v.restore("5000;0;1;0;0;10;3");
+        v.measure(View.MeasureSpec.makeMeasureSpec(720, View.MeasureSpec.EXACTLY),
+                  View.MeasureSpec.makeMeasureSpec(1480, View.MeasureSpec.EXACTLY));
+        v.layout(0, 0, 720, 1480);
+        long n = now[0];
+        java.lang.reflect.Field f = SlotsView.class.getDeclaredField("lastWin"); f.setAccessible(true); f.setLong(v, 1250);
+        f = SlotsView.class.getDeclaredField("winStartAt"); f.setAccessible(true); f.setLong(v, n - 800);
+        f = SlotsView.class.getDeclaredField("winFlashUntil"); f.setAccessible(true); f.setLong(v, n + 2200);
+        f = SlotsView.class.getDeclaredField("bigWinStartAt"); f.setAccessible(true); f.setLong(v, n - 800);
+        f = SlotsView.class.getDeclaredField("bigWinUntil"); f.setAccessible(true); f.setLong(v, n + 2200);
+        f = SlotsView.class.getDeclaredField("bigWinAmount"); f.setAccessible(true); f.setLong(v, 1250);
+        renderView(v, 720, 1480, "/tmp/renders/neonvegasslots-frame-bigwin.png");
+    }
 }

@@ -96,10 +96,24 @@ final class GameDialog {
                 header.setBackground(hb);
                 int hpad = (int) (14 * density);
                 header.setPadding(hpad, (int) (12 * density), hpad, (int) (10 * density));
+                LinearLayout titleRow = new LinearLayout(activity);
+                titleRow.setOrientation(LinearLayout.HORIZONTAL);
+                titleRow.setGravity(android.view.Gravity.CENTER_VERTICAL);
                 TextView t = new TextView(activity);
                 t.setText(title); t.setTextSize(20f); t.setTypeface(Typeface.DEFAULT_BOLD);
                 t.setTextColor(theme.title); t.setSingleLine(false);
-                header.addView(t);
+                titleRow.addView(t, new LinearLayout.LayoutParams(0, -2, 1f));
+                if (cancelable) {
+                    TextView x = new TextView(activity);
+                    x.setText("\u2715"); x.setTextSize(17f);
+                    x.setTextColor(withAlpha(theme.soft, 0xCC));
+                    int xp = (int) (8 * density);
+                    x.setPadding(xp, 0, xp, 0);
+                    x.setContentDescription("Close");
+                    x.setOnClickListener(v -> d.dismiss());
+                    titleRow.addView(x);
+                }
+                header.addView(titleRow);
                 View divider = new View(activity);
                 GradientDrawable db = new GradientDrawable(GradientDrawable.Orientation.LEFT_RIGHT,
                     new int[]{withAlpha(theme.neon, 0x00), withAlpha(theme.neon, 0xBB), withAlpha(theme.neon, 0x00)});
@@ -175,6 +189,67 @@ final class GameDialog {
     }
 
     static int withAlpha(int color, int alpha) { return (color & 0x00FFFFFF) | (alpha << 24); }
+
+    /** Original illustrated reward hero: gift box with coin burst, rays and sparkles. Visual only. */
+    static View rewardHero(android.content.Context c, Palette theme) {
+        final float density = c.getResources().getDisplayMetrics().density;
+        final int neon = theme.neon, title = theme.title, line = theme.panelLine;
+        View v = new View(c) {
+            @Override protected void onDraw(android.graphics.Canvas cv) {
+                float w = getWidth(), h = getHeight(), cx = w / 2, cy = h * 0.56f;
+                android.graphics.Paint pt = new android.graphics.Paint(android.graphics.Paint.ANTI_ALIAS_FLAG);
+                // soft radial glow
+                for (int i = 4; i >= 1; i--) {
+                    pt.setColor(withAlpha(neon, 0x10 + i * 2));
+                    cv.drawCircle(cx, cy, h * 0.16f * i, pt);
+                }
+                // rays
+                pt.setStyle(android.graphics.Paint.Style.STROKE);
+                pt.setStrokeWidth(2 * density);
+                pt.setColor(withAlpha(neon, 0x55));
+                for (int i = 0; i < 12; i++) {
+                    double a = Math.PI * 2 * i / 12 + Math.PI / 12;
+                    float r1 = h * 0.34f, r2 = h * 0.44f;
+                    cv.drawLine(cx + (float) (r1 * Math.cos(a)), cy + (float) (r1 * Math.sin(a)),
+                                cx + (float) (r2 * Math.cos(a)), cy + (float) (r2 * Math.sin(a)), pt);
+                }
+                pt.setStyle(android.graphics.Paint.Style.FILL);
+                // coin burst behind the gift
+                int[] gold = {0xFFFFD54A, 0xFFFFC93C, 0xFFFFE082};
+                float[][] coins = {{-0.30f, -0.34f, 0.13f}, {0.28f, -0.40f, 0.11f}, {0.02f, -0.48f, 0.14f}};
+                for (int i = 0; i < coins.length; i++) {
+                    float px = cx + coins[i][0] * w, py = cy + coins[i][1] * h, r = coins[i][2] * h;
+                    pt.setColor(gold[i]); cv.drawCircle(px, py, r, pt);
+                    pt.setColor(0xFFB8860B); pt.setStyle(android.graphics.Paint.Style.STROKE);
+                    pt.setStrokeWidth(1.5f * density); cv.drawCircle(px, py, r * 0.62f, pt);
+                    pt.setStyle(android.graphics.Paint.Style.FILL);
+                    pt.setColor(0x99FFFFFF); cv.drawCircle(px - r * .3f, py - r * .3f, r * .22f, pt);
+                }
+                // gift box
+                float bw = w * 0.34f, bh = h * 0.30f, bx = cx - bw / 2, by = cy - bh / 2 + h * 0.08f;
+                android.graphics.RectF box = new android.graphics.RectF(bx, by, bx + bw, by + bh);
+                pt.setColor(title); cv.drawRoundRect(box, 6 * density, 6 * density, pt);
+                android.graphics.RectF lid = new android.graphics.RectF(bx - bw * 0.07f, by - bh * 0.22f, bx + bw * 1.07f, by + bh * 0.06f);
+                pt.setColor(neon); cv.drawRoundRect(lid, 6 * density, 6 * density, pt);
+                pt.setColor(withAlpha(line, 0xEE));
+                cv.drawRect(cx - bw * 0.07f, by - bh * 0.22f, cx + bw * 0.07f, by + bh, pt); // ribbon
+                // bow
+                pt.setColor(neon);
+                cv.drawCircle(cx - bw * 0.12f, by - bh * 0.28f, bw * 0.10f, pt);
+                cv.drawCircle(cx + bw * 0.12f, by - bh * 0.28f, bw * 0.10f, pt);
+                // sparkles
+                pt.setColor(0xFFFFFFFF);
+                float[][] sp = {{-0.42f, -0.10f}, {0.40f, 0.06f}, {-0.16f, -0.52f}, {0.18f, -0.18f}};
+                for (float[] s : sp) {
+                    float px = cx + s[0] * w, py = cy + s[1] * h, r = density * 2.2f;
+                    cv.drawLine(px - r, py, px + r, py, pt);
+                    cv.drawLine(px, py - r, px, py + r, pt);
+                }
+            }
+        };
+        v.setMinimumHeight((int) (120 * density));
+        return v;
+    }
 
     /** Rounded track + themed fill progress bar for mission/quest rows. Visual only. */
     static View progressBar(android.content.Context c, Palette theme, long progress, long goal) {

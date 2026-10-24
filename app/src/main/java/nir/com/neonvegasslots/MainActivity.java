@@ -141,12 +141,16 @@ public class MainActivity extends Activity implements SlotsView.Listener, Billin
         if (today().equals(last)) return;
         int streak = yesterday().equals(last) ? sp.getInt("daily_streak", 0) + 1 : 1;
         long bonus = DAILY_BONUS[Math.min(streak, DAILY_BONUS.length) - 1];
+        LinearLayout dailyBox = new LinearLayout(this);
+        dailyBox.setOrientation(LinearLayout.VERTICAL);
+        dailyBox.addView(GameDialog.rewardHero(this, GameDialog.fromTheme(SlotArt.THEMES[game.getThemeIdx()])),
+            new LinearLayout.LayoutParams(-1, (int) (120 * getResources().getDisplayMetrics().density)));
+        dailyBox.addView(dailyLadder(streak));
         dlg().title("Daily bonus - day " + streak)
             .body("Come back every day to grow your streak.\nCoins are virtual only - no cash value, no prizes.")
-            .content(dailyLadder(streak))
+            .content(dailyBox)
             .add(GameDialog.Btn.primary("Claim +" + bonus, () -> grantDaily(streak, bonus)))
             .add(GameDialog.Btn.secondary("Watch ad for 2X", () -> ads.showRewarded(() -> grantDaily(streak, bonus * 2))))
-            .cancelable(false)
             .show();
     }
 
@@ -166,7 +170,8 @@ public class MainActivity extends Activity implements SlotsView.Listener, Billin
             chip.setSingleLine(false);
             android.graphics.drawable.GradientDrawable g = new android.graphics.drawable.GradientDrawable();
             g.setCornerRadius(10 * density);
-            if (i == streak - 1) {           // today
+            int todayIdx = Math.min(streak, DAILY_BONUS.length) - 1;
+            if (i == todayIdx) {             // today (streak beyond day 7 keeps day 7 highlighted, matching the capped reward)
                 g.setColor(GameDialog.withAlpha(th.neon, 0x30));
                 g.setStroke((int) (2 * density), th.neon);
                 chip.setTextColor(th.title);

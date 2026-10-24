@@ -352,10 +352,13 @@ public class SlotsView extends View {
                     float cellWn = w / 5f - 8;
                     float gx = 4 + 4 * (cellWn + 8);
                     float pulse = 0.5f + 0.5f * (float) Math.sin(now / 90.0);
-                    p.setStyle(Paint.Style.STROKE);
-                    p.setStrokeWidth(3 + 3 * pulse);
-                    p.setColor(th.title & 0x00FFFFFF | ((int) (120 + 120 * pulse) << 24));
+                    // column tint so the suspense is readable even mid-pulse
+                    p.setColor(th.title & 0x00FFFFFF | ((int) (24 + 30 * pulse) << 24));
                     rf.set(gx, gridTop - 2, gx + cellWn + 4, gridTop + cellWn * 3 + 22);
+                    cv.drawRoundRect(rf, 16, 16, p);
+                    p.setStyle(Paint.Style.STROKE);
+                    p.setStrokeWidth(5 + 4 * pulse);
+                    p.setColor(th.title & 0x00FFFFFF | ((int) (170 + 85 * pulse) << 24));
                     cv.drawRoundRect(rf, 16, 16, p);
                     p.setStyle(Paint.Style.FILL);
                 }
