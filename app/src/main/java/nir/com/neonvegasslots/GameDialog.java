@@ -196,12 +196,12 @@ final class GameDialog {
         final int neon = theme.neon, title = theme.title, line = theme.panelLine;
         View v = new View(c) {
             @Override protected void onDraw(android.graphics.Canvas cv) {
-                float w = getWidth(), h = getHeight(), cx = w / 2, cy = h * 0.56f;
+                float w = getWidth(), h = getHeight(), cx = w / 2, cy = h * 0.58f;
                 android.graphics.Paint pt = new android.graphics.Paint(android.graphics.Paint.ANTI_ALIAS_FLAG);
                 // soft radial glow
-                for (int i = 4; i >= 1; i--) {
-                    pt.setColor(withAlpha(neon, 0x10 + i * 2));
-                    cv.drawCircle(cx, cy, h * 0.16f * i, pt);
+                for (int i = 3; i >= 1; i--) {
+                    pt.setColor(withAlpha(neon, 0x14 + i * 2));
+                    cv.drawCircle(cx, cy, h * 0.11f * i, pt);
                 }
                 // rays
                 pt.setStyle(android.graphics.Paint.Style.STROKE);
@@ -209,14 +209,14 @@ final class GameDialog {
                 pt.setColor(withAlpha(neon, 0x55));
                 for (int i = 0; i < 12; i++) {
                     double a = Math.PI * 2 * i / 12 + Math.PI / 12;
-                    float r1 = h * 0.34f, r2 = h * 0.44f;
+                    float r1 = h * 0.28f, r2 = h * 0.36f;
                     cv.drawLine(cx + (float) (r1 * Math.cos(a)), cy + (float) (r1 * Math.sin(a)),
                                 cx + (float) (r2 * Math.cos(a)), cy + (float) (r2 * Math.sin(a)), pt);
                 }
                 pt.setStyle(android.graphics.Paint.Style.FILL);
                 // coin burst behind the gift
                 int[] gold = {0xFFFFD54A, 0xFFFFC93C, 0xFFFFE082};
-                float[][] coins = {{-0.30f, -0.34f, 0.13f}, {0.28f, -0.40f, 0.11f}, {0.02f, -0.48f, 0.14f}};
+                float[][] coins = {{-0.30f, -0.32f, 0.13f}, {0.28f, -0.37f, 0.11f}, {0.02f, -0.42f, 0.13f}};
                 for (int i = 0; i < coins.length; i++) {
                     float px = cx + coins[i][0] * w, py = cy + coins[i][1] * h, r = coins[i][2] * h;
                     pt.setColor(gold[i]); cv.drawCircle(px, py, r, pt);
@@ -239,7 +239,7 @@ final class GameDialog {
                 cv.drawCircle(cx + bw * 0.12f, by - bh * 0.28f, bw * 0.10f, pt);
                 // sparkles
                 pt.setColor(0xFFFFFFFF);
-                float[][] sp = {{-0.42f, -0.10f}, {0.40f, 0.06f}, {-0.16f, -0.52f}, {0.18f, -0.18f}};
+                float[][] sp = {{-0.42f, -0.06f}, {0.40f, 0.06f}, {-0.16f, -0.46f}, {0.18f, -0.14f}};
                 for (float[] s : sp) {
                     float px = cx + s[0] * w, py = cy + s[1] * h, r = density * 2.2f;
                     cv.drawLine(px - r, py, px + r, py, pt);
