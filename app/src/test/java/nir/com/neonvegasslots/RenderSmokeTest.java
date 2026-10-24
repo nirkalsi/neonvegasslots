@@ -143,6 +143,8 @@ public class RenderSmokeTest {
     @GraphicsMode(GraphicsMode.Mode.NATIVE)
     @Test public void renderOutOfCoinsComposed() throws Exception {
         MainActivity a = activity();
+        BillingManager bm = injectTestPrices(a);
+        bm.testPrices.put("remove_ads", "$4.99"); // show the scoped remove-ads entry with a live price
         a.onOutOfCoins();
         renderComposed(a, latestDialog(), "/tmp/renders/neonvegasslots-outofcoins-composed.png");
     }
@@ -156,6 +158,22 @@ public class RenderSmokeTest {
         m.setAccessible(true);
         m.invoke(a, "test");
         renderComposed(a, latestDialog(), "/tmp/renders/neonvegasslots-removeads-composed.png");
+    }
+
+
+    @Test public void removeAdsOfferHiddenWithoutLivePrice() throws Exception {
+        MainActivity a = activity();
+        java.lang.reflect.Method m = MainActivity.class.getDeclaredMethod("offerRemoveAds", String.class);
+        m.setAccessible(true);
+        m.invoke(a, "test");
+        assertTrue("no remove-ads offer without a live localized price", ShadowDialog.getShownDialogs().isEmpty());
+    }
+
+    @Test public void outOfCoinsOmitsRemoveAdsWithoutPrice() throws Exception {
+        MainActivity a = activity();
+        a.onOutOfCoins();
+        assertNull("no remove-ads button without a live price",
+            findButton(latestDialog().getWindow().getDecorView(), "Remove banner & interstitial ads"));
     }
 
     private android.widget.Button findButton(View root, String text) {

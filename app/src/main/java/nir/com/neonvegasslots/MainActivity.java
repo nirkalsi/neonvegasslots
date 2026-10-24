@@ -271,18 +271,19 @@ public class MainActivity extends Activity implements SlotsView.Listener, Billin
         if (billing.getDetails(BillingManager.REMOVE_ADS) != null) {
             billing.buy(this, BillingManager.REMOVE_ADS);
         } else {
-            Toast.makeText(this, "Not available yet - try again soon", Toast.LENGTH_SHORT).show();
+            Toast.makeText(this, "Remove ads is not available right now", Toast.LENGTH_SHORT).show();
         }
     }
 
     private void offerRemoveAds(String why) {
         if (sp.getBoolean("ads_removed", false)) return;
         String price = billing.priceOf(BillingManager.REMOVE_ADS);
+        if (price == null) return; // never offer a purchase without the live localized price
         String text = "Enjoying Neon Vegas Slots? Remove banner and between-round ads forever with one small one-time purchase"
-            + (price != null ? " (" + price + ")" : "") + ". Free rewarded ads for coins stay available either way.";
+            + " (" + price + "). Free rewarded ads for coins stay available either way.";
         dlg().title("Remove ads")
             .body(text)
-            .add(GameDialog.Btn.primary(price != null ? "Remove ads - " + price : "Remove ads", this::buyRemoveAds))
+            .add(GameDialog.Btn.primary("Remove ads - " + price, this::buyRemoveAds))
             .add(GameDialog.Btn.secondary("No thanks", null))
             .show();
     }
@@ -315,8 +316,8 @@ public class MainActivity extends Activity implements SlotsView.Listener, Billin
         GameDialog.Builder b = dlg().title("Out of coins")
             .body("Watch a short ad for +300 free coins?\nCoins also refill slowly over time.\n\nCoins are virtual only - no cash value, no prizes.")
             .add(GameDialog.Btn.primary("Watch ad  (+300)", () -> ads.showRewarded(() -> game.addCoins(300))));
-        if (!sp.getBoolean("ads_removed", false))
-            b.add(GameDialog.Btn.secondary("Remove all ads", () -> offerRemoveAds("outofcoins")));
+        if (!sp.getBoolean("ads_removed", false) && billing.priceOf(BillingManager.REMOVE_ADS) != null)
+            b.add(GameDialog.Btn.secondary("Remove banner & interstitial ads", () -> offerRemoveAds("outofcoins")));
         b.add(GameDialog.Btn.secondary("Not now", null)).show();
     }
 
