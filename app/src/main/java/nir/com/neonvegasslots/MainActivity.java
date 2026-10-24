@@ -263,13 +263,16 @@ public class MainActivity extends Activity implements SlotsView.Listener, Billin
             if (!i.claimed && i.done()) {
                 Button c = new Button(this);
                 c.setText("Claim");
+                c.setBackgroundTintList(android.content.res.ColorStateList.valueOf(GameDialog.fromTheme(SlotArt.THEMES[game.getThemeIdx()]).accent));
+                c.setTextColor(GameDialog.fromTheme(SlotArt.THEMES[game.getThemeIdx()]).accentText);
+                c.setTypeface(Typeface.DEFAULT_BOLD);
                 c.setOnClickListener(v -> {
                     long reward = missions.claim(i);
                     if (reward > 0) {
                         game.addCoins(reward);
                         Toast.makeText(this, "+" + reward + " coins!", Toast.LENGTH_SHORT).show();
                     }
-                    c.setEnabled(false); c.setText("Done");
+                    c.setVisibility(View.GONE); // claimed missions read as text state, not a dead button
                     t.setText(i.title + " (claimed)  [+" + i.reward + "]");
                 });
                 line.addView(c);
