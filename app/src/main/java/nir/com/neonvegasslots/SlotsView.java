@@ -16,7 +16,6 @@ public class SlotsView extends View {
         void saveState();
     }
 
-    private static final String[] SYM = {"\u0037\u20E3", "\uD83D\uDC8E", "\uD83D\uDD14", "\uD83C\uDF52", "\uD83C\uDF4B", "\u2B50"};
     private static final int[] WEIGHT = {4, 7, 10, 16, 18, 12};
     private static final int[] PAY5 = {100, 50, 30, 20, 15, 25};
     private static final int[] PAY4 = {25, 12, 8, 5, 4, 6};
@@ -41,6 +40,9 @@ public class SlotsView extends View {
     private long xp = 0;
     private int level = 1;
     private long levelFlashUntil = 0;
+    private int themeIdx = 0;
+    private long unlockFlashUntil = 0;
+    private String unlockedName = null;
 
     private boolean spinning = false;
     private long[] stopAt = new long[5];
@@ -55,9 +57,23 @@ public class SlotsView extends View {
     public long getBalance() { return balance; }
     public int getLevel() { return level; }
     public long getSpinsDone() { return spinsDone; }
+    public int getThemeIdx() { return themeIdx; }
     private long xpNeeded() { return level * 500L; }
 
-    public String serialize() { return balance + ";" + spinsDone + ";" + betIdx + ";" + lastRegenAt + ";" + xp + ";" + level; }
+    static int unlockedCount(int level) {
+        int n = 0; for (SlotArt.Theme t : SlotArt.THEMES) if (level >= t.unlockLevel) n++;
+        return n;
+    }
+
+    /** Tap-to-apply an unlocked machine theme. Returns false when still locked. */
+    public boolean selectTheme(int i) {
+        if (i < 0 || i >= SlotArt.THEMES.length) return false;
+        if (level < SlotArt.THEMES[i].unlockLevel) return false;
+        if (themeIdx != i) { themeIdx = i; persist(); invalidate(); }
+        return true;
+    }
+
+    public String serialize() { return balance + ";" + spinsDone + ";" + betIdx + ";" + lastRegenAt + ";" + xp + ";" + level + ";" + themeIdx; }
     public void restore(String s) {
         try {
             String[] a = s.split(";");
@@ -67,6 +83,10 @@ public class SlotsView extends View {
             if (a.length > 3) lastRegenAt = Long.parseLong(a[3]);
             if (a.length > 4) xp = Long.parseLong(a[4]);
             if (a.length > 5) level = Math.max(1, Integer.parseInt(a[5]));
+            if (a.length > 6) {
+                int t = Integer.parseInt(a[6]);
+                themeIdx = (t >= 0 && t < SlotArt.THEMES.length && level >= SlotArt.THEMES[t].unlockLevel) ? t : 0;
+            }
         } catch (Exception ignored) {}
     }
 
@@ -126,6 +146,7 @@ public class SlotsView extends View {
             }
         }
         if (win > 0) { balance += win; lastWin = win; winFlashUntil = System.currentTimeMillis() + 1600; }
+        int oldUnlocks = unlockedCount(level);
         while (xp >= xpNeeded()) {
             xp -= xpNeeded();
             level++;
@@ -133,6 +154,11 @@ public class SlotsView extends View {
             balance += reward;
             levelFlashUntil = System.currentTimeMillis() + 2000;
             if (listener != null) listener.onLevelUp(level, reward);
+        }
+        int newUnlocks = unlockedCount(level);
+        if (newUnlocks > oldUnlocks) {
+            unlockedName = SlotArt.THEMES[newUnlocks - 1].name;
+            unlockFlashUntil = System.currentTimeMillis() + 4000;
         }
         persist();
         if (listener != null) {
@@ -142,14 +168,24 @@ public class SlotsView extends View {
         invalidate();
     }
 
+    private float gridTop() { return getHeight() * 0.22f; }
+    private float trailTop() { return gridTop() + (getWidth() / 5f - 8) * 3 + 16 + 24 + getHeight() * 0.07f + getWidth() * 0.055f; }
+    private float trailBottom() { return getHeight() - getWidth() * 0.10f; }
+    private float trailNodeY() {
+        float top = trailTop(), height = Math.min(trailBottom() - top, getWidth() * .52f);
+        return top + height * .48f;
+    }
+
     @Override protected void onDraw(Canvas cv) {
         long now = System.currentTimeMillis();
         regen();
-        art.backdrop(cv, getWidth(), getHeight());
+        SlotArt.Theme th = SlotArt.THEMES[themeIdx];
+        int phase = (int) (now / 350);
+        art.backdrop(cv, getWidth(), getHeight(), th, phase);
 
         float w = getWidth();
         float cellW = w / 5f - 8;
-        float gridTop = getHeight() * 0.22f;
+        float gridTop = gridTop();
         float gridH = cellW * 3 + 16;
 
         // title
@@ -157,8 +193,8 @@ public class SlotsView extends View {
         p.setTextAlign(Paint.Align.CENTER);
         p.setTextSize(w * 0.075f);
         p.setFakeBoldText(true);
-        p.setColor(0xFFFFD700);
-        p.setShadowLayer(14 + 6 * (float) Math.sin(titleGlow), 0, 0, 0xFFFF9D00);
+        p.setColor(th.title);
+        p.setShadowLayer(14 + 6 * (float) Math.sin(titleGlow), 0, 0, th.titleGlow);
         cv.drawText("NEON VEGAS SLOTS", w / 2, gridTop * 0.42f, p);
         p.clearShadowLayer();
         p.setFakeBoldText(false);
@@ -169,17 +205,17 @@ public class SlotsView extends View {
         cv.drawText("COINS  " + balance, w / 2, gridTop * 0.66f, p);
         // level + xp bar
         p.setTextSize(w * 0.034f);
-        p.setColor(0xFFB9A8D8);
+        p.setColor(th.soft);
         cv.drawText("LV " + level, w * 0.14f, gridTop * 0.90f, p);
         float barL = w * 0.24f, barR = w * 0.76f, barY = gridTop * 0.855f, barH = w * 0.022f;
         rf.set(barL, barY, barR, barY + barH);
-        p.setColor(0xFF3A1F66); cv.drawRoundRect(rf, 8, 8, p);
+        p.setColor(th.cellStroke); cv.drawRoundRect(rf, 8, 8, p);
         float frac = Math.min(1f, xp / (float) xpNeeded());
         rf.set(barL, barY, barL + (barR - barL) * frac, barY + barH);
-        p.setColor(0xFFFFD700); cv.drawRoundRect(rf, 8, 8, p);
+        p.setColor(th.title); cv.drawRoundRect(rf, 8, 8, p);
         if (now < levelFlashUntil) {
             p.setTextSize(w * 0.055f);
-            p.setColor(0xFFFFD700);
+            p.setColor(th.title);
             p.setFakeBoldText(true);
             cv.drawText("LEVEL UP!", w / 2, gridTop * 0.30f + w * 0.07f, p);
             p.setFakeBoldText(false);
@@ -192,13 +228,8 @@ public class SlotsView extends View {
             p.setFakeBoldText(false);
         }
 
-        // machine frame
-        rf.set(4, gridTop - 8, w - 4, gridTop + gridH + 8);
-        p.setStyle(Paint.Style.STROKE);
-        p.setStrokeWidth(5);
-        p.setColor(0xFFFFD700);
-        cv.drawRoundRect(rf, 18, 18, p);
-        p.setStyle(Paint.Style.FILL);
+        // machine frame: neon marquee with chase bulbs
+        art.frame(cv, 4, gridTop - 8, w - 4, gridTop + gridH + 8, th, phase);
 
         // cells
         boolean flash = now < winFlashUntil && (now / 300) % 2 == 0;
@@ -211,16 +242,13 @@ public class SlotsView extends View {
                 float y = gridTop + r * (cellW + 8);
                 rf.set(x + 2, y, x + cellW + 2, y + cellW);
                 boolean hot = winCell[r][c] && flash;
-                p.setColor(hot ? 0xFF5B2A86 : 0xFF241040);
+                p.setColor(hot ? th.cellHot : th.cellBg);
                 cv.drawRoundRect(rf, 12, 12, p);
                 p.setStyle(Paint.Style.STROKE);
                 p.setStrokeWidth(2);
-                p.setColor(hot ? 0xFF7CFC00 : 0xFF4A2A7A);
+                p.setColor(hot ? th.cellHotStroke : th.cellStroke);
                 cv.drawRoundRect(rf, 12, 12, p);
                 p.setStyle(Paint.Style.FILL);
-                p.setTextSize(cellW * 0.55f);
-                p.setColor(0xFFFFFFFF);
-                float cy = y + cellW / 2 - (p.descent() + p.ascent()) / 2;
                 art.symbol(cv, grid[r][c], x + 2 + cellW / 2, y + cellW / 2, cellW * 0.82f);
             }
         }
@@ -229,7 +257,7 @@ public class SlotsView extends View {
             for (int c = 0; c < 5; c++) if (now < stopAt[c]) allStopped = false;
             if (allStopped) { post(this::finishSpin); }
             else postInvalidateDelayed(30);
-        } else if (now < winFlashUntil) {
+        } else if (now < winFlashUntil || now < unlockFlashUntil) {
             postInvalidateDelayed(120);
         }
 
@@ -238,15 +266,15 @@ public class SlotsView extends View {
         float btnH = getHeight() * 0.07f;
         p.setTextSize(w * 0.045f);
         rf.set(w * 0.06f, ctrlY, w * 0.36f, ctrlY + btnH);
-        p.setColor(0xFF3A1F66); cv.drawRoundRect(rf, 14, 14, p);
-        p.setColor(0xFFFFD700); p.setStyle(Paint.Style.STROKE); p.setStrokeWidth(3); cv.drawRoundRect(rf, 14, 14, p); p.setStyle(Paint.Style.FILL);
+        p.setColor(th.betBg); cv.drawRoundRect(rf, 14, 14, p);
+        p.setColor(th.title); p.setStyle(Paint.Style.STROKE); p.setStrokeWidth(3); cv.drawRoundRect(rf, 14, 14, p); p.setStyle(Paint.Style.FILL);
         p.setColor(0xFFFFFFFF);
         cv.drawText("BET  " + BETS[betIdx], w * 0.21f, ctrlY + btnH * 0.65f, p);
 
         // spin button
         rf.set(w * 0.44f, ctrlY, w * 0.94f, ctrlY + btnH);
         boolean canSpin = !spinning && balance >= BETS[betIdx];
-        p.setColor(spinning ? 0xFF555555 : (canSpin ? 0xFFD81B60 : 0xFF7A4A5E));
+        p.setColor(spinning ? 0xFF555555 : (canSpin ? th.spinBg : th.spinOff));
         cv.drawRoundRect(rf, 14, 14, p);
         p.setColor(0xFFFFFFFF);
         p.setTextSize(w * 0.06f);
@@ -254,18 +282,19 @@ public class SlotsView extends View {
         cv.drawText(spinning ? "..." : "SPIN", w * 0.69f, ctrlY + btnH * 0.66f, p);
         p.setFakeBoldText(false);
 
-        art.journey(cv, w, ctrlY + btnH + w * 0.055f, getHeight() - w * 0.10f, level, xp, xpNeeded());
+        String ju = now < unlockFlashUntil ? unlockedName : null;
+        art.trail(cv, w, trailTop(), trailBottom(), level, xp, xpNeeded(), themeIdx, ju);
 
         // disclaimer
         p.setTextSize(w * 0.028f);
-        p.setColor(0xFFB9A8D8);
+        p.setColor(th.soft);
         cv.drawText("Free play only. Virtual coins - no real money, no prizes.", w / 2, getHeight() - w * 0.03f, p);
     }
 
     @Override public boolean onTouchEvent(MotionEvent e) {
         if (e.getAction() != MotionEvent.ACTION_DOWN) return true;
         float w = getWidth();
-        float gridTop = getHeight() * 0.22f;
+        float gridTop = gridTop();
         float ctrlY = gridTop + (w / 5f - 8) * 3 + 16 + 24;
         float btnH = getHeight() * 0.07f;
         float x = e.getX(), y = e.getY();
@@ -275,6 +304,21 @@ public class SlotsView extends View {
             } else if (x >= w * 0.44f && x <= w * 0.94f) {
                 spin();
             }
+            return true;
+        }
+        // progression trail: tap an unlocked stop to apply its theme
+        float tt = trailTop(), tb = trailBottom();
+        if (y >= tt && y <= Math.min(tb, tt + w * .52f)) {
+            float ny = trailNodeY();
+            if (Math.abs(y - ny) <= w * .12f) {
+                int best = -1; float bd = Float.MAX_VALUE;
+                for (int i = 0; i < SlotArt.THEMES.length; i++) {
+                    float d = Math.abs(x - SlotArt.nodeX(w, i));
+                    if (d < bd) { bd = d; best = i; }
+                }
+                if (best >= 0 && bd <= w * .11f) selectTheme(best);
+            }
+            return true;
         }
         return true;
     }

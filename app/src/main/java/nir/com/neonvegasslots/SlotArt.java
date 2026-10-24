@@ -2,70 +2,233 @@ package nir.com.neonvegasslots;
 
 import android.graphics.*;
 
-/** Original vector artwork. Visual-only: symbol indices and payout math stay unchanged. */
+/**
+ * Original vector artwork + level-unlockable machine themes.
+ * Visual-only: symbol indices and payout math stay unchanged.
+ * Neon Vegas identity: night city skyline, lit windows, neon signage, marquee frame.
+ */
 final class SlotArt {
-    private static final boolean DRAGON = false;
+
+    static final class Theme {
+        final String name, tag;
+        final int unlockLevel;
+        final int skyTop, skyBottom, back, front, lit, dark, neon, title, titleGlow;
+        final int cellBg, cellStroke, cellHot, cellHotStroke, panelBg, panelLine, betBg, spinBg, spinOff, soft;
+        Theme(String name, String tag, int unlockLevel, int skyTop, int skyBottom, int back, int front,
+              int lit, int dark, int neon, int title, int titleGlow, int cellBg, int cellStroke,
+              int cellHot, int cellHotStroke, int panelBg, int panelLine, int betBg, int spinBg, int spinOff, int soft) {
+            this.name=name; this.tag=tag; this.unlockLevel=unlockLevel;
+            this.skyTop=skyTop; this.skyBottom=skyBottom; this.back=back; this.front=front;
+            this.lit=lit; this.dark=dark; this.neon=neon; this.title=title; this.titleGlow=titleGlow;
+            this.cellBg=cellBg; this.cellStroke=cellStroke; this.cellHot=cellHot; this.cellHotStroke=cellHotStroke;
+            this.panelBg=panelBg; this.panelLine=panelLine; this.betBg=betBg; this.spinBg=spinBg; this.spinOff=spinOff; this.soft=soft;
+        }
+    }
+
+    static final Theme[] THEMES = {
+        new Theme("Downtown Lights","DOWNTOWN",1, 0xFF141439,0xFF050D20, 0xFF1B2350,0xFF10163A, 0xFFFFD978,0xFF26315C, 0xFF38E1FF, 0xFFFFD700,0xFFFF9D00, 0xFF241040,0xFF4A2A7A, 0xFF5B2A86,0xFF7CFC00, 0xFF172442,0xFF48536B, 0xFF3A1F66, 0xFFD81B60,0xFF7A4A5E, 0xFFAFC0D8),
+        new Theme("Sunset Strip","SUNSET",3,    0xFF3B1446,0xFF12081F, 0xFF4A1E3C,0xFF2A1028, 0xFFFFB35C,0xFF3A1A38, 0xFFFF4D80, 0xFFFFE29A,0xFFFF5C3A, 0xFF33102E,0xFF6E2450, 0xFF7A2D55,0xFFFFE29A, 0xFF2A1330,0xFF7A3A5E, 0xFF4A1E3C, 0xFFE84393,0xFF8A4A66, 0xFFF0C9DA),
+        new Theme("Neon Lagoon","LAGOON",6,     0xFF062A3A,0xFF02101C, 0xFF0E3A4C,0xFF082433, 0xFF9FF2FF,0xFF0E3442, 0xFF2AFFD5, 0xFFAFFFEE,0xFF2AFFD5, 0xFF08333A,0xFF1E6E6E, 0xFF0E5252,0xFF7CFC00, 0xFF0A2E38,0xFF2E6E78, 0xFF0E3A4C, 0xFF00B8A9,0xFF3A6E6A, 0xFFB8E6E2),
+        new Theme("High Roller","ROYAL",10,     0xFF100C22,0xFF04030C, 0xFF241C3E,0xFF161028, 0xFFFFE9A0,0xFF2C2444, 0xFFFFD700, 0xFFFFF0B8,0xFFFFD700, 0xFF1C1430,0xFF6E5A2E, 0xFF3A2C58,0xFFFFD700, 0xFF18122C,0xFF8A7238, 0xFF2A2044, 0xFFB8860B,0xFF5E5230, 0xFFD8CBAA),
+    };
+
     private final Paint ink = new Paint(Paint.ANTI_ALIAS_FLAG);
     private final RectF box = new RectF();
     private final Path shape = new Path();
 
-    void backdrop(Canvas c, float w, float h) {
-        ink.setShader(new LinearGradient(0, 0, w, h,
-            DRAGON ? 0xFF300C18 : 0xFF131238, DRAGON ? 0xFF080C17 : 0xFF050D20, Shader.TileMode.CLAMP));
+    private void color(int v){ink.setColor(v);}
+    private void oval(Canvas c,float l,float t,float r,float b){box.set(l,t,r,b);c.drawOval(box,ink);}
+    private void line(Canvas c,float a,float b,float x,float y,int color,float width){
+        ink.setShader(null);ink.setColor(color);ink.setStrokeWidth(width);ink.setStrokeCap(Paint.Cap.ROUND);c.drawLine(a,b,x,y,ink);
+    }
+    private void polygon(Canvas c,float...xy){shape.reset();shape.moveTo(xy[0],xy[1]);for(int i=2;xy.length>i+1;i+=2)shape.lineTo(xy[i],xy[i+1]);shape.close();c.drawPath(shape,ink);}
+    private int hash(int i,int k){return (i*73856093)^(k*19349663);}
+
+    // ---------- backdrop: neon city scene, recolored per theme ----------
+    void backdrop(Canvas c, float w, float h, Theme t, int animPhase) {
+        ink.setShader(new LinearGradient(0,0,0,h,t.skyTop,t.skyBottom,Shader.TileMode.CLAMP));
         c.drawRect(0,0,w,h,ink); ink.setShader(null);
-        // Layered mountain/city silhouettes, drawn behind the machine rather than a borrowed image.
-        ink.setColor(DRAGON ? 0xFF551C29 : 0xFF19224E);
-        for (int i=0;i<9;i++) {
-            float x=w*i/8f, top=h*(0.10f+(i%3)*0.025f);
-            if (DRAGON) {
-                shape.reset(); shape.moveTo(x-w*.10f,h*.24f); shape.lineTo(x,top);
-                shape.lineTo(x+w*.11f,h*.24f); shape.close(); c.drawPath(shape,ink);
-            } else c.drawRect(x,top,x+w*.055f,h*.24f,ink);
-        }
-        ink.setColor(DRAGON ? 0xFFB67844 : 0xFF6596DA);
-        for(int i=0;i<28;i++) c.drawCircle(w*((i*37%101)/101f), h*(.025f+(i*13%89)/600f), w*.0018f,ink);
+
+        float horizon = h*.215f;
+        // stars
+        color(t.soft);
+        for(int i=0;i<26;i++){float x=w*((hash(i,1)&0xFFFF)/65535f),y=horizon*.14f+horizon*.5f*((hash(i,2)&0xFFFF)/65535f);c.drawCircle(x,y,w*.0016f,ink);}
+        // moon / sun disc
+        if(t==THEMES[1]){ color(0xFFFFB35C); c.drawCircle(w*.80f,horizon*.60f,w*.070f,ink); color(0xFFFF8A5C);c.drawCircle(w*.80f,horizon*.60f,w*.052f,ink);}
+        else { color(0xFFF4F1DE); c.drawCircle(w*.80f,horizon*.48f,w*.034f,ink); color(t.skyTop); c.drawCircle(w*.822f,horizon*.445f,w*.030f,ink); }
+
+        // back skyline (kept below the title band)
+        drawSkyline(c,w,horizon,t.back,t.dark,false,3,.40f);
+        // neon signs on the back layer
+        neonSigns(c,w,horizon,t,animPhase);
+        // front skyline
+        drawSkyline(c,w,horizon,t.front,t.lit,true,7,.55f);
+        // vertical casino sign tower, right side
+        signTower(c,w,horizon,t,animPhase);
+        // theme extras
+        if(t==THEMES[1]) palms(c,w,horizon);
+        if(t==THEMES[2]) lagoon(c,w,h,horizon,t);
+        if(t==THEMES[3]) spotlights(c,w,horizon,t);
+        // street glow strip
+        ink.setShader(new LinearGradient(0,horizon,0,horizon+h*.05f,t.neon&0x00FFFFFF|0x33000000,0x00000000,Shader.TileMode.CLAMP));
+        c.drawRect(0,horizon,w,horizon+h*.05f,ink); ink.setShader(null);
     }
 
-    void journey(Canvas c, float w, float top, float bottom, int level, long xp, long needed) {
+    private void drawSkyline(Canvas c,float w,float horizon,int body,int windows,boolean lit,int seed,float maxH){
+        for(int i=0;i<10;i++){
+            float bw=w*(.07f+((hash(i,seed)>>8&0xFF)/255f)*.05f);
+            float x=w*((hash(i,seed+1)&0xFFFF)/65535f)*1.05f-w*.02f;
+            float bh=horizon*(maxH*.45f+((hash(i,seed+2)&0xFFFF)/65535f)*maxH*.55f);
+            color(body); c.drawRect(x,horizon-bh,x+bw,horizon,ink);
+            // rooftop antenna on some towers
+            if((hash(i,seed+3)&3)==0) line(c,x+bw*.5f,horizon-bh,x+bw*.5f,horizon-bh-horizon*.05f,body,w*.004f);
+            if(lit){
+                int cols=Math.max(2,(int)(bw/(w*.022f))), rows=Math.max(2,(int)(bh/(w*.030f)));
+                for(int r=0;r<rows;r++)for(int col2=0;col2<cols;col2++){
+                    if((hash(i*31+r*7+col2,seed+4)&3)==0) continue;
+                    color(windows);
+                    float wx=x+bw*.12f+col2*(bw*.76f/cols), wy=horizon-bh+bh*.10f+r*(bh*.82f/rows);
+                    c.drawRect(wx,wy,wx+bw*.10f,wy+bh*.045f,ink);
+                }
+            }
+        }
+    }
+
+    private void neonSigns(Canvas c,float w,float horizon,Theme t,int phase){
+        ink.setShadowLayer(w*.012f,0,0,t.neon);
+        // glowing arrow sign
+        line(c,w*.14f,horizon*.72f,w*.22f,horizon*.72f,t.neon,w*.006f);
+        line(c,w*.22f,horizon*.72f,w*.19f,horizon*.66f,t.neon,w*.006f);
+        line(c,w*.22f,horizon*.72f,w*.19f,horizon*.78f,t.neon,w*.006f);
+        // circle sign pulsing
+        color(t.neon); ink.setStyle(Paint.Style.STROKE); ink.setStrokeWidth(w*.005f);
+        c.drawCircle(w*.58f,horizon*.68f,w*.020f+((phase/2)%2)*w*.002f,ink);
+        ink.setStyle(Paint.Style.FILL);
+        // zigzag
+        polygon(c,w*.40f,horizon*.82f,w*.43f,horizon*.75f,w*.46f,horizon*.82f,w*.49f,horizon*.75f);
+        ink.clearShadowLayer();
+    }
+
+    private void signTower(Canvas c,float w,float horizon,Theme t,int phase){
+        float x=w*.90f, tw=w*.065f, top=horizon*.34f;
+        color(t.front); c.drawRect(x,top,x+tw,horizon,ink);
+        ink.setTextAlign(Paint.Align.CENTER); ink.setTypeface(Typeface.create("sans-serif",Typeface.BOLD));
+        ink.setTextSize(tw*.42f);
+        String s="SLOTS";
+        for(int i=0;i<s.length();i++){
+            ink.setShadowLayer(w*.010f,0,0,t.neon);
+            color((phase+i)%2==0?t.neon:t.title);
+            c.drawText(""+s.charAt(i),x+tw*.5f,top+tw*.55f+i*tw*.52f,ink);
+        }
+        ink.clearShadowLayer(); ink.setTypeface(Typeface.DEFAULT);
+    }
+
+    private void palms(Canvas c,float w,float horizon){
+        color(0xFF1A0B20);
+        for(int i=0;i<3;i++){
+            float x=w*(.06f+i*.30f), base=horizon, top=horizon*(.52f+i%2*.1f);
+            shape.reset(); shape.moveTo(x-w*.008f,base); shape.quadTo(x+w*.01f,(base+top)/2,x+w*.02f,top);
+            shape.lineTo(x+w*.030f,top); shape.quadTo(x+w*.022f,(base+top)/2,x+w*.008f,base); shape.close(); c.drawPath(shape,ink);
+            for(int f=0;f<5;f++){double a=Math.PI*(.15f+f*.17f);
+                line(c,x+w*.025f,top,x+w*.025f+(float)Math.cos(a)*w*.05f,top-(float)Math.sin(a)*w*.028f,0xFF1A0B20,w*.006f);}
+        }
+    }
+
+    private void lagoon(Canvas c,float w,float h,float horizon,Theme t){
+        ink.setShader(new LinearGradient(0,horizon,0,horizon+h*.04f,0x552AFFD5,0x002AFFD5,Shader.TileMode.CLAMP));
+        c.drawRect(0,horizon,w,horizon+h*.04f,ink); ink.setShader(null);
+        for(int i=0;i<8;i++) line(c,w*((hash(i,9)&0xFFFF)/65535f),horizon+h*.012f*((i%3)+1),w*((hash(i,9)&0xFFFF)/65535f)+w*.06f,horizon+h*.012f*((i%3)+1),0x442AFFD5,w*.003f);
+    }
+
+    private void spotlights(Canvas c,float w,float horizon,Theme t){
+        for(int i=0;i<3;i++){
+            float x=w*(.2f+i*.3f);
+            ink.setShader(new LinearGradient(x,horizon,x+w*.06f,0,0x33FFD700,0x00FFD700,Shader.TileMode.CLAMP));
+            polygon(c,x,horizon,x+w*.03f,horizon,x+w*.10f,0f,x+w*.02f,0f);
+            ink.setShader(null);
+        }
+    }
+
+    // ---------- machine frame: marquee with chase bulbs ----------
+    void frame(Canvas c, float l, float t, float r, float b, Theme th, int phase) {
+        float rad=(r-l)*.045f;
+        ink.setStyle(Paint.Style.STROKE);
+        ink.setStrokeWidth((r-l)*.012f); ink.setShadowLayer((r-l)*.02f,0,0,th.neon); color(th.neon);
+        box.set(l,t,r,b); c.drawRoundRect(box,rad,rad,ink);
+        ink.clearShadowLayer();
+        ink.setStrokeWidth((r-l)*.006f); color(th.title);
+        box.set(l+(r-l)*.012f,t+(r-l)*.012f,r-(r-l)*.012f,b-(r-l)*.012f); c.drawRoundRect(box,rad,rad,ink);
+        ink.setStyle(Paint.Style.FILL);
+        // chase bulbs along top edge
+        int n=12; float bw=r-l;
+        for(int i=0;i<n;i++){
+            float x=l+bw*.06f+i*(bw*.88f/(n-1));
+            color((phase+i)%2==0?0xFFFFE9A0:th.neon);
+            c.drawCircle(x,t-(r-l)*.006f,(r-l)*.009f,ink);
+        }
+    }
+
+    // ---------- progression trail: themes that unlock with level ----------
+    static float nodeX(float w,int i){return w*(.16f+i*.226f);}
+
+    void trail(Canvas c, float w, float top, float bottom, int level, long xp, long needed, int selected, String justUnlocked) {
         if(bottom-top < w*.30f) return;
-        float height=Math.min(bottom-top,w*.53f), y=top+height*.5f;
-        box.set(w*.06f,top,w*.94f,top+height);
-        ink.setShader(new LinearGradient(0,top,w,top+height,DRAGON?0xFF3C2029:0xFF172442,0xFF101628,Shader.TileMode.CLAMP));
-        c.drawRoundRect(box,w*.025f,w*.025f,ink);ink.setShader(null);
-        ink.setTextAlign(Paint.Align.LEFT);ink.setTypeface(Typeface.create("sans-serif",Typeface.BOLD));
-        ink.setTextSize(w*.030f);color(0xFFFFE5A4);
-        c.drawText(DRAGON?"THE DRAGON TRAIL":"NEON CITY JOURNEY",w*.10f,top+w*.065f,ink);
-        ink.setTextSize(w*.025f);ink.setTypeface(Typeface.create("sans-serif",Typeface.NORMAL));color(0xFFAFC0D8);
-        c.drawText("Earn XP with each spin. Grow your level.",w*.10f,top+w*.11f,ink);
-        int first=Math.max(1,level-1);
-        for(int i=0;i<4;i++) {
-            float x=w*(.18f+i*.215f), yy=y+(i%2==0?w*.035f:-w*.025f);
-            if(i<3)line(c,x,yy,x+w*.215f,y+((i+1)%2==0?w*.035f:-w*.025f),0xFF48536B,w*.008f);
+        float height=Math.min(bottom-top,w*.52f);
+        Theme cur=THEMES[selected];
+        box.set(w*.05f,top,w*.95f,top+height);
+        ink.setShader(new LinearGradient(0,top,w,top+height,cur.panelBg,0xFF0C1120,Shader.TileMode.CLAMP));
+        c.drawRoundRect(box,w*.025f,w*.025f,ink); ink.setShader(null);
+        ink.setStyle(Paint.Style.STROKE); ink.setStrokeWidth(w*.004f); color(cur.panelLine); c.drawRoundRect(box,w*.025f,w*.025f,ink); ink.setStyle(Paint.Style.FILL);
+
+        ink.setTextAlign(Paint.Align.LEFT); ink.setTypeface(Typeface.create("sans-serif",Typeface.BOLD));
+        ink.setTextSize(w*.030f); color(cur.title);
+        c.drawText("CITY TOUR - TAP A STOP YOU UNLOCKED",w*.09f,top+w*.058f,ink);
+
+        // connector
+        float ny=top+height*.48f;
+        line(c,nodeX(w,0),ny,nodeX(w,THEMES.length-1),ny,cur.panelLine,w*.007f);
+        for(int i=0;i<THEMES.length;i++){
+            Theme t=THEMES[i]; float x=nodeX(w,i);
+            boolean open=level>=t.unlockLevel, sel=i==selected;
+            // node disc shows the theme's own colors
+            color(open?t.neon:0xFF2A3244); c.drawCircle(x,ny,w*.048f,ink);
+            color(open?t.skyTop:0xFF3A4458); c.drawCircle(x,ny,w*.036f,ink);
+            if(open){ color(t.lit); c.drawRect(x-w*.016f,ny-w*.010f,x+w*.016f,ny+w*.004f,ink); color(t.neon); c.drawRect(x-w*.010f,ny+w*.008f,x+w*.010f,ny+w*.016f,ink); }
+            else {
+                color(0xFF7C8AA6); // padlock
+                box.set(x-w*.014f,ny-w*.004f,x+w*.014f,ny+w*.016f); c.drawRoundRect(box,w*.006f,w*.006f,ink);
+                ink.setStyle(Paint.Style.STROKE); ink.setStrokeWidth(w*.005f); c.drawArc(x-w*.011f,ny-w*.020f,x+w*.011f,ny+w*.002f,180,180,false,ink); ink.setStyle(Paint.Style.FILL);
+            }
+            if(sel){ ink.setStyle(Paint.Style.STROKE); ink.setStrokeWidth(w*.006f); ink.setShadowLayer(w*.012f,0,0,cur.neon); color(0xFFFFFFFF); c.drawCircle(x,ny,w*.055f,ink); ink.clearShadowLayer(); ink.setStyle(Paint.Style.FILL); }
+            // label
+            ink.setTextAlign(Paint.Align.CENTER); ink.setTypeface(Typeface.create("sans-serif",Typeface.BOLD));
+            ink.setTextSize(w*.024f); color(open?(sel?0xFFFFFFFF:cur.soft):0xFF6C7890);
+            c.drawText(t.tag,x,ny+w*.088f,ink);
+            if(!open){ ink.setTextSize(w*.020f); color(0xFF8A96AC); c.drawText("Lv "+t.unlockLevel,x,ny+w*.118f,ink); }
         }
-        for(int i=0;i<4;i++) {
-            float x=w*(.18f+i*.215f), yy=y+(i%2==0?w*.035f:-w*.025f);
-            color(first+i<=level?0xFFDFA957:0xFF39465E);c.drawCircle(x,yy,w*.045f,ink);
-            color(first+i<=level?0xFFFFE4A7:0xFF7C8AA6);c.drawCircle(x,yy,w*.033f,ink);
-            color(0xFF172039);ink.setTextAlign(Paint.Align.CENTER);ink.setTypeface(Typeface.create("sans-serif",Typeface.BOLD));ink.setTextSize(w*.027f);
-            c.drawText(""+(first+i),x,yy+w*.010f,ink);
+
+        // status line
+        ink.setTextAlign(Paint.Align.LEFT); ink.setTypeface(Typeface.create("sans-serif",Typeface.NORMAL));
+        ink.setTextSize(w*.025f);
+        if(justUnlocked!=null){
+            color(cur.title); ink.setTypeface(Typeface.create("sans-serif",Typeface.BOLD));
+            c.drawText("NEW STOP UNLOCKED: "+justUnlocked+"!",w*.09f,top+height-w*.045f,ink);
+        } else {
+            Theme next=null; for(Theme t:THEMES) if(level<t.unlockLevel){next=t;break;}
+            color(cur.soft);
+            if(next!=null) c.drawText("Playing: "+cur.name+"  •  Next stop: "+next.name+" at Lv "+next.unlockLevel+"  ("+xp+" / "+needed+" XP)",w*.09f,top+height-w*.045f,ink);
+            else c.drawText("Playing: "+cur.name+"  •  Every stop unlocked. The city is yours.",w*.09f,top+height-w*.045f,ink);
         }
-        ink.setTextAlign(Paint.Align.LEFT);ink.setTypeface(Typeface.create("sans-serif",Typeface.NORMAL));ink.setTextSize(w*.027f);color(0xFFDAE6F4);
-        c.drawText("Level "+level+"  •  "+xp+" / "+needed+" XP",w*.10f,top+height-w*.055f,ink);
     }
 
+    // ---------- symbols (unchanged art, kept from approved first increment) ----------
     void symbol(Canvas c, int id, float cx, float cy, float size) {
         c.save(); c.translate(cx,cy); c.scale(size/100f,size/100f);
         ink.setStyle(Paint.Style.FILL); ink.setShader(null);
         ink.setShadowLayer(5,0,3,0x88000000);
-        if (DRAGON) dragonSymbol(c,id); else neonSymbol(c,id);
+        neonSymbol(c,id);
         ink.clearShadowLayer(); ink.setStyle(Paint.Style.FILL); ink.setShader(null); c.restore();
     }
-    private void color(int v){ink.setColor(v);}
-    private void oval(Canvas c,float l,float t,float r,float b){box.set(l,t,r,b);c.drawOval(box,ink);}
-    private void line(Canvas c,float a,float b,float x,float y,int color,float width){
-        ink.clearShadowLayer();ink.setColor(color);ink.setStrokeWidth(width);ink.setStrokeCap(Paint.Cap.ROUND);c.drawLine(a,b,x,y,ink);
-    }
-    private void polygon(Canvas c,float...xy){shape.reset();shape.moveTo(xy[0],xy[1]);for(int i=2;i<xy.length;i+=2)shape.lineTo(xy[i],xy[i+1]);shape.close();c.drawPath(shape,ink);}
     private void gold(){ink.setShader(new LinearGradient(-30,-40,25,40,0xFFFFF0AA,0xFFC87820,Shader.TileMode.CLAMP));}
     private void gem(Canvas c){
         color(0xFF55DFFF);polygon(c,-35,-17,-19,-36,20,-36,36,-17,0,39);
@@ -86,20 +249,6 @@ final class SlotArt {
         case 3: line(c,-16,1,4,-30,0xFF84DA73,6);line(c,20,4,4,-30,0xFF84DA73,6);color(0xFFEE3666);oval(c,-37,-5,0,35);color(0xFFB71549);oval(c,1,0,39,39);color(0xFFFFB2C2);oval(c,-28,0,-19,10);oval(c,9,5,18,15);break;
         case 4: color(0xFFF8DD46);oval(c,-36,-25,36,27);color(0xFFFFFFA1);oval(c,-25,-17,25,17);color(0xFFF4D32E);oval(c,-20,-13,20,13);color(0xFF7DCE7C);polygon(c,12,-26,32,-37,29,-19);break;
         default: star(c);
-        }
-    }
-    private void dragonSymbol(Canvas c,int id){
-        switch(id){
-        case 0:
-            color(0xFF56D2B0);polygon(c,-33,25,-23,-21,-9,-35,18,-26,34,-6,16,5,8,30,-9,39);
-            color(0xFF99F0D4);polygon(c,-23,-21,-24,-40,-8,-31,5,-46,13,-27);
-            color(0xFF123E40);oval(c,5,-19,13,-10);color(0xFFFFD58C);polygon(c,20,-1,32,-4,23,8);
-            line(c,-14,5,-7,20,0xFF219D90,5); break;
-        case 1:gold();oval(c,-36,-18,36,26);box.set(-25,-30,25,7);c.drawRoundRect(box,12,12,ink);ink.setShader(null);color(0xFF9C551E);oval(c,-23,-23,23,-6);color(0xFFFFE9A0);oval(c,-17,-19,17,-10);break;
-        case 2:line(c,0,-43,0,-29,0xFFFFD17D,4);color(0xFFE44A42);oval(c,-28,-31,28,28);line(c,-12,-27,-12,25,0xFFFF9771,3);line(c,12,-27,12,25,0xFFB62838,3);line(c,-19,-31,19,-31,0xFFFFD17D,6);line(c,-18,28,18,28,0xFFFFD17D,6);line(c,0,29,0,43,0xFFFFD17D,4);break;
-        case 3: gold();polygon(c,-36,-24,-17,-4,0,-34,17,-4,36,-24,29,27,-29,27);ink.setShader(null);color(0xFFE84B52);oval(c,-7,5,7,19);break;
-        case 4:color(0xFF9F75F4);oval(c,-31,-36,31,26);color(0xFFD5B8FF);oval(c,-20,-27,-4,-8);gold();box.set(-34,26,34,37);c.drawRoundRect(box,7,7,ink);ink.setShader(null);break;
-        default:color(0xFFFFE6BE);box.set(-28,-39,28,39);c.drawRoundRect(box,8,8,ink);color(0xFFB82A3B);ink.setTextSize(43);ink.setTypeface(Typeface.create("sans-serif",Typeface.BOLD));ink.setTextAlign(Paint.Align.CENTER);c.drawText("東",0,15,ink);
         }
     }
 }

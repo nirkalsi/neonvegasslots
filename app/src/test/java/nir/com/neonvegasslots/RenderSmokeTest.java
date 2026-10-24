@@ -93,4 +93,18 @@ public class RenderSmokeTest {
         a.onOutOfCoins();
         renderLatestDialog("neonvegasslots-outofcoins");
     }
+
+    @GraphicsMode(GraphicsMode.Mode.NATIVE)
+    @Test public void renderSecondTheme720() throws Exception {
+        SlotsView v = new SlotsView(RuntimeEnvironment.getApplication());
+        v.restore("5000;0;1;0;0;3;1");
+        renderView(v, 720, 1480, "/tmp/renders/neonvegasslots-theme2-720x1480.png");
+    }
+
+    @GraphicsMode(GraphicsMode.Mode.NATIVE)
+    @Test public void renderTopTheme720() throws Exception {
+        SlotsView v = new SlotsView(RuntimeEnvironment.getApplication());
+        v.restore("5000;0;1;0;0;10;3");
+        renderView(v, 720, 1480, "/tmp/renders/neonvegasslots-theme4-720x1480.png");
+    }
 }
