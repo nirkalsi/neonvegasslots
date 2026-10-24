@@ -197,13 +197,14 @@ public class MainActivity extends Activity implements SlotsView.Listener, Billin
     // ---------- shop & remove ads ----------
     private void showShop() {
         if (!billing.hasProducts()) {
-            shopReopen = true;
             billing.refreshProducts();
-            new AlertDialog.Builder(this).setTitle("Coin shop")
+            AlertDialog dlg = new AlertDialog.Builder(this).setTitle("Coin shop")
                 .setMessage("Loading the shop...\n\nIf packs don't show up, check your connection and tap TRY AGAIN.")
                 .setPositiveButton("TRY AGAIN", (d, w) -> showShop())
-                .setNegativeButton("Close", (d, w) -> shopReopen = false)
+                .setNegativeButton("Close", null)
                 .show();
+            shopLoadingDlg = dlg;
+            dlg.setOnDismissListener(d -> { if (shopLoadingDlg == dlg) shopLoadingDlg = null; });
             return;
         }
         LinearLayout box = new LinearLayout(this);
@@ -336,9 +337,13 @@ public class MainActivity extends Activity implements SlotsView.Listener, Billin
         });
     }
 
-    private boolean shopReopen = false;
+    private AlertDialog shopLoadingDlg = null;
     @Override public void onProductsReady() {
-        if (shopReopen && billing.hasProducts()) { shopReopen = false; showShop(); }
+        // only swap a still-visible loading dialog for the real shop; never reopen a dismissed one
+        if (shopLoadingDlg != null && shopLoadingDlg.isShowing() && billing.hasProducts()) {
+            shopLoadingDlg.dismiss();
+            showShop();
+        }
     }
 
     @Override protected void onPause() { super.onPause(); saveState(); }

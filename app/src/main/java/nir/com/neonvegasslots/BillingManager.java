@@ -90,10 +90,15 @@ public class BillingManager implements PurchasesUpdatedListener {
             });
     }
 
-    public boolean hasProducts() { return !details.isEmpty(); }
+    public boolean hasProducts() { return !details.isEmpty() || !testPrices.isEmpty(); }
+
+    /** Test seam: synthetic display prices for pixel tests; never populated in production. */
+    final Map<String, String> testPrices = new HashMap<>();
     public ProductDetails getDetails(String id) { return details.get(id); }
 
     public String priceOf(String id) {
+        String tp = testPrices.get(id);
+        if (tp != null) return tp;
         ProductDetails pd = details.get(id);
         if (pd == null) return null;
         List<ProductDetails.OneTimePurchaseOfferDetails> offers = pd.getOneTimePurchaseOfferDetailsList();

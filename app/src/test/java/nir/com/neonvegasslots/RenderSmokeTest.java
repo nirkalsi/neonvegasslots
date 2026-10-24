@@ -128,6 +128,62 @@ public class RenderSmokeTest {
         renderView(v, 720, 1480, "/tmp/renders/neonvegasslots-trail-empty-720x1480.png");
     }
 
+    private BillingManager injectTestPrices(MainActivity a) throws Exception {
+        java.lang.reflect.Field f = MainActivity.class.getDeclaredField("billing");
+        f.setAccessible(true);
+        BillingManager bm = (BillingManager) f.get(a);
+        bm.testPrices.put("coins_small", "$0.99");
+        bm.testPrices.put("coins_medium", "₪10.90");
+        bm.testPrices.put("coins_large", "₪109.90");
+        bm.testPrices.put("coins_mega", "€1,234.56 long-price-wrap-check");
+        return bm;
+    }
+
+    @GraphicsMode(GraphicsMode.Mode.NATIVE)
+    @Test public void renderLoadedShopSyntheticPrices() throws Exception {
+        MainActivity a = activity();
+        injectTestPrices(a);
+        callPrivate(a, "showShop");
+        renderLatestDialog("neonvegasslots-shop-loaded");
+    }
+
+    @Test public void loadingShopSwapsToLoadedOnlyWhileVisible() throws Exception {
+        MainActivity a = activity();
+        callPrivate(a, "showShop"); // no products -> loading dialog
+        AlertDialog d1 = ShadowAlertDialog.getLatestAlertDialog();
+        assertNotNull("loading dialog", d1);
+        assertTrue(d1.isShowing());
+        // products arrive while loading dialog visible -> swaps to loaded shop
+        injectTestPrices(a);
+        a.onProductsReady();
+        AlertDialog d2 = ShadowAlertDialog.getLatestAlertDialog();
+        assertNotSame(d1, d2);
+        assertFalse("loading dialog dismissed", d1.isShowing());
+        assertTrue("loaded shop showing", d2.isShowing());
+        d2.dismiss();
+    }
+
+    @Test public void dismissedLoadingShopNeverAutoReopens() throws Exception {
+        MainActivity a = activity();
+        callPrivate(a, "showShop");
+        AlertDialog d1 = ShadowAlertDialog.getLatestAlertDialog();
+        assertNotNull(d1);
+        d1.dismiss(); // user closes the loading dialog
+        injectTestPrices(a);
+        a.onProductsReady();
+        assertSame("no new dialog after dismiss", d1, ShadowAlertDialog.getLatestAlertDialog());
+    }
+
+    @Test public void tryAgainDoesNotStackDialogs() throws Exception {
+        MainActivity a = activity();
+        callPrivate(a, "showShop");
+        ShadowAlertDialog.getLatestAlertDialog().getButton(AlertDialog.BUTTON_POSITIVE).performClick(); // TRY AGAIN
+        ShadowAlertDialog.getLatestAlertDialog().getButton(AlertDialog.BUTTON_POSITIVE).performClick(); // TRY AGAIN again
+        int showing = 0;
+        for (android.app.Dialog d : org.robolectric.shadows.ShadowDialog.getShownDialogs()) if (d.isShowing()) showing++;
+        assertEquals("exactly one dialog showing", 1, showing);
+    }
+
     @GraphicsMode(GraphicsMode.Mode.NATIVE)
     @Test public void renderMotionFrames() throws Exception {
         SlotsView v = new SlotsView(RuntimeEnvironment.getApplication());
