@@ -185,11 +185,16 @@ public class SlotsView extends View {
         art.backdrop(cv, getWidth(), getHeight(), th, phase);
 
         float w = getWidth();
-        // HUD veil: title and balance always sit on clean high-contrast ground
-        p.setShader(new LinearGradient(0, 0, 0, getHeight() * 0.175f,
-            th.skyTop & 0x00FFFFFF | 0xF2000000, 0x00000000, Shader.TileMode.CLAMP));
-        cv.drawRect(0, 0, w, getHeight() * 0.175f, p);
+        // HUD bar: fully opaque backing for title and balance; scene art is clipped below
+        float bandH = getHeight() * 0.15f;
+        int hud = 0xFF000000 | (((th.skyTop >> 16 & 0xFF) / 2) << 16) | (((th.skyTop >> 8 & 0xFF) / 2) << 8) | ((th.skyTop & 0xFF) / 2);
+        p.setColor(hud);
+        cv.drawRect(0, 0, w, bandH, p);
+        p.setShader(new LinearGradient(0, bandH, 0, getHeight() * .185f, hud & 0x00FFFFFF | 0x99000000, 0x00000000, Shader.TileMode.CLAMP));
+        cv.drawRect(0, bandH, w, getHeight() * .185f, p);
         p.setShader(null);
+        p.setColor(th.neon & 0x00FFFFFF | 0x55000000);
+        cv.drawRect(0, bandH - 1, w, bandH + 1, p);
         float cellW = w / 5f - 8;
         float gridTop = gridTop();
         float gridH = cellW * 3 + 16;
@@ -219,13 +224,6 @@ public class SlotsView extends View {
         float frac = Math.min(1f, xp / (float) xpNeeded());
         rf.set(barL, barY, barL + (barR - barL) * frac, barY + barH);
         p.setColor(th.title); cv.drawRoundRect(rf, 8, 8, p);
-        if (now < levelFlashUntil) {
-            p.setTextSize(w * 0.055f);
-            p.setColor(th.title);
-            p.setFakeBoldText(true);
-            cv.drawText("LEVEL UP!", w / 2, gridTop * 0.30f + w * 0.07f, p);
-            p.setFakeBoldText(false);
-        }
         if (lastWin > 0 && now < winFlashUntil) {
             p.setColor(0xFF7CFC00);
             p.setTextSize(w * 0.06f);
@@ -248,7 +246,7 @@ public class SlotsView extends View {
                 float y = gridTop + r * (cellW + 8);
                 // settle bounce: a just-stopped column drops in with a small overshoot
                 float settle = (now - stopAt[c]) / 260f;
-                if (settle >= 0 && settle < 1) y -= cellW * 0.06f * (1 - settle) * (float) Math.cos(settle * 6.9f);
+                if (settle >= 0 && settle < 1) y -= cellW * 0.12f * (1 - settle) * (float) Math.cos(settle * 6.9f);
                 rf.set(x + 2, y, x + cellW + 2, y + cellW);
                 boolean hot = winCell[r][c] && flash;
                 p.setColor(hot ? th.cellHot : th.cellBg);
@@ -322,12 +320,21 @@ public class SlotsView extends View {
     private void levelBurst(Canvas cv, float w, float gridTop, SlotArt.Theme th, long now) {
         float p1 = 1 - Math.max(0, (levelFlashUntil - now)) / 2000f;
         if (p1 < 0 || p1 > 1) return;
+        float cy = gridTop() + (getWidth() / 5f - 8) * 1.5f + 8;
         float r = w * .10f + p1 * w * .45f;
         p.setStyle(Paint.Style.STROKE);
         p.setStrokeWidth(w * .012f * (1 - p1) + 1);
         p.setColor(th.title & 0x00FFFFFF | ((int) ((1 - p1) * 160) << 24));
-        cv.drawCircle(w / 2, gridTop * 0.5f, r, p);
+        cv.drawCircle(w / 2, cy, r, p);
         p.setStyle(Paint.Style.FILL);
+        p.setTextAlign(Paint.Align.CENTER);
+        p.setTextSize(w * 0.075f);
+        p.setColor(th.title);
+        p.setFakeBoldText(true);
+        p.setShadowLayer(w * 0.02f, 0, 0, 0xFF000000);
+        cv.drawText("LEVEL UP!", w / 2, cy, p);
+        p.clearShadowLayer();
+        p.setFakeBoldText(false);
     }
 
     @Override public boolean onTouchEvent(MotionEvent e) {

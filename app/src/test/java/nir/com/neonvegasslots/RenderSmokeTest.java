@@ -113,4 +113,30 @@ public class RenderSmokeTest {
         MainActivity a = activity();
         renderView(a.findViewById(android.R.id.content), 720, 1480, "/tmp/renders/neonvegasslots-full-720x1480.png");
     }
+
+    @GraphicsMode(GraphicsMode.Mode.NATIVE)
+    @Test public void renderMotionFrames() throws Exception {
+        SlotsView v = new SlotsView(RuntimeEnvironment.getApplication());
+        v.restore("5000;0;1;0;0;10;3");
+        v.measure(View.MeasureSpec.makeMeasureSpec(720, View.MeasureSpec.EXACTLY),
+                  View.MeasureSpec.makeMeasureSpec(1480, View.MeasureSpec.EXACTLY));
+        v.layout(0, 0, 720, 1480);
+        long now = System.currentTimeMillis();
+        java.lang.reflect.Field f;
+        f = SlotsView.class.getDeclaredField("spinning"); f.setAccessible(true); f.setBoolean(v, true);
+        f = SlotsView.class.getDeclaredField("stopAt"); f.setAccessible(true);
+        f.set(v, new long[]{now + 4000, now + 4000, now + 4000, now + 4000, now + 4000});
+        renderView(v, 720, 1480, "/tmp/renders/neonvegasslots-frame-spin.png");
+        f.set(v, new long[]{now - 10, now - 6, now - 2, now + 4000, now + 4000}); // 3 columns at bounce peak
+        renderView(v, 720, 1480, "/tmp/renders/neonvegasslots-frame-settle.png");
+        f = SlotsView.class.getDeclaredField("spinning"); f.setAccessible(true); f.setBoolean(v, false);
+        f = SlotsView.class.getDeclaredField("lastWin"); f.setAccessible(true); f.setLong(v, 500);
+        f = SlotsView.class.getDeclaredField("winStartAt"); f.setAccessible(true); f.setLong(v, now - 350);
+        f = SlotsView.class.getDeclaredField("winFlashUntil"); f.setAccessible(true); f.setLong(v, now + 1300);
+        f = SlotsView.class.getDeclaredField("levelFlashUntil"); f.setAccessible(true); f.setLong(v, now + 1600);
+        f = SlotsView.class.getDeclaredField("winCell"); f.setAccessible(true);
+        boolean[][] wc = (boolean[][]) f.get(v);
+        for (int c = 0; c < 5; c++) wc[1][c] = true;
+        renderView(v, 720, 1480, "/tmp/renders/neonvegasslots-frame-win.png");
+    }
 }

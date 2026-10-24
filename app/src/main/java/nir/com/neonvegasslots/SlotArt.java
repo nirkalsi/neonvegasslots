@@ -50,6 +50,7 @@ final class SlotArt {
         c.drawRect(0,0,w,h,ink); ink.setShader(null);
 
         float horizon = h*.215f;
+        c.save(); c.clipRect(0, h*.15f, w, h); // scene never enters the HUD band
         // stars
         color(t.soft);
         for(int i=0;i<26;i++){float x=w*((hash(i,1)&0xFFFF)/65535f),y=horizon*.14f+horizon*.5f*((hash(i,2)&0xFFFF)/65535f);c.drawCircle(x,y,w*.0016f,ink);}
@@ -72,6 +73,7 @@ final class SlotArt {
         // street glow strip
         ink.setShader(new LinearGradient(0,horizon,0,horizon+h*.05f,t.neon&0x00FFFFFF|0x33000000,0x00000000,Shader.TileMode.CLAMP));
         c.drawRect(0,horizon,w,horizon+h*.05f,ink); ink.setShader(null);
+        c.restore();
     }
 
     private void drawSkyline(Canvas c,float w,float horizon,int body,int windows,boolean lit,int seed,float maxH){
