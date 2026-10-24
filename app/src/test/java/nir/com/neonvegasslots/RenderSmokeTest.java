@@ -19,7 +19,7 @@ import org.robolectric.shadows.ShadowDialog;
 
 /** Pixel-render smoke: game view + full screen + reward/daily/missions/shop overlays. */
 @RunWith(RobolectricTestRunner.class)
-@Config(sdk = 34)
+@Config(sdk = 34, qualifiers = "w360dp-h800dp-420dpi")
 public class RenderSmokeTest {
 
     private void renderView(View v, int w, int h, String path) throws Exception {
@@ -61,7 +61,11 @@ public class RenderSmokeTest {
     }
 
     /** Composed render: activity content + dim + dialog decor at its real window size/position. */
-    private void renderComposed(MainActivity a, Dialog d, int w, int h, String path) throws Exception {
+    private void renderComposed(MainActivity a, Dialog d, String path) throws Exception {
+        // One coherent device space: activity, display metrics and dialog window
+        // attributes all come from the same configured display (see @Config qualifiers).
+        android.util.DisplayMetrics dm = a.getResources().getDisplayMetrics();
+        int w = dm.widthPixels, h = dm.heightPixels;
         View root = a.findViewById(android.R.id.content);
         root.measure(View.MeasureSpec.makeMeasureSpec(w, View.MeasureSpec.EXACTLY),
                      View.MeasureSpec.makeMeasureSpec(h, View.MeasureSpec.EXACTLY));
@@ -74,15 +78,22 @@ public class RenderSmokeTest {
             (lp.flags & android.view.WindowManager.LayoutParams.FLAG_DIM_BEHIND) != 0);
         cv.drawColor(0x99000000); // dimAmount 0.6
         int dw = lp.width > 0 ? lp.width : (int) (w * 0.88f);
+        assertEquals("dialog width must be 88% of the same display the activity renders on",
+            (int) (w * 0.88f), dw);
         View dv = d.getWindow().getDecorView();
         int maxH = (int) (h * 0.78f);
         dv.measure(View.MeasureSpec.makeMeasureSpec(dw, View.MeasureSpec.EXACTLY),
                    View.MeasureSpec.makeMeasureSpec(0, View.MeasureSpec.UNSPECIFIED));
-        int dh = Math.min(dv.getMeasuredHeight(), lp.height > 0 ? lp.height : maxH);
-        if (lp.height > 0) dh = lp.height;
+        int dh = Math.min(dv.getMeasuredHeight(), maxH);
+        if (lp.height > 0) dh = Math.min(lp.height, maxH);
         dv.layout(0, 0, dw, dh);
+        // Position from the actual window gravity + offsets, the way WindowManager does.
+        int grav = lp.gravity != 0 ? lp.gravity : android.view.Gravity.CENTER;
+        android.graphics.Rect container = new android.graphics.Rect(0, 0, w, h);
+        android.graphics.Rect out = new android.graphics.Rect();
+        android.view.Gravity.apply(grav, dw, dh, container, out);
         cv.save();
-        cv.translate((w - dw) / 2f, (h - dh) / 2f);
+        cv.translate(out.left + lp.x, out.top + lp.y);
         dv.draw(cv);
         cv.restore();
         FileOutputStream fos = new FileOutputStream(path);
@@ -99,14 +110,14 @@ public class RenderSmokeTest {
         Dialog d = latestDialog();
         int expectedW = (int) (a.getResources().getDisplayMetrics().widthPixels * 0.88f);
         assertEquals("dialog width must be 88% of screen", expectedW, d.getWindow().getAttributes().width);
-        renderComposed(a, d, 720, 1480, "/tmp/renders/neonvegasslots-shop-composed.png");
+        renderComposed(a, d, "/tmp/renders/neonvegasslots-shop-composed.png");
     }
 
     @GraphicsMode(GraphicsMode.Mode.NATIVE)
     @Test public void renderDailyComposed() throws Exception {
         MainActivity a = activity();
         callPrivate(a, "maybeDailyBonus");
-        renderComposed(a, latestDialog(), 720, 1480, "/tmp/renders/neonvegasslots-daily-composed.png");
+        renderComposed(a, latestDialog(), "/tmp/renders/neonvegasslots-daily-composed.png");
     }
 
     @Test public void tallDialogIsCappedAndScrollable() throws Exception {

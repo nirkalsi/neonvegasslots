@@ -219,8 +219,8 @@ public class SlotsView extends View {
     private float trailTop() { return gridTop() + (getWidth() / 5f - 8) * 3 + 16 + 24 + getHeight() * 0.07f + getWidth() * 0.055f; }
     private float trailBottom() { return getHeight() - getWidth() * 0.10f; }
     private float trailNodeY() {
-        float top = trailTop(), height = Math.min(trailBottom() - top, getWidth() * .62f);
-        return top + height * .40f;
+        float top = trailTop(), height = Math.min(trailBottom() - top, getWidth() * .68f);
+        return top + height * .38f;
     }
 
     @Override protected void onDraw(Canvas cv) {
@@ -403,7 +403,7 @@ public class SlotsView extends View {
         }
         // progression trail: tap an unlocked stop to apply its theme
         float tt = trailTop(), tb = trailBottom();
-        if (y >= tt && y <= Math.min(tb, tt + w * .62f)) {
+        if (y >= tt && y <= Math.min(tb, tt + w * .68f)) {
             float ny = trailNodeY();
             if (Math.abs(y - ny) <= w * .12f) {
                 int best = -1; float bd = Float.MAX_VALUE;

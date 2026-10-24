@@ -87,11 +87,14 @@ public class MainActivity extends Activity implements SlotsView.Listener, Billin
     private Button addRowButton(LinearLayout row, String label, View.OnClickListener l) {
         Button btn = new Button(this);
         btn.setText(label);
-        btn.setTextSize(11f);
+        btn.setTextSize(9f);
         btn.setTypeface(Typeface.DEFAULT_BOLD);
         btn.setTextColor(Color.WHITE);
         btn.setBackgroundColor(0xFF3A1F66);
         btn.setMinHeight(0); btn.setMinimumHeight(0);
+        btn.setPadding(6, 0, 6, 0);
+        btn.setSingleLine(true);
+        if (android.os.Build.VERSION.SDK_INT >= 26) btn.setAutoSizeTextTypeUniformWithConfiguration(7, 11, 1, android.util.TypedValue.COMPLEX_UNIT_SP);
         LinearLayout.LayoutParams lp = new LinearLayout.LayoutParams(0, (int) (48 * getResources().getDisplayMetrics().density), 1f);
         lp.setMargins(4, 0, 4, 0);
         row.addView(btn, lp);

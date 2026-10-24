@@ -182,7 +182,7 @@ final class SlotArt {
 
     void trail(Canvas c, float w, float top, float bottom, int level, long xp, long needed, int selected, String justUnlocked, int trophyMask) {
         if(bottom-top < w*.30f) return;
-        float height=Math.min(bottom-top,w*.62f);
+        float height=Math.min(bottom-top,w*.68f);
         Theme cur=THEMES[selected];
         box.set(w*.05f,top,w*.95f,top+height);
         ink.setShader(new LinearGradient(0,top,w,top+height,cur.panelBg,0xFF0C1120,Shader.TileMode.CLAMP));
@@ -194,7 +194,7 @@ final class SlotArt {
         c.drawText("CITY TOUR - TAP A STOP YOU UNLOCKED",w*.09f,top+w*.058f,ink);
 
         // connector
-        float ny=top+height*.40f;
+        float ny=top+height*.38f;
         line(c,nodeX(w,0),ny,nodeX(w,THEMES.length-1),ny,cur.panelLine,w*.007f);
         for(int i=0;i<THEMES.length;i++){
             Theme t=THEMES[i]; float x=nodeX(w,i);
@@ -227,23 +227,23 @@ final class SlotArt {
         ink.setTextSize(w*.025f);
         if(justUnlocked!=null && justUnlocked.startsWith("TROPHY:")){
             color(0xFFFFD700); ink.setTypeface(Typeface.create("sans-serif",Typeface.BOLD));
-            c.drawText("TROPHY FOUND: "+justUnlocked.substring(7)+"!",w*.09f,top+height*.62f,ink);
+            c.drawText("TROPHY FOUND: "+justUnlocked.substring(7)+"!",w*.09f,top+height*.66f,ink);
         } else if(justUnlocked!=null){
             color(cur.title); ink.setTypeface(Typeface.create("sans-serif",Typeface.BOLD));
-            c.drawText("NEW STOP UNLOCKED: "+justUnlocked+"!",w*.09f,top+height*.62f,ink);
+            c.drawText("NEW STOP UNLOCKED: "+justUnlocked+"!",w*.09f,top+height*.66f,ink);
         } else {
             Theme next=null; for(Theme t:THEMES) if(level<t.unlockLevel){next=t;break;}
             color(cur.soft);
-            if(next!=null) c.drawText("Playing: "+cur.name+"  •  Next stop: "+next.name+" at Lv "+next.unlockLevel+"  ("+xp+" / "+needed+" XP)",w*.09f,top+height*.62f,ink);
-            else c.drawText("Playing: "+cur.name+"  •  Every stop unlocked. The city is yours.",w*.09f,top+height*.62f,ink);
+            if(next!=null) c.drawText("Playing: "+cur.name+"  •  Next stop: "+next.name+" at Lv "+next.unlockLevel+"  ("+xp+" / "+needed+" XP)",w*.09f,top+height*.66f,ink);
+            else c.drawText("Playing: "+cur.name+"  •  Every stop unlocked. The city is yours.",w*.09f,top+height*.66f,ink);
         }
 
         // trophy shelf: 12 cups grouped by stop; collected cups take their stop's color
         ink.setTextSize(w*.020f); color(cur.soft); ink.setTypeface(Typeface.create("sans-serif",Typeface.BOLD));
         int got=Integer.bitCount(trophyMask);
-        c.drawText("TROPHY SHELF  "+got+" / 12",w*.09f,top+height*.72f,ink);
+        c.drawText("TROPHY SHELF  "+got+" / 12",w*.09f,top+height*.77f,ink);
         for(int i=0;i<12;i++){
-            float x=w*(.11f+i*.0675f), y=top+height*.86f;
+            float x=w*(.11f+i*.0675f), y=top+height*.90f;
             boolean on=(trophyMask&(1<<i))!=0;
             trophyCup(c,x,y,w*.052f,on,THEMES[i/3]);
         }
