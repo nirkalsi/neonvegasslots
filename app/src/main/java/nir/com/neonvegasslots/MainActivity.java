@@ -60,7 +60,22 @@ public class MainActivity extends Activity implements SlotsView.Listener, Billin
         game.setListener(this);
         sfx = new SoundFx(this);
         game.setSoundFx(sfx);
-        root.addView(game, new LinearLayout.LayoutParams(-1, 0, 1f));
+        // Short screens: the game view is taller than the viewport so the progression trail panel keeps a readable size; scroll to reach it.
+        ScrollView gameScroll = new ScrollView(this) {
+            @Override protected void onMeasure(int wSpec, int hSpec) {
+                super.onMeasure(wSpec, hSpec);
+                float w = getMeasuredWidth();
+                int need = (int) ((w * 0.50f + 3 * (w / 5f - 8) + 40 + w * 0.155f) / 0.71f);
+                int vh = getMeasuredHeight();
+                int want = Math.max(vh, need);
+                // ScrollView measures its child UNSPECIFIED and ignores LayoutParams.height; minimum height is what it honours.
+                if (game.getMinimumHeight() != want) { game.setMinimumHeight(want); game.requestLayout(); }
+            }
+        };
+        gameScroll.setFillViewport(true);
+        gameScroll.setVerticalScrollBarEnabled(false);
+        gameScroll.addView(game, new android.widget.FrameLayout.LayoutParams(-1, -1));
+        root.addView(gameScroll, new LinearLayout.LayoutParams(-1, 0, 1f));
         bannerBox = new LinearLayout(this);
         root.addView(bannerBox, new LinearLayout.LayoutParams(-1, -2));
         android.widget.FrameLayout shell = new android.widget.FrameLayout(this);
