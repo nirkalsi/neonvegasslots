@@ -20,13 +20,26 @@ public class SlotsView extends View {
     }
 
     private static final int[] WEIGHT = {4, 7, 10, 16, 18, 12};
-    private static final int[] PAY5 = {100, 50, 30, 20, 15, 25};
-    private static final int[] PAY4 = {25, 12, 8, 5, 4, 6};
-    private static final int[] PAY3 = {8, 4, 3, 2, 2, 2};
+    private static final int[] PAY5 = {1200, 600, 360, 240, 180, 300};
+    private static final int[] PAY4 = {300, 144, 96, 60, 48, 72};
+    private static final int[] PAY3 = {96, 48, 36, 25, 25, 24};
     private static final int[][] LINES = {
         {1,1,1,1,1}, {0,0,0,0,0}, {2,2,2,2,2}, {0,1,2,1,0}, {2,1,0,1,2}
     };
-    private static final int[] BETS = {5, 10, 25, 50};
+    private static final int[] BETS = {5, 10, 25, 50, 100, 200, 500, 1000, 2500, 5000, 10000, 25000};
+    /** Player level that unlocks each BET step (virtual coins only). The first six are always available. */
+    static final int[] BET_UNLOCK = {1, 1, 1, 1, 1, 1, 10, 20, 35, 50, 70, 100};
+    static int betCount(int level) { int n = 0; for (int u : BET_UNLOCK) if (level >= u) n++; return n; }
+    static int betAmount(int i) { return BETS[i]; }
+    /** XP per spin: 1 per coin up to 200, then a tenth of the extra, so big bets cannot farm levels. */
+    static long xpForBet(long bet) { return bet <= 200 ? bet : 200 + (bet - 200) / 10; }
+    private static String betLabel(long b) { return b >= 1000 ? (b % 1000 == 0 ? (b / 1000) + "K" : (b / 100) / 10f + "K") : String.valueOf(b); }
+
+    int betIdx() { return betIdx; }
+    void betStep(int dir) {
+        int n = betCount(level);
+        betIdx = ((betIdx + dir) % n + n) % n; persist(); invalidate();
+    }
 
     private final SlotArt art = new SlotArt();
     private final Random rng = new Random();
@@ -129,10 +142,11 @@ public class SlotsView extends View {
             String[] a = s.split(";");
             balance = Long.parseLong(a[0]);
             spinsDone = Long.parseLong(a[1]);
-            betIdx = Math.min(BETS.length - 1, Math.max(0, Integer.parseInt(a[2])));
+            betIdx = Math.min(BETS.length - 1, Math.max(0, Integer.parseInt(a[2]))); // clamped to the unlocked ladder after the level is read
             if (a.length > 3) lastRegenAt = Long.parseLong(a[3]);
             if (a.length > 4) xp = Long.parseLong(a[4]);
             if (a.length > 5) level = Math.max(1, Integer.parseInt(a[5]));
+            betIdx = Math.min(betIdx, betCount(level) - 1);
             if (a.length > 6) {
                 int t = Integer.parseInt(a[6]);
                 themeIdx = (t >= 0 && t < SlotArt.THEMES.length && level >= SlotArt.THEMES[t].unlockLevel) ? t : 0;
@@ -144,11 +158,29 @@ public class SlotsView extends View {
 
     private void persist() { if (listener != null) listener.saveState(); }
 
-    private int pickSymbol() {
+    private int pickSymbol() { return pickSymbol(rng); }
+    /** Weighted symbol draw; the single source of truth for reels, also used by the payout tests. */
+    static int pickSymbol(Random rng) {
         int total = 0; for (int w : WEIGHT) total += w;
         int r = rng.nextInt(total);
         for (int i = 0; i < WEIGHT.length; i++) { r -= WEIGHT[i]; if (r < 0) return i; }
         return 0;
+    }
+    /** Pays all 5 lines, left to right, 3+ in a row. Marks winning cells when mark != null. Same code the game runs after every spin. */
+    static long evaluate(int[][] g, long bet, boolean[][] mark) {
+        long win = 0;
+        for (int[] line : LINES) {
+            int s = g[line[0]][0];
+            int run = 1;
+            for (int c = 1; c < 5; c++) { if (g[line[c]][c] == s) run++; else break; }
+            long pay = 0;
+            if (run >= 5) pay = PAY5[s]; else if (run == 4) pay = PAY4[s]; else if (run == 3) pay = PAY3[s];
+            if (pay > 0) {
+                win += pay * bet / 10;
+                if (mark != null) for (int c = 0; c < run; c++) mark[line[c]][c] = true;
+            }
+        }
+        return win;
     }
 
     private void randomizeAll() {
@@ -176,7 +208,7 @@ public class SlotsView extends View {
         long bet = BETS[betIdx];
         if (balance < bet) { if (listener != null) listener.onOutOfCoins(); return; }
         balance -= bet;
-        xp += bet;
+        xp += xpForBet(bet);
         lastWin = 0;
         spinning = true;
         long now = System.currentTimeMillis();
@@ -192,18 +224,7 @@ public class SlotsView extends View {
         spinning = false;
         spinsDone++;
         long bet = BETS[betIdx];
-        long win = 0;
-        for (int[] line : LINES) {
-            int s = grid[line[0]][0];
-            int run = 1;
-            for (int c = 1; c < 5; c++) { if (grid[line[c]][c] == s) run++; else break; }
-            long pay = 0;
-            if (run >= 5) pay = PAY5[s]; else if (run == 4) pay = PAY4[s]; else if (run == 3) pay = PAY3[s];
-            if (pay > 0) {
-                win += pay * bet / 10;
-                for (int c = 0; c < run; c++) winCell[line[c]][c] = true;
-            }
-        }
+        long win = evaluate(grid, bet, winCell);
         if (win > 0) {
             balance += win; lastWin = win;
             fx(win >= 25 * bet ? SoundFx.Effect.BIG_WIN : SoundFx.Effect.WIN);
@@ -390,7 +411,7 @@ public class SlotsView extends View {
         p.setColor(th.betBg); cv.drawRoundRect(rf, 14, 14, p);
         p.setColor(th.title); p.setStyle(Paint.Style.STROKE); p.setStrokeWidth(3); cv.drawRoundRect(rf, 14, 14, p); p.setStyle(Paint.Style.FILL);
         p.setColor(0xFFFFFFFF);
-        cv.drawText("BET  " + BETS[betIdx], w * 0.21f, ctrlY + btnH * 0.65f, p);
+        cv.drawText("BET  " + betLabel(BETS[betIdx]), w * 0.21f, ctrlY + btnH * 0.65f, p);
 
         // spin button
         rf.set(w * 0.44f, ctrlY, w * 0.94f, ctrlY + btnH);
@@ -483,7 +504,7 @@ public class SlotsView extends View {
         float x = e.getX(), y = e.getY();
         if (y >= ctrlY && y <= ctrlY + btnH) {
             if (x >= w * 0.06f && x <= w * 0.36f) {
-                if (!spinning) { betIdx = (betIdx + 1) % BETS.length; persist(); invalidate(); }
+                if (!spinning) betStep(1);
             } else if (x >= w * 0.44f && x <= w * 0.94f) {
                 spin();
             }
