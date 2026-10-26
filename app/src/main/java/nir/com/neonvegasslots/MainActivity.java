@@ -71,6 +71,17 @@ public class MainActivity extends Activity implements SlotsView.Listener, Billin
                 // ScrollView measures its child UNSPECIFIED and ignores LayoutParams.height; minimum height is what it honours.
                 if (game.getMinimumHeight() != want) { game.setMinimumHeight(want); game.requestLayout(); }
             }
+            private boolean placed = false;
+            @Override protected void onLayout(boolean changed, int l, int t, int r, int b) {
+                super.onLayout(changed, l, t, r, b);
+                int vh = getHeight(), gh = game.getHeight();
+                if (!placed && vh > 0 && gh > vh) { // short screen: open with the reels AND the BET/SPIN row in view
+                    placed = true;
+                    float w = getWidth();
+                    int ctrlBottom = (int) (gh * 0.22f + 3 * (w / 5f - 8) + 16 + 24 + gh * 0.07f + 12);
+                    scrollTo(0, Math.max(0, Math.min(gh - vh, ctrlBottom - vh)));
+                }
+            }
         };
         gameScroll.setFillViewport(true);
         gameScroll.setVerticalScrollBarEnabled(false);
