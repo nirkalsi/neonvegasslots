@@ -35,6 +35,7 @@ public class RenderSmokeTest {
     }
 
     private MainActivity activity() {
+        Splash.enabled = false; Splash.pulse = false;
         return Robolectric.buildActivity(MainActivity.class).create().start().resume().visible().get();
     }
 
