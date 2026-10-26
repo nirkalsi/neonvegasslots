@@ -361,6 +361,13 @@ public class RenderSmokeTest {
         float gwB = g.getWidth(), ghB = g.getHeight();
         float trailTopB = ghB * 0.22f + (gwB / 5f - 8) * 3 + 16 + 24 + ghB * 0.07f + gwB * 0.055f, trailBottomB = ghB - gwB * 0.10f;
         java.nio.file.Files.write(java.nio.file.Paths.get("/tmp/dbg-short.txt"), ("game=" + ghB + " vp=" + sc.getHeight() + " scrollY=" + sc.getScrollY() + " trailTop=" + trailTopB + " trailBottom=" + trailBottomB + " trailH=" + (trailBottomB - trailTopB) + " w=" + gwB).getBytes());
+        { // the game view itself at its full laid-out height, cropped to the viewport window the user sees at max scroll
+            android.graphics.Bitmap full = android.graphics.Bitmap.createBitmap(g.getWidth(), g.getHeight(), android.graphics.Bitmap.Config.ARGB_8888);
+            g.draw(new android.graphics.Canvas(full));
+            android.graphics.Bitmap win = android.graphics.Bitmap.createBitmap(full, 0, sc.getScrollY(), g.getWidth(), sc.getHeight());
+            java.io.FileOutputStream f2 = new java.io.FileOutputStream("/tmp/renders/neonvegasslots-short-maxscroll-window-720x645.png");
+            win.compress(android.graphics.Bitmap.CompressFormat.PNG, 100, f2); f2.close();
+        }
         android.graphics.Bitmap bb = android.graphics.Bitmap.createBitmap(w, h, android.graphics.Bitmap.Config.ARGB_8888);
         root.draw(new android.graphics.Canvas(bb)); // draw without re-measuring so the scroll position is what the user sees
         java.io.FileOutputStream fo = new java.io.FileOutputStream("/tmp/renders/neonvegasslots-short-bottom-banner-720x1040.png");
