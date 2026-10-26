@@ -340,6 +340,9 @@ public class RenderSmokeTest {
         sc.dispatchTouchEvent(evT(t, t, MotionEvent.ACTION_DOWN, gw * 0.69f, cyNow.get()));
         sc.dispatchTouchEvent(evT(t, t + 40, MotionEvent.ACTION_UP, gw * 0.69f, cyNow.get()));
         assertFalse("tap stops auto", g.isAuto());
+        pass(root, w, h); pass(root, w, h); pass(root, w, h); // idling the looper re-laid the tree out at the device size; restore the 720x1040 viewport
+        sc.scrollTo(0, 0);
+        assertTrue("short viewport restored: game=" + g.getHeight() + " vp=" + sc.getHeight(), g.getHeight() > sc.getHeight());
         int before = sc.getScrollY(); t = 8000; float x = gw * 0.5f, y0 = sc.getHeight() * 0.3f;
         sc.dispatchTouchEvent(evT(t, t, MotionEvent.ACTION_DOWN, x, y0));
         for (int i = 1; i <= 10; i++) sc.dispatchTouchEvent(evT(t, t + i * 16, MotionEvent.ACTION_MOVE, x, y0 - i * 30));
@@ -347,8 +350,21 @@ public class RenderSmokeTest {
         assertTrue("finger drag must scroll the container: before=" + before + " after=" + sc.getScrollY(), sc.getScrollY() != before);
         assertFalse("a scroll drag must not leave auto on", g.isAuto());
         renderView(root, w, h, "/tmp/renders/neonvegasslots-short-afterdrag-banner-720x1040.png");
+        pass(root, w, h);
+        g.stopAuto();
         sc.scrollTo(0, 100000);
-        renderView(root, w, h, "/tmp/renders/neonvegasslots-short-bottom-banner-720x1040.png");
+        assertEquals("scrolled to the bottom: game=" + g.getHeight() + " vp=" + sc.getHeight(), g.getHeight() - sc.getHeight(), sc.getScrollY());
+        root.draw(new android.graphics.Canvas(android.graphics.Bitmap.createBitmap(w, h, android.graphics.Bitmap.Config.ARGB_8888)));
+        org.robolectric.shadows.ShadowLooper.idleMainLooper(4000, java.util.concurrent.TimeUnit.MILLISECONDS);
+        pass(root, w, h);
+        sc.scrollTo(0, 100000);
+        float gwB = g.getWidth(), ghB = g.getHeight();
+        float trailTopB = ghB * 0.22f + (gwB / 5f - 8) * 3 + 16 + 24 + ghB * 0.07f + gwB * 0.055f, trailBottomB = ghB - gwB * 0.10f;
+        java.nio.file.Files.write(java.nio.file.Paths.get("/tmp/dbg-short.txt"), ("game=" + ghB + " vp=" + sc.getHeight() + " scrollY=" + sc.getScrollY() + " trailTop=" + trailTopB + " trailBottom=" + trailBottomB + " trailH=" + (trailBottomB - trailTopB) + " w=" + gwB).getBytes());
+        android.graphics.Bitmap bb = android.graphics.Bitmap.createBitmap(w, h, android.graphics.Bitmap.Config.ARGB_8888);
+        root.draw(new android.graphics.Canvas(bb)); // draw without re-measuring so the scroll position is what the user sees
+        java.io.FileOutputStream fo = new java.io.FileOutputStream("/tmp/renders/neonvegasslots-short-bottom-banner-720x1040.png");
+        bb.compress(android.graphics.Bitmap.CompressFormat.PNG, 100, fo); fo.close();
     }
 
     @GraphicsMode(GraphicsMode.Mode.NATIVE)
