@@ -46,6 +46,7 @@ public class SlotsView extends View {
     private final Random rng = new Random();
     private final Paint p = new Paint(Paint.ANTI_ALIAS_FLAG);
     private final RectF rf = new RectF();
+    private final RectF qr = new RectF();
     private Listener listener;
 
     private int[][] grid = new int[3][5];      // [row][col] symbol index
@@ -198,6 +199,71 @@ public class SlotsView extends View {
     }
 
 
+    private static int lighten(int c, float f) {
+        int r = (c >> 16) & 255, g = (c >> 8) & 255, b = c & 255;
+        return 0xFF000000 | ((int) (r + (255 - r) * f) << 16) | ((int) (g + (255 - g) * f) << 8) | (int) (b + (255 - b) * f);
+    }
+    private static int darken(int c, float f) {
+        int r = (c >> 16) & 255, g = (c >> 8) & 255, b = c & 255;
+        return 0xFF000000 | ((int) (r * (1 - f)) << 16) | ((int) (g * (1 - f)) << 8) | (int) (b * (1 - f));
+    }
+    /** Glossy rounded button: soft drop shadow, vertical gradient, top gloss, rim, optional glow ring. */
+    private void modernButton(Canvas cv, RectF r, int top, int bottom, int rim, float glow) {
+        float rad = r.height() * 0.32f;
+        Paint q = new Paint(Paint.ANTI_ALIAS_FLAG);
+        RectF sh = new RectF(r.left + 2, r.top + 7, r.right - 2, r.bottom + 7);
+        q.setColor(0x66000000); cv.drawRoundRect(sh, rad, rad, q);
+        if (glow > 0f) {
+            q.setStyle(Paint.Style.STROKE); q.setStrokeWidth(8 + 6 * glow);
+            q.setColor((rim & 0x00FFFFFF) | ((int) (60 + 90 * glow) << 24));
+            cv.drawRoundRect(r, rad, rad, q);
+            q.setStyle(Paint.Style.FILL);
+        }
+        q.setColor(0xFF000000); // shader must not inherit the 0x66 shadow alpha
+        q.setShader(new LinearGradient(0, r.top, 0, r.bottom, top, bottom, Shader.TileMode.CLAMP));
+        cv.drawRoundRect(r, rad, rad, q);
+        q.setShader(null);
+        RectF g = new RectF(r.left + r.height() * 0.1f, r.top + 3, r.right - r.height() * 0.1f, r.top + r.height() * 0.52f);
+        q.setShader(new LinearGradient(0, g.top, 0, g.bottom, 0x66FFFFFF, 0x00FFFFFF, Shader.TileMode.CLAMP));
+        cv.drawRoundRect(g, rad * 0.8f, rad * 0.8f, q);
+        q.setShader(null);
+        q.setStyle(Paint.Style.STROKE); q.setStrokeWidth(2.5f); q.setColor(rim);
+        cv.drawRoundRect(r, rad, rad, q);
+        q.setStrokeWidth(1.5f); q.setColor(0x55FFFFFF);
+        RectF in = new RectF(r.left + 4, r.top + 4, r.right - 4, r.bottom - 4);
+        cv.drawRoundRect(in, rad * 0.85f, rad * 0.85f, q);
+    }
+    private void coinIcon(Canvas cv, float cx, float cy, float rr, SlotArt.Theme th) {
+        Paint q = new Paint(Paint.ANTI_ALIAS_FLAG);
+        q.setShader(new LinearGradient(cx, cy - rr, cx, cy + rr, 0xFFFFE680, 0xFFE0A100, Shader.TileMode.CLAMP));
+        cv.drawCircle(cx, cy, rr, q); q.setShader(null);
+        q.setStyle(Paint.Style.STROKE); q.setStrokeWidth(rr * 0.18f); q.setColor(0xFF9C6A00);
+        cv.drawCircle(cx, cy, rr * 0.62f, q);
+        cv.drawCircle(cx, cy, rr, q);
+    }
+    /** Circular arrows (repeat) for AUTO. */
+    private void loopIcon(Canvas cv, float cx, float cy, float rr, int color) {
+        Paint q = new Paint(Paint.ANTI_ALIAS_FLAG);
+        q.setStyle(Paint.Style.STROKE); q.setStrokeWidth(rr * 0.3f); q.setColor(color); q.setStrokeCap(Paint.Cap.ROUND);
+        RectF o = new RectF(cx - rr, cy - rr, cx + rr, cy + rr);
+        cv.drawArc(o, 200, 250, false, q);
+        q.setStyle(Paint.Style.FILL);
+        Path t = new Path();
+        float ax = cx + rr * (float) Math.cos(Math.toRadians(90)), ay = cy + rr * (float) Math.sin(Math.toRadians(90));
+        t.moveTo(ax - rr * 0.75f, ay - rr * 0.1f); t.lineTo(ax - rr * 0.1f, ay - rr * 0.8f); t.lineTo(ax - rr * 0.1f, ay + rr * 0.7f); t.close();
+        cv.drawPath(t, q);
+    }
+    /** Play triangle inside a ring for SPIN. */
+    private void spinIcon(Canvas cv, float cx, float cy, float rr) {
+        Paint q = new Paint(Paint.ANTI_ALIAS_FLAG);
+        q.setStyle(Paint.Style.STROKE); q.setStrokeWidth(rr * 0.22f); q.setColor(0xE6FFFFFF);
+        cv.drawCircle(cx, cy, rr, q);
+        q.setStyle(Paint.Style.FILL);
+        Path t = new Path();
+        t.moveTo(cx - rr * 0.28f, cy - rr * 0.5f); t.lineTo(cx + rr * 0.55f, cy); t.lineTo(cx - rr * 0.28f, cy + rr * 0.5f); t.close();
+        cv.drawPath(t, q);
+    }
+
     private void persist() { if (listener != null) listener.saveState(); }
 
     private int pickSymbol() { return pickSymbol(rng); }
@@ -239,10 +305,33 @@ public class SlotsView extends View {
         }
     }
 
+    private boolean autoSpin = false;          // session-only, never persisted
+    private int autoCount = 0;
+    private final Runnable autoRunner = new Runnable() { @Override public void run() { autoStep(); } };
     private SoundFx sfx;
     private final boolean[] stopSounded = new boolean[5];
     public void setSoundFx(SoundFx s) { sfx = s; }
     private void fx(SoundFx.Effect e) { if (sfx != null) sfx.play(e); }
+
+    /** Turn auto-spin off (player tap, low coins, big win, level-up, dialog or leaving the screen). */
+    public void stopAuto() {
+        removeCallbacks(autoRunner);
+        if (autoSpin) { autoSpin = false; invalidate(); }
+    }
+    public boolean isAuto() { return autoSpin; }
+    private void startAuto() {
+        if (balance < BETS[betIdx]) { if (listener != null) listener.onOutOfCoins(); return; }
+        autoSpin = true; autoCount = 0;
+        if (!spinning) autoStep(); else invalidate();
+    }
+    private void autoStep() {
+        if (!autoSpin || spinning) return;
+        if (balance < BETS[betIdx]) { stopAuto(); return; }
+        autoCount++;
+        spin();
+    }
+    @Override protected void onDetachedFromWindow() { lpHandler.removeCallbacks(longPressAuto); stopAuto(); super.onDetachedFromWindow(); }
+    @Override protected void onWindowVisibilityChanged(int v) { if (v != VISIBLE) stopAuto(); super.onWindowVisibilityChanged(v); }
 
     private void spin() {
         if (spinning) return;
@@ -290,6 +379,12 @@ public class SlotsView extends View {
         }
         maybeTrophy();
         persist();
+        boolean leveled = newUnlocks > oldUnlocks || levelFlashUntil > System.currentTimeMillis();
+        boolean trophy = trophyFlashUntil > System.currentTimeMillis();
+        if (autoSpin) {
+            if (win >= 25 * bet || leveled || trophy || balance < BETS[betIdx]) autoSpin = false;
+            else postDelayed(autoRunner, win > 0 ? 1900 : 700);
+        }
         if (listener != null) {
             if (win >= 25 * bet) listener.onBigWin(win, bet);
             listener.onSpinComplete((int) spinsDone, win, bet);
@@ -445,26 +540,60 @@ public class SlotsView extends View {
         if (now < bigWinUntil) bigWinOverlay(cv, w, th, now);
         if (now < levelFlashUntil) levelBurst(cv, w, gridTop, th, now);
 
-        // bet selector
+        // bet selector + SPIN (ported from DG)
         float ctrlY = gridTop + gridH + 24;
         float btnH = getHeight() * 0.07f;
-        p.setTextSize(w * 0.045f);
-        rf.set(w * 0.06f, ctrlY, w * 0.36f, ctrlY + btnH);
-        p.setColor(th.betBg); cv.drawRoundRect(rf, 14, 14, p);
-        p.setColor(th.title); p.setStyle(Paint.Style.STROKE); p.setStrokeWidth(3); cv.drawRoundRect(rf, 14, 14, p); p.setStyle(Paint.Style.FILL);
-        p.setColor(0xFFFFFFFF);
-        cv.drawText("BET  " + betLabel(BETS[betIdx]), w * 0.21f, ctrlY + btnH * 0.65f, p);
-
-        // spin button
-        rf.set(w * 0.44f, ctrlY, w * 0.94f, ctrlY + btnH);
         boolean canSpin = !spinning && balance >= BETS[betIdx];
-        p.setColor(spinning ? 0xFF555555 : (canSpin ? th.spinBg : th.spinOff));
-        cv.drawRoundRect(rf, 14, 14, p);
+        float pulse = canSpin && !autoSpin ? (float) (0.5 + 0.5 * Math.sin(now / 520.0)) : 0f;
+        // BET: minus / amount / plus (icons and numbers only)
+        rf.set(w * 0.03f, ctrlY, w * 0.40f, ctrlY + btnH);
+        modernButton(cv, rf, lighten(th.betBg, 0.28f), darken(th.betBg, 0.25f), th.title, 0f);
+        float bcy = rf.centerY(), bu = btnH * 0.2f;
+        coinIcon(cv, rf.centerX() - btnH * 0.62f, bcy, bu, th);
+        p.setFakeBoldText(true); p.setTextAlign(Paint.Align.CENTER); p.setColor(0xFFFFFFFF);
+        String bl = betLabel(BETS[betIdx]);
+        p.setTextSize(w * (bl.length() > 3 ? 0.044f : 0.054f));
+        cv.drawText(bl, rf.centerX() + btnH * 0.1f, bcy + btnH * 0.17f, p);
+        p.setStyle(Paint.Style.STROKE); p.setStrokeCap(Paint.Cap.ROUND); p.setStrokeWidth(btnH * 0.09f); p.setColor(0xFFFFFFFF);
+        float mx = rf.left + btnH * 0.34f, px = rf.right - btnH * 0.34f;
+        cv.drawLine(mx - bu * 0.7f, bcy, mx + bu * 0.7f, bcy, p);                    // minus
+        cv.drawLine(px - bu * 0.7f, bcy, px + bu * 0.7f, bcy, p);                    // plus
+        cv.drawLine(px, bcy - bu * 0.7f, px, bcy + bu * 0.7f, p);
+        p.setStrokeCap(Paint.Cap.BUTT); p.setStyle(Paint.Style.FILL);
+        if (betIdx + 1 < BETS.length && betIdx + 1 >= betCount(level)) { // next step is locked: gold pill on the BET button edge, padlock + "LV n"
+            float ph = w * 0.052f, pw = w * 0.17f, pcx = rf.right - pw * 0.55f, pcy = rf.top;
+            qr.set(pcx - pw / 2, pcy - ph / 2, pcx + pw / 2, pcy + ph / 2);
+            p.setColor(0xFFFFD166); cv.drawRoundRect(qr, ph / 2, ph / 2, p);
+            float lx = qr.left + ph * 0.62f, ly = pcy + ph * 0.02f, ls = ph * 0.2f;
+            p.setColor(0xFF3D2A00); cv.drawRoundRect(lx - ls * 1.1f, ly - ls * 0.2f, lx + ls * 1.1f, ly + ls * 1.5f, 2, 2, p);
+            p.setStyle(Paint.Style.STROKE); p.setStrokeWidth(ls * 0.45f); cv.drawArc(lx - ls * 0.7f, ly - ls * 1.5f, lx + ls * 0.7f, ly + ls * 0.3f, 180, 180, false, p); p.setStyle(Paint.Style.FILL);
+            p.setTextAlign(Paint.Align.LEFT); p.setFakeBoldText(true); p.setTextSize(ph * 0.58f);
+            cv.drawText("LV " + BET_UNLOCK[betIdx + 1], lx + ls * 1.9f, pcy + ph * 0.2f, p);
+        }
+        // SPIN: the hero button
+        rf.set(w * 0.43f, ctrlY, w * 0.97f, ctrlY + btnH);
+        int sTop = autoSpin ? 0xFFFF6B63 : spinning ? 0xFF8A8A8A : (canSpin ? 0xFF86F26A : lighten(th.spinOff, 0.12f));
+        int sBot = autoSpin ? 0xFFB71C1C : spinning ? 0xFF4A4A4A : (canSpin ? 0xFF13A53C : darken(th.spinOff, 0.2f));
+        modernButton(cv, rf, sTop, sBot, canSpin ? 0xFFFFE9A8 : 0x66FFFFFF, pulse);
         p.setColor(0xFFFFFFFF);
-        p.setTextSize(w * 0.06f);
+        p.setShadowLayer(5, 0, 3, 0x99000000);
         p.setFakeBoldText(true);
-        cv.drawText(spinning ? "..." : "SPIN", w * 0.69f, ctrlY + btnH * 0.66f, p);
-        p.setFakeBoldText(false);
+        float scx = rf.centerX(), scy = rf.centerY(), sr = btnH * 0.3f;
+        if (autoSpin) { // stop square + run count
+            cv.drawRoundRect(scx - sr * 0.8f - btnH * 0.3f, scy - sr * 0.8f, scx + sr * 0.8f - btnH * 0.3f, scy + sr * 0.8f, 6, 6, p);
+            p.setTextSize(w * 0.06f); p.setTextAlign(Paint.Align.LEFT);
+            cv.drawText(String.valueOf(autoCount), scx + btnH * 0.05f, scy + btnH * 0.2f, p);
+        } else if (spinning) {
+            float ang = (now % 900) / 900f * 360f;
+            p.setStyle(Paint.Style.STROKE); p.setStrokeWidth(sr * 0.3f); p.setStrokeCap(Paint.Cap.ROUND);
+            cv.drawArc(scx - sr, scy - sr, scx + sr, scy + sr, ang, 250, false, p);
+            p.setStrokeCap(Paint.Cap.BUTT); p.setStyle(Paint.Style.FILL);
+        } else {
+            spinIcon(cv, scx - btnH * 0.28f, scy, btnH * 0.30f);
+            loopIcon(cv, scx + btnH * 0.62f, scy, btnH * 0.16f, 0xCCFFFFFF); // hold = auto
+        }
+        p.clearShadowLayer();
+        p.setFakeBoldText(false); p.setTextAlign(Paint.Align.CENTER); p.setTextSize(w * 0.045f);
 
         String ju;
         if (now < trophyFlashUntil) ju = "TROPHY:" + trophyNewName;
@@ -537,8 +666,18 @@ public class SlotsView extends View {
         p.setFakeBoldText(false);
     }
 
+    private final android.os.Handler lpHandler = new android.os.Handler(android.os.Looper.getMainLooper());
+    private boolean spinHeld = false;       // finger is down on SPIN
+    private final Runnable longPressAuto = new Runnable() { @Override public void run() {
+        if (spinHeld && !autoSpin && balance >= BETS[betIdx]) { // silent: no out-of-coins dialog from a long press
+            autoSpin = true; autoCount = 0; performHapticFeedback(android.view.HapticFeedbackConstants.LONG_PRESS);
+            if (!spinning) autoStep(); else invalidate();
+        } } };
+
     @Override public boolean onTouchEvent(MotionEvent e) {
-        if (e.getAction() != MotionEvent.ACTION_DOWN) return true;
+        int act = e.getActionMasked();
+        if (act == MotionEvent.ACTION_UP || act == MotionEvent.ACTION_CANCEL) { spinHeld = false; lpHandler.removeCallbacks(longPressAuto); return true; }
+        if (act != MotionEvent.ACTION_DOWN) return true;
         float w = getWidth();
         float gridTop = gridTop();
         float ctrlY = gridTop + (w / 5f - 8) * 3 + 16 + 24;
@@ -546,10 +685,12 @@ public class SlotsView extends View {
         float x = e.getX(), y = e.getY();
         if (chipPlus.contains(x, y)) { if (listener != null) listener.onOpenShop(); return true; }
         if (y >= ctrlY && y <= ctrlY + btnH) {
-            if (x >= w * 0.06f && x <= w * 0.36f) {
-                if (!spinning) betStep(1);
-            } else if (x >= w * 0.44f && x <= w * 0.94f) {
-                spin();
+            if (x >= w * 0.03f && x <= w * 0.40f) {
+                if (!spinning && !autoSpin) betStep(x < w * 0.03f + w * 0.37f * 0.33f ? -1 : 1);
+            } else if (x > w * 0.40f && x <= w * 0.97f) {
+                // tap: one spin; hold ~0.5 s: the spin continues as auto; any tap while auto stops it
+                if (autoSpin) stopAuto();
+                else { spin(); spinHeld = true; lpHandler.postDelayed(longPressAuto, 550); }
             }
             return true;
         }
