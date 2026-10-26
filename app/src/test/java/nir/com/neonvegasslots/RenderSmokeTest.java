@@ -256,6 +256,21 @@ public class RenderSmokeTest {
     }
 
     @GraphicsMode(GraphicsMode.Mode.NATIVE)
+    @Test public void renderFullScreenShort720x1040() throws Exception {
+        MainActivity a = activity();
+        renderView(a.findViewById(android.R.id.content), 720, 1040, "/tmp/renders/neonvegasslots-full-720x1040.png");
+    }
+
+    @GraphicsMode(GraphicsMode.Mode.NATIVE)
+    @Test public void renderFullScreenLargeFont720() throws Exception {
+        RuntimeEnvironment.getApplication().getResources().getConfiguration().fontScale = 1.35f;
+        try {
+            MainActivity a = activity();
+            renderView(a.findViewById(android.R.id.content), 720, 1480, "/tmp/renders/neonvegasslots-full-720x1480-font135.png");
+        } finally { RuntimeEnvironment.getApplication().getResources().getConfiguration().fontScale = 1.0f; }
+    }
+
+    @GraphicsMode(GraphicsMode.Mode.NATIVE)
     @Test public void renderTrailTrophies720() throws Exception {
         SlotsView v = new SlotsView(RuntimeEnvironment.getApplication());
         v.restore("5000;0;1;0;0;12;0;15;20261024"); // 4 trophies: full DOWNTOWN set (star badge) + 1 SUNSET
