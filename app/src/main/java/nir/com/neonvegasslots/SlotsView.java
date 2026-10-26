@@ -165,6 +165,11 @@ public class SlotsView extends View {
         }
     }
 
+    private SoundFx sfx;
+    private final boolean[] stopSounded = new boolean[5];
+    public void setSoundFx(SoundFx s) { sfx = s; }
+    private void fx(SoundFx.Effect e) { if (sfx != null) sfx.play(e); }
+
     private void spin() {
         if (spinning) return;
         regen();
@@ -175,7 +180,8 @@ public class SlotsView extends View {
         lastWin = 0;
         spinning = true;
         long now = System.currentTimeMillis();
-        for (int c = 0; c < 5; c++) stopAt[c] = now + 600 + c * 380;
+        for (int c = 0; c < 5; c++) { stopAt[c] = now + 600 + c * 380; stopSounded[c] = false; }
+        fx(SoundFx.Effect.SPIN);
         anticipationGiven = false;
         for (int r = 0; r < 3; r++) for (int c = 0; c < 5; c++) winCell[r][c] = false;
         persist();
@@ -200,6 +206,7 @@ public class SlotsView extends View {
         }
         if (win > 0) {
             balance += win; lastWin = win;
+            fx(win >= 25 * bet ? SoundFx.Effect.BIG_WIN : SoundFx.Effect.WIN);
             winStartAt = System.currentTimeMillis();
             if (win >= 25 * bet) { bigWinStartAt = winStartAt; bigWinUntil = winStartAt + 3000; bigWinAmount = win; winFlashUntil = winStartAt + 3000; }
             else winFlashUntil = winStartAt + 1600;
@@ -335,6 +342,7 @@ public class SlotsView extends View {
             }
         }
         if (spinning) {
+            for (int c = 0; c < 5; c++) if (now >= stopAt[c] && !stopSounded[c]) { stopSounded[c] = true; fx(SoundFx.Effect.REEL_STOP); }
             boolean allStopped = true;
             for (int c = 0; c < 5; c++) if (now < stopAt[c]) allStopped = false;
             boolean firstFourStopped = true;

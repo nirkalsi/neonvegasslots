@@ -22,7 +22,7 @@ import java.text.SimpleDateFormat;
 import java.util.*;
 
 public class MainActivity extends Activity implements SlotsView.Listener, BillingManager.Listener {
-    private static final String PREFS = "neonvegasslots", KEY = "state";
+    static final String PREFS = "neonvegasslots", KEY = "state";
     private static final long[] DAILY_BONUS = {200, 300, 400, 500, 700, 900, 1200};
 
     private SlotsView game;
@@ -58,6 +58,9 @@ public class MainActivity extends Activity implements SlotsView.Listener, Billin
 
         String s = sp.getString(KEY, null);
         if (s != null) game.restore(s);
+
+        sfx = new SoundFx(this);
+        game.setSoundFx(sfx);
 
         missions = new MissionsManager(this, null);
 
@@ -225,6 +228,11 @@ public class MainActivity extends Activity implements SlotsView.Listener, Billin
         box.setPadding(pad, pad / 2, pad, 0);
         addSection(box, "Daily missions", missions.dailyMissions());
         addSection(box, "Achievements", missions.achievements(game.getLevel(), game.getSpinsDone()));
+        Button snd = new Button(this);
+        snd.setAllCaps(false); snd.setTextColor(Color.WHITE);
+        snd.setText("Sound effects: " + (SoundFx.isOn(this) ? "ON" : "OFF"));
+        snd.setOnClickListener(v -> { SoundFx.setOn(this, !SoundFx.isOn(this)); snd.setText("Sound effects: " + (SoundFx.isOn(this) ? "ON" : "OFF")); });
+        box.addView(snd);
         dlg().title("Missions").content(box)
             .add(GameDialog.Btn.secondary("Close", null)).show();
     }
@@ -433,5 +441,8 @@ public class MainActivity extends Activity implements SlotsView.Listener, Billin
         }
     }
 
+    private SoundFx sfx;
+    SoundFx sfxForTest() { return sfx; }
+    @Override protected void onDestroy() { super.onDestroy(); if (sfx != null) sfx.release(); }
     @Override protected void onPause() { super.onPause(); saveState(); }
 }
