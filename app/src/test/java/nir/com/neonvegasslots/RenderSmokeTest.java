@@ -286,48 +286,69 @@ public class RenderSmokeTest {
     private static Object rf(Object o, String n) { try { java.lang.reflect.Field f = o.getClass().getDeclaredField(n); f.setAccessible(true); return f.get(o); } catch (Exception e) { return e.toString(); } }
     private static MotionEvent ev(int act, float x, float y) { return MotionEvent.obtain(0, 0, act, x, y, 0); }
 
+    private static void pass(View root, int w, int h) {
+        root.measure(View.MeasureSpec.makeMeasureSpec(w, View.MeasureSpec.EXACTLY), View.MeasureSpec.makeMeasureSpec(h, View.MeasureSpec.EXACTLY));
+        root.layout(0, 0, w, h);
+    }
+    private static MotionEvent evT(long down, long t, int act, float x, float y) { return MotionEvent.obtain(down, t, act, x, y, 0); }
+
     @GraphicsMode(GraphicsMode.Mode.NATIVE)
-    @Test public void shortScreenScrollsToTrailAndControlsStayTappable() throws Exception {
+    @Test public void shortScreenScrollContainerKeepsPlayControlsUsable() throws Exception {
         MainActivity a = activity();
         View root = a.findViewById(android.R.id.content);
         int w = 720, h = 1040;
-        root.measure(View.MeasureSpec.makeMeasureSpec(w, View.MeasureSpec.EXACTLY), View.MeasureSpec.makeMeasureSpec(h, View.MeasureSpec.EXACTLY));
-        root.layout(0, 0, w, h);
-        root.measure(View.MeasureSpec.makeMeasureSpec(w, View.MeasureSpec.EXACTLY), View.MeasureSpec.makeMeasureSpec(h, View.MeasureSpec.EXACTLY));
-        root.layout(0, 0, w, h); // second pass, as the real layout pass does after the game's LayoutParams change
+        pass(root, w, h);
         android.widget.ScrollView sc = findScroll(root); SlotsView g = findGame(root);
         assertNotNull(sc); assertNotNull(g);
-        assertTrue("game must be taller than the viewport on a short screen: game=" + g.getHeight() + " viewport=" + sc.getHeight(), g.getHeight() > sc.getHeight());
-        // top of scroll
-        renderView(root, w, h, "/tmp/renders/neonvegasslots-short-top-720x1040.png");
-        int max = g.getHeight() - sc.getHeight();
-        sc.scrollTo(0, max);
-        renderView(root, w, h, "/tmp/renders/neonvegasslots-short-bottom-720x1040.png");
-        assertEquals("trail must be reachable by scrolling", max, sc.getScrollY());
-        // touches in the game's own coordinates (controls)
-        float gw = g.getWidth(); float gridTop = g.getHeight() * 0.22f;
-        float ctrlY = gridTop + (gw / 5f - 8) * 3 + 16 + 24 + g.getHeight() * 0.035f;
-        String s0 = g.serialize(); long bal0 = g.getBalance();
-        g.onTouchEvent(ev(MotionEvent.ACTION_DOWN, gw * 0.03f + gw * 0.37f * 0.85f, ctrlY)); // BET +
-        g.onTouchEvent(ev(MotionEvent.ACTION_UP, gw * 0.35f, ctrlY));
-        assertEquals("BET+ must raise bet index", Integer.parseInt(s0.split(";")[2]) + 1, Integer.parseInt(g.serialize().split(";")[2]));
-        g.onTouchEvent(ev(MotionEvent.ACTION_DOWN, gw * 0.03f + gw * 0.37f * 0.10f, ctrlY)); // BET -
-        g.onTouchEvent(ev(MotionEvent.ACTION_UP, gw * 0.05f, ctrlY));
-        assertEquals("BET- must restore bet index", s0.split(";")[2], g.serialize().split(";")[2]);
-        g.onTouchEvent(ev(MotionEvent.ACTION_DOWN, gw * 0.69f, ctrlY)); // SPIN tap
-        g.onTouchEvent(ev(MotionEvent.ACTION_UP, gw * 0.69f, ctrlY));
-        assertTrue("SPIN must charge the bet", g.getBalance() < bal0);
-        assertFalse("a short tap must not start auto", g.isAuto());
-        // long press -> auto
+        android.view.ViewGroup par = (android.view.ViewGroup) sc.getParent();
+        android.view.ViewGroup box = (android.view.ViewGroup) par.getChildAt(par.indexOfChild(sc) + 1);
+        View ph = new View(a); ph.setBackgroundColor(0xFF7A7A7A); // realistic 50dp banner (131px at 2.625x)
+        box.addView(ph, new android.widget.LinearLayout.LayoutParams(-1, 131));
+        pass(root, w, h); pass(root, w, h); pass(root, w, h);
+        assertTrue("banner placeholder must sit below the scroll area", box.getTop() >= sc.getBottom());
+        assertTrue("game must be taller than the viewport: game=" + g.getHeight() + " viewport=" + sc.getHeight(), g.getHeight() > sc.getHeight());
+        float gw = g.getWidth(), gh = g.getHeight();
+        float gridTop = gh * 0.22f, cell = gw / 5f - 8;
+        float ctrlY = gridTop + cell * 3 + 16 + 24, btnH = gh * 0.07f;
+        int sy = sc.getScrollY();
+        assertTrue("controls bottom visible on first view: ctrlBottom=" + (ctrlY + btnH) + " scrollY=" + sy + " vp=" + sc.getHeight(), ctrlY + btnH - sy <= sc.getHeight());
+        assertTrue("controls top visible", ctrlY - sy >= 0);
+        assertTrue("reel grid visible on first view", gridTop + cell * 3 - sy > 0 && gridTop - sy > -cell);
+        renderView(root, w, h, "/tmp/renders/neonvegasslots-short-initial-banner-720x1040.png");
+        float cy = ctrlY + btnH * 0.5f - sc.getScrollY();
+        String s0 = g.serialize(); long bal0 = g.getBalance(); long t = 100;
+        sc.dispatchTouchEvent(evT(t, t, MotionEvent.ACTION_DOWN, gw * 0.03f + gw * 0.37f * 0.85f, cy));
+        sc.dispatchTouchEvent(evT(t, t + 40, MotionEvent.ACTION_UP, gw * 0.35f, cy));
+        assertEquals("BET+ via scroll container", Integer.parseInt(s0.split(";")[2]) + 1, Integer.parseInt(g.serialize().split(";")[2]));
+        t = 300;
+        sc.dispatchTouchEvent(evT(t, t, MotionEvent.ACTION_DOWN, gw * 0.03f + gw * 0.37f * 0.10f, cy));
+        sc.dispatchTouchEvent(evT(t, t + 40, MotionEvent.ACTION_UP, gw * 0.05f, cy));
+        assertEquals("BET- via scroll container", s0.split(";")[2], g.serialize().split(";")[2]);
+        t = 500;
+        sc.dispatchTouchEvent(evT(t, t, MotionEvent.ACTION_DOWN, gw * 0.69f, cy));
+        sc.dispatchTouchEvent(evT(t, t + 40, MotionEvent.ACTION_UP, gw * 0.69f, cy));
+        assertTrue("SPIN via scroll container charges the bet", g.getBalance() < bal0);
+        assertFalse("short tap must not start auto", g.isAuto());
         org.robolectric.shadows.ShadowLooper.idleMainLooper(2500, java.util.concurrent.TimeUnit.MILLISECONDS);
-        java.util.function.Supplier<Float> cy = () -> g.getHeight() * 0.22f + (g.getWidth() / 5f - 8) * 3 + 16 + 24 + g.getHeight() * 0.035f;
-        g.onTouchEvent(ev(MotionEvent.ACTION_DOWN, g.getWidth() * 0.69f, cy.get()));
+        java.util.function.Supplier<Float> cyNow = () -> { float gh2 = g.getHeight(); return gh2 * 0.22f + (g.getWidth() / 5f - 8) * 3 + 16 + 24 + gh2 * 0.035f - sc.getScrollY(); };
+        t = 4000;
+        sc.dispatchTouchEvent(evT(t, t, MotionEvent.ACTION_DOWN, gw * 0.69f, cyNow.get()));
         org.robolectric.shadows.ShadowLooper.idleMainLooper(700, java.util.concurrent.TimeUnit.MILLISECONDS);
-        assertTrue("long press on SPIN must start auto; bal=" + g.getBalance() + " ser=" + g.serialize() + " attached=" + g.isAttachedToWindow() + " vis=" + g.getWindowVisibility() + " held=" + rf(g, "spinHeld") + " spinning=" + rf(g, "spinning") + " auto=" + rf(g, "autoSpin"), g.isAuto());
-        g.onTouchEvent(ev(MotionEvent.ACTION_UP, g.getWidth() * 0.69f, cy.get()));
-        g.onTouchEvent(ev(MotionEvent.ACTION_DOWN, g.getWidth() * 0.69f, cy.get())); // tap stops auto
-        g.onTouchEvent(ev(MotionEvent.ACTION_UP, g.getWidth() * 0.69f, cy.get()));
-        assertFalse("a tap must stop auto", g.isAuto());
+        assertTrue("long press via scroll container starts auto", g.isAuto());
+        sc.dispatchTouchEvent(evT(t, t + 800, MotionEvent.ACTION_UP, gw * 0.69f, cyNow.get()));
+        t = 6000;
+        sc.dispatchTouchEvent(evT(t, t, MotionEvent.ACTION_DOWN, gw * 0.69f, cyNow.get()));
+        sc.dispatchTouchEvent(evT(t, t + 40, MotionEvent.ACTION_UP, gw * 0.69f, cyNow.get()));
+        assertFalse("tap stops auto", g.isAuto());
+        int before = sc.getScrollY(); t = 8000; float x = gw * 0.5f, y0 = sc.getHeight() * 0.3f;
+        sc.dispatchTouchEvent(evT(t, t, MotionEvent.ACTION_DOWN, x, y0));
+        for (int i = 1; i <= 10; i++) sc.dispatchTouchEvent(evT(t, t + i * 16, MotionEvent.ACTION_MOVE, x, y0 - i * 30));
+        sc.dispatchTouchEvent(evT(t, t + 200, MotionEvent.ACTION_UP, x, y0 - 300));
+        assertTrue("finger drag must scroll the container: before=" + before + " after=" + sc.getScrollY(), sc.getScrollY() != before);
+        assertFalse("a scroll drag must not leave auto on", g.isAuto());
+        renderView(root, w, h, "/tmp/renders/neonvegasslots-short-afterdrag-banner-720x1040.png");
+        sc.scrollTo(0, 100000);
+        renderView(root, w, h, "/tmp/renders/neonvegasslots-short-bottom-banner-720x1040.png");
     }
 
     @GraphicsMode(GraphicsMode.Mode.NATIVE)
