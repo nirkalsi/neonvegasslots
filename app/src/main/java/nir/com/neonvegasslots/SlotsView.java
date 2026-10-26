@@ -17,6 +17,7 @@ public class SlotsView extends View {
         void onBigWin(long win, long bet);
         void onLevelUp(int level, long reward);
         void saveState();
+        default void onOpenShop() {}
     }
 
     private static final int[] WEIGHT = {4, 7, 10, 16, 18, 12};
@@ -83,6 +84,7 @@ public class SlotsView extends View {
     public void addCoins(long n) { balance += n; persist(); invalidate(); }
     public long getBalance() { return balance; }
     public int getLevel() { return level; }
+    void debugLevelUp() { levelFlashUntil = System.currentTimeMillis() + 2000; invalidate(); }
     public long getSpinsDone() { return spinsDone; }
     public int getThemeIdx() { return themeIdx; }
     private long xpNeeded() { return level * 500L; }
@@ -155,6 +157,46 @@ public class SlotsView extends View {
             if (a.length > 8) trophyDay = a[8];
         } catch (Exception ignored) {}
     }
+
+    // HUD coin chip: dark pill, gold rim, coin disc, amount, green "+" that opens the shop (original art).
+    private final RectF chipPlus = new RectF();
+    private float chipCx = 0, chipCy = 0;
+    /** Screen position of the coin chip centre (claim coins fly here). */
+    float[] chipCenterOnScreen() {
+        int[] l = new int[2]; getLocationOnScreen(l);
+        float cx = chipCx > 0 ? chipCx : getWidth() / 2f, cy = chipCy > 0 ? chipCy : getHeight() * 0.12f;
+        return new float[]{l[0] + cx, l[1] + cy};
+    }
+    private void drawCoinChip(Canvas cv, float w, float gridTop) {
+        String amt = String.format(java.util.Locale.US, "%,d", balance);
+        p.setTextAlign(Paint.Align.LEFT);
+        p.setFakeBoldText(true);
+        p.setTextSize(w * 0.052f);
+        float tw = p.measureText(amt);
+        float h = w * 0.092f, pad = h * 0.18f, disc = h - pad * 2;
+        float cw = pad + disc + h * 0.28f + tw + h * 0.32f + disc + pad;
+        float cx = w / 2f - cw / 2f, cy = gridTop * 0.66f - h * 0.68f;
+        rf.set(cx, cy, cx + cw, cy + h);
+        p.setStyle(Paint.Style.FILL); p.setColor(0xFF140A2A); cv.drawRoundRect(rf, h / 2, h / 2, p);
+        p.setStyle(Paint.Style.STROKE); p.setStrokeWidth(Math.max(2f, w * 0.005f)); p.setColor(0xFFFFC83A); cv.drawRoundRect(rf, h / 2, h / 2, p);
+        p.setStyle(Paint.Style.FILL);
+        float dcx = cx + pad + disc / 2, dcy = cy + h / 2;
+        chipCx = cx + cw / 2f; chipCy = dcy;
+        p.setColor(0xFFFFC83A); cv.drawCircle(dcx, dcy, disc / 2, p);
+        p.setColor(0xFFE09A12); cv.drawCircle(dcx, dcy, disc * 0.34f, p);
+        p.setColor(0xFFFFE27A); cv.drawCircle(dcx - disc * 0.1f, dcy - disc * 0.1f, disc * 0.12f, p);
+        p.setColor(0xFFFFFFFF);
+        cv.drawText(amt, cx + pad + disc + h * 0.28f, dcy + p.getTextSize() * 0.35f, p);
+        float px = cx + cw - pad - disc / 2;
+        p.setColor(0xFF22C55E); cv.drawCircle(px, dcy, disc / 2, p);
+        p.setColor(0xFFFFFFFF); p.setStrokeWidth(Math.max(3f, disc * 0.13f)); p.setStyle(Paint.Style.STROKE);
+        cv.drawLine(px - disc * 0.22f, dcy, px + disc * 0.22f, dcy, p);
+        cv.drawLine(px, dcy - disc * 0.22f, px, dcy + disc * 0.22f, p);
+        p.setStyle(Paint.Style.FILL); p.setFakeBoldText(false); p.setTextAlign(Paint.Align.CENTER);
+        float pad2 = h * 0.2f; // generous touch target
+        chipPlus.set(cx + cw - h * 1.3f, cy - pad2, cx + cw + pad2, cy + h + pad2);
+    }
+
 
     private void persist() { if (listener != null) listener.saveState(); }
 
@@ -299,7 +341,7 @@ public class SlotsView extends View {
         // balance / win
         p.setTextSize(w * 0.05f);
         p.setColor(0xFFFFFFFF);
-        cv.drawText("COINS  " + balance, w / 2, gridTop * 0.66f, p);
+        drawCoinChip(cv, w, gridTop);
         // level + xp bar
         p.setTextSize(w * 0.034f);
         p.setColor(th.soft);
@@ -502,6 +544,7 @@ public class SlotsView extends View {
         float ctrlY = gridTop + (w / 5f - 8) * 3 + 16 + 24;
         float btnH = getHeight() * 0.07f;
         float x = e.getX(), y = e.getY();
+        if (chipPlus.contains(x, y)) { if (listener != null) listener.onOpenShop(); return true; }
         if (y >= ctrlY && y <= ctrlY + btnH) {
             if (x >= w * 0.06f && x <= w * 0.36f) {
                 if (!spinning) betStep(1);

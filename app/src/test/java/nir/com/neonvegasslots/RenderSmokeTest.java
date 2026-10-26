@@ -397,7 +397,7 @@ public class RenderSmokeTest {
     @Test @Config(sdk = 35) public void rootPadsForSystemBarsWhenEdgeToEdge() {
         MainActivity a = activity();
         View content = a.findViewById(android.R.id.content);
-        View root = ((android.view.ViewGroup) content).getChildAt(0);
+        View root = ((android.view.ViewGroup) ((android.view.ViewGroup) content).getChildAt(0)).getChildAt(0);
         android.view.WindowInsets insets = new android.view.WindowInsets.Builder()
             .setInsets(android.view.WindowInsets.Type.systemBars(), android.graphics.Insets.of(6, 88, 6, 42))
             .build();
@@ -412,7 +412,7 @@ public class RenderSmokeTest {
     public void renderWithSystemBarInsets() throws Exception {
         MainActivity a = activity();
         View content = a.findViewById(android.R.id.content);
-        android.view.ViewGroup root = (android.view.ViewGroup) ((android.view.ViewGroup) content).getChildAt(0);
+        android.view.ViewGroup root = (android.view.ViewGroup) ((android.view.ViewGroup) ((android.view.ViewGroup) content).getChildAt(0)).getChildAt(0);
         android.view.WindowInsets insets = new android.view.WindowInsets.Builder()
             .setInsets(android.view.WindowInsets.Type.systemBars(), android.graphics.Insets.of(0, 88, 0, 132))
             .build();

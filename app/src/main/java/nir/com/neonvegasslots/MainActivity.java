@@ -15,6 +15,7 @@ import android.widget.Button;
 import android.widget.LinearLayout;
 import android.widget.ScrollView;
 import android.widget.TextView;
+import android.widget.TextView;
 import android.widget.Toast;
 import com.google.android.play.core.review.ReviewManager;
 import com.google.android.play.core.review.ReviewManagerFactory;
@@ -31,8 +32,20 @@ public class MainActivity extends Activity implements SlotsView.Listener, Billin
     private MissionsManager missions;
     private SharedPreferences sp;
     private LinearLayout bannerBox;
-    private Button removeAdsBtn;
     private final Handler handler = new Handler();
+
+    /** Debug-only motion demo for emulator video review: never runs in release builds or unit tests. */
+    @Override protected void onResume() {
+        super.onResume();
+        boolean dbg = (getApplicationInfo().flags & android.content.pm.ApplicationInfo.FLAG_DEBUGGABLE) != 0
+                && !String.valueOf(android.os.Build.FINGERPRINT).toLowerCase().contains("robolectric");
+        if (dbg && !demoStarted && game != null) {
+            demoStarted = true;
+            game.postDelayed(() -> { game.debugLevelUp(); }, 7000);
+            game.postDelayed(() -> { float[] t = game.chipCenterOnScreen(); ClaimBurst.play(game, 120, t[0], t[1]); if (missionsTile != null) missionsTile.bounce(); }, 11000);
+        }
+    }
+    private boolean demoStarted = false;
 
     @Override protected void onCreate(Bundle b) {
         super.onCreate(b);
@@ -42,12 +55,24 @@ public class MainActivity extends Activity implements SlotsView.Listener, Billin
         root.setOrientation(LinearLayout.VERTICAL);
         root.setBackgroundColor(0xFF120826);
         root.addView(buildButtonRow());
+        root.addView(buildQuestStrip());
         game = new SlotsView(this);
         game.setListener(this);
+        sfx = new SoundFx(this);
+        game.setSoundFx(sfx);
         root.addView(game, new LinearLayout.LayoutParams(-1, 0, 1f));
         bannerBox = new LinearLayout(this);
         root.addView(bannerBox, new LinearLayout.LayoutParams(-1, -2));
-        setContentView(root);
+        android.widget.FrameLayout shell = new android.widget.FrameLayout(this);
+        shell.setBackgroundColor(0xFF120826);
+        shell.addView(root, new android.widget.FrameLayout.LayoutParams(-1, -1));
+        if (Splash.enabled) {
+            final Splash splash = new Splash(this);
+            shell.addView(splash, new android.widget.FrameLayout.LayoutParams(-1, -1));
+            handler.postDelayed(() -> splash.animate().alpha(0f).setDuration(280)
+                .withEndAction(() -> shell.removeView(splash)).start(), Splash.SHOW_MS);
+        }
+        setContentView(shell);
         if (android.os.Build.VERSION.SDK_INT >= 30) { // targetSdk 35+ forces edge-to-edge: keep content clear of system bars
             root.setOnApplyWindowInsetsListener((v, insets) -> {
                 android.graphics.Insets bars = insets.getInsets(android.view.WindowInsets.Type.systemBars());
@@ -59,14 +84,12 @@ public class MainActivity extends Activity implements SlotsView.Listener, Billin
         String s = sp.getString(KEY, null);
         if (s != null) game.restore(s);
 
-        sfx = new SoundFx(this);
-        game.setSoundFx(sfx);
-
         missions = new MissionsManager(this, null);
 
         ads = new AdsManager(this);
         ads.setAdEvents(this::onInterstitialShown);
-        boolean removed = sp.getBoolean("ads_removed", false);
+        boolean removed = sp.getBoolean("ads_removed", false) || sp.getBoolean("remove_ads", false);
+        if (removed) sp.edit().putBoolean("ads_removed", true).apply();
         ads.setAdsRemoved(removed);
         if (removed) applyAdsRemoved();
         ads.initWithConsent(() -> { if (!removed) ads.attachBanner(bannerBox); });
@@ -76,58 +99,69 @@ public class MainActivity extends Activity implements SlotsView.Listener, Billin
         if (sp.getString("first_run", null) == null)
             sp.edit().putString("first_run", today()).apply();
 
+        refreshQuestStrip();
         handler.postDelayed(this::maybeDailyBonus, 900);
         handler.postDelayed(this::maybeDay2Offer, 2000);
     }
 
+    private android.widget.ProgressBar questBar;
+    private TextView questText;
+    private View buildQuestStrip() {
+        LinearLayout strip = new LinearLayout(this);
+        strip.setOrientation(LinearLayout.VERTICAL);
+        strip.setPadding(16, 6, 16, 6);
+        strip.setBackgroundColor(0xFF2A1450);
+        questText = new TextView(this);
+        questText.setTextColor(0xFFFFD36B); questText.setTextSize(android.util.TypedValue.COMPLEX_UNIT_DIP, 12f); questText.setTypeface(Typeface.DEFAULT_BOLD);
+        questText.setSingleLine(true); questText.setEllipsize(android.text.TextUtils.TruncateAt.END);
+        questBar = new android.widget.ProgressBar(this, null, android.R.attr.progressBarStyleHorizontal);
+        questBar.setMax(1000);
+        questBar.getProgressDrawable().setColorFilter(0xFFFFB300, android.graphics.PorterDuff.Mode.SRC_IN);
+        strip.addView(questText);
+        strip.addView(questBar, new LinearLayout.LayoutParams(-1, (int) (6 * getResources().getDisplayMetrics().density)));
+        strip.setOnClickListener(v -> showMissions());
+        return strip;
+    }
+    private void refreshQuestStrip() {
+        if (questText == null || missions == null) return;
+        List<MissionsManager.Item> q = missions.weeklyQuest();
+        long n = q.get(0).progress;
+        questBar.setProgress((int) Math.min(1000, n));
+        refreshClaimBadge();
+        questText.setText("Neon Quest " + Math.min(1000, n) + "/1000 spins - " + missions.questTimeLeft());
+    }
+
+    private IconTile missionsTile;
+    private View removeAdsTile;
+
     private View buildButtonRow() {
+        float dn = getResources().getDisplayMetrics().density;
         LinearLayout row = new LinearLayout(this);
         row.setOrientation(LinearLayout.HORIZONTAL);
-        row.setGravity(Gravity.CENTER);
-        row.setPadding(4, 6, 4, 0);
-        addRowButton(row, "FREE COINS", v -> freeCoins());
-        addRowButton(row, "MISSIONS", v -> showMissions());
-        addRowButton(row, "SHOP", v -> showShop());
-        addRowButton(row, "MORE GAMES", v ->
-            startActivity(new Intent(Intent.ACTION_VIEW, Uri.parse(BuildConfig.DEV_PAGE_URL))));
-        removeAdsBtn = addRowButton(row, "NO ADS", v -> buyRemoveAds());
-        fitRowButtons(row);
+        row.setGravity(Gravity.CENTER_VERTICAL);
+        row.setPadding((int) (6 * dn), (int) (2 * dn), (int) (6 * dn), 0);
+        int vTop = 0xFF8B5AE0, vBot = 0xFF2E1560, gold = 0xFFE8B84A;
+        IconTile coins = new IconTile(this, "FREE COINS", 0xFFFFD166, vTop, vBot, gold, "Free coins", 30);
+        coins.setOnClickListener(v -> freeCoins());
+        missionsTile = new IconTile(this, "MISSIONS", 0xFFFFD166, vTop, vBot, gold, "Missions", 30);
+        missionsTile.setOnClickListener(v -> showMissions());
+        IconTile shop = new IconTile(this, "SHOP", 0xFF107A2C, 0xFF5BE36F, 0xFF107A2C, 0xFFFFD36B, "Shop", 34);
+        shop.setOnClickListener(v -> showShop());
+        IconTile noAds = new IconTile(this, "NO ADS", 0xFFFFD166, vTop, vBot, gold, "Remove ads", 30);
+        noAds.setOnClickListener(v -> buyRemoveAds());
+        removeAdsTile = noAds;
+        IconTile[] tiles = {coins, missionsTile, shop, noAds};
+        for (int i = 0; i < tiles.length; i++) {
+            int size = (int) ((tiles[i] == shop ? 72 : 64) * dn); // every tap area is at least 48dp
+            if (i > 0) row.addView(new View(this), new LinearLayout.LayoutParams(0, 1, 1f));
+            row.addView(tiles[i], new LinearLayout.LayoutParams(size, size));
+        }
         return row;
     }
 
-    private Button addRowButton(LinearLayout row, String label, View.OnClickListener l) {
-        Button btn = new Button(this);
-        btn.setText(label);
-        btn.setTextSize(11f);
-        btn.setTypeface(Typeface.DEFAULT_BOLD);
-        btn.setTextColor(Color.WHITE);
-        btn.setBackgroundColor(0xFF3A1F66);
-        btn.setMinHeight(0); btn.setMinimumHeight(0);
-        btn.setPadding(6, 0, 6, 0);
-        btn.setSingleLine(true);
-        LinearLayout.LayoutParams lp = new LinearLayout.LayoutParams(0, (int) (48 * getResources().getDisplayMetrics().density), 1f);
-        lp.setMargins(4, 0, 4, 0);
-        row.addView(btn, lp);
-        btn.setOnClickListener(l);
-        return btn;
-    }
-
-    private void fitRowButtons(LinearLayout row) {
-        int count = row.getChildCount();
-        if (count == 0) return;
-        android.util.DisplayMetrics dm = getResources().getDisplayMetrics();
-        // each button's usable text width: equal weight share minus margins (4+4) and padding (6+6)
-        float avail = (dm.widthPixels - row.getPaddingLeft() - row.getPaddingRight()) / (float) count - 8 - 12;
-        android.graphics.Paint m = new android.graphics.Paint(android.graphics.Paint.ANTI_ALIAS_FLAG);
-        m.setTypeface(Typeface.DEFAULT_BOLD);
-        float maxPx = android.util.TypedValue.applyDimension(android.util.TypedValue.COMPLEX_UNIT_SP, 11f, dm);
-        float minPx = android.util.TypedValue.applyDimension(android.util.TypedValue.COMPLEX_UNIT_SP, 7f, dm);
-        m.setTextSize(maxPx);
-        float need = 0;
-        for (int i = 0; i < count; i++)
-            need = Math.max(need, m.measureText(((Button) row.getChildAt(i)).getText().toString()));
-        float size = need > avail ? Math.max(minPx, maxPx * avail / need) : maxPx;
-        for (int i = 0; i < count; i++) ((Button) row.getChildAt(i)).setTextSize(android.util.TypedValue.COMPLEX_UNIT_PX, size);
+    private void refreshClaimBadge() {
+        if (missionsTile == null || missions == null || game == null) return;
+        missionsTile.setBadge(missions.claimableCount(game.getLevel(), game.getSpinsDone()));
     }
 
     private GameDialog.Builder dlg() { return new GameDialog.Builder(this, GameDialog.fromTheme(SlotArt.THEMES[game.getThemeIdx()])); }
@@ -178,7 +212,7 @@ public class MainActivity extends Activity implements SlotsView.Listener, Billin
                 g.setColor(GameDialog.withAlpha(th.neon, 0x30));
                 g.setStroke((int) (2 * density), th.neon);
                 chip.setTextColor(th.title);
-            } else if (i < streak - 1) {     // already claimed
+            } else if (i < todayIdx) {       // already claimed
                 g.setColor(GameDialog.withAlpha(th.panelLine, 0x22));
                 chip.setTextColor(GameDialog.withAlpha(th.soft, 0x88));
             } else {                          // future days
@@ -226,13 +260,29 @@ public class MainActivity extends Activity implements SlotsView.Listener, Billin
         box.setOrientation(LinearLayout.VERTICAL);
         int pad = (int) (16 * getResources().getDisplayMetrics().density);
         box.setPadding(pad, pad / 2, pad, 0);
+        addSection(box, "Neon Quest - " + missions.questTimeLeft() + " (ends Monday 00:00)", missions.weeklyQuest());
         addSection(box, "Daily missions", missions.dailyMissions());
         addSection(box, "Achievements", missions.achievements(game.getLevel(), game.getSpinsDone()));
+        Button rem = new Button(this);
+        rem.setAllCaps(false); rem.setBackgroundColor(0xFF3A1F66); rem.setTextColor(Color.WHITE);
+        reminderBtn = rem;
+        refreshReminderBtn();
+        rem.setOnClickListener(v -> {
+            if (Reminders.isOn(this)) { Reminders.setOn(this, false); refreshReminderBtn(); return; }
+            if (android.os.Build.VERSION.SDK_INT >= 33 && checkSelfPermission("android.permission.POST_NOTIFICATIONS") != android.content.pm.PackageManager.PERMISSION_GRANTED) {
+                requestPermissions(new String[]{"android.permission.POST_NOTIFICATIONS"}, 91); // turned on only after the player grants it
+                return;
+            }
+            Reminders.setOn(this, true); refreshReminderBtn();
+        });
+        TextView remNote = new TextView(this);
+        remNote.setText("If you turn it on: one reminder at about 10:30 local time, at least 6 hours after you leave the game (it is cancelled if you come back first). It runs on this device, not a server.");
+        remNote.setTextSize(11f); remNote.setTextColor(0xFFC9B8E0); remNote.setPadding(0, 6, 0, 12);
         Button snd = new Button(this);
-        snd.setAllCaps(false); snd.setTextColor(Color.WHITE);
+        snd.setAllCaps(false); snd.setBackgroundColor(0xFF3A1F66); snd.setTextColor(Color.WHITE);
         snd.setText("Sound effects: " + (SoundFx.isOn(this) ? "ON" : "OFF"));
         snd.setOnClickListener(v -> { SoundFx.setOn(this, !SoundFx.isOn(this)); snd.setText("Sound effects: " + (SoundFx.isOn(this) ? "ON" : "OFF")); });
-        box.addView(snd);
+        box.addView(snd); box.addView(rem); box.addView(remNote);
         dlg().title("Missions").content(box)
             .add(GameDialog.Btn.secondary("Close", null)).show();
     }
@@ -271,13 +321,19 @@ public class MainActivity extends Activity implements SlotsView.Listener, Billin
             if (!i.claimed && i.done()) {
                 Button c = new Button(this);
                 c.setText("Claim");
+                c.setBackgroundTintList(android.content.res.ColorStateList.valueOf(GameDialog.fromTheme(SlotArt.THEMES[game.getThemeIdx()]).accent));
+                c.setTextColor(GameDialog.fromTheme(SlotArt.THEMES[game.getThemeIdx()]).accentText);
+                c.setTypeface(Typeface.DEFAULT_BOLD);
                 c.setOnClickListener(v -> {
                     long reward = missions.claim(i);
                     if (reward > 0) {
                         game.addCoins(reward);
-                        Toast.makeText(this, "+" + reward + " coins!", Toast.LENGTH_SHORT).show();
+                        float[] tgt = game.chipCenterOnScreen();
+                        ClaimBurst.play(c, reward, tgt[0], tgt[1]);
+                        refreshClaimBadge();
+                        if (missionsTile != null) missionsTile.bounce();
                     }
-                    c.setEnabled(false); c.setText("Done");
+                    c.setVisibility(View.GONE); // claimed missions read as text state, not a dead button
                     t.setText(i.title + " (claimed)  [+" + i.reward + "]");
                 });
                 line.addView(c);
@@ -376,10 +432,12 @@ public class MainActivity extends Activity implements SlotsView.Listener, Billin
 
     private void applyAdsRemoved() {
         bannerBox.removeAllViews();
-        if (removeAdsBtn != null) removeAdsBtn.setVisibility(View.GONE);
+        if (removeAdsTile != null) removeAdsTile.setVisibility(View.GONE);
     }
 
     // ---------- SlotsView.Listener ----------
+    @Override public void onOpenShop() { showShop(); }
+
     @Override public void onOutOfCoins() {
         GameDialog.Builder b = dlg().title("Out of coins")
             .body("Watch a short ad for +300 free coins?\nCoins also refill slowly over time.\n\nCoins are virtual only - no cash value, no prizes.")
@@ -392,6 +450,7 @@ public class MainActivity extends Activity implements SlotsView.Listener, Billin
     @Override public void onSpinComplete(int spinsDone, long win, long bet) {
         missions.onSpin(win, bet, game.getLevel(), spinsDone);
         ads.maybeShowInterstitial(spinsDone);
+        refreshQuestStrip();
     }
 
     @Override public void onBigWin(long win, long bet) {
@@ -441,8 +500,23 @@ public class MainActivity extends Activity implements SlotsView.Listener, Billin
         }
     }
 
+    @Override protected void onPause() { super.onPause(); saveState(); }
     private SoundFx sfx;
     SoundFx sfxForTest() { return sfx; }
+    private Button reminderBtn;
+    private void refreshReminderBtn() {
+        if (reminderBtn == null) return;
+        boolean on = Reminders.isOn(this), blocked = on && !Reminders.effective(this);
+        reminderBtn.setText(blocked ? "Daily reminder: blocked in system settings" : on ? "Daily reminder: ON (tap to turn off)" : "Daily reminder: OFF (tap to turn on)");
+    }
+    @Override public void onRequestPermissionsResult(int code, String[] perms, int[] res) {
+        super.onRequestPermissionsResult(code, perms, res);
+        if (code != 91) return;
+        boolean granted = res.length > 0 && res[0] == android.content.pm.PackageManager.PERMISSION_GRANTED;
+        Reminders.setOn(this, granted); // denied: stays off, nothing scheduled
+        refreshReminderBtn();
+    }
     @Override protected void onDestroy() { super.onDestroy(); if (sfx != null) sfx.release(); }
-    @Override protected void onPause() { super.onPause(); saveState(); }
+    @Override protected void onStop() { super.onStop(); Reminders.schedule(this); }
+    @Override protected void onStart() { super.onStart(); Reminders.cancel(this); }
 }
