@@ -108,6 +108,7 @@ public class BillingManager implements PurchasesUpdatedListener {
     }
 
     public void buy(Activity act, String productId) {
+        if (REMOVE_ADS.equals(productId)) return; // No new purchases. Existing purchases still restore through queryPurchasesAsync.
         if (!ready) { connect(); }
         ProductDetails pd = details.get(productId);
         if (pd == null) return;

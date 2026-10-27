@@ -332,7 +332,6 @@ public class SlotsView extends View {
     void setRefillStateForTest(long bal, long lastAt) { balance = bal; lastRegenAt = lastAt; }
     long balanceForTest() { return balance; }
     long lastRegenAtForTest() { return lastRegenAt; }
-    }
 
     private boolean autoSpin = false;          // session-only, never persisted
     private int autoCount = 0;
