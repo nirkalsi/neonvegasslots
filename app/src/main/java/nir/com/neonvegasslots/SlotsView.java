@@ -185,6 +185,7 @@ public class SlotsView extends View {
         } catch (Exception ignored) {}
     }
 
+    long displayedLastWin(long n){if(lastWin<=0)return 0;float t=Math.max(0,Math.min(1,(n-winStartAt)/1100f));return Math.round(lastWin*(1-Math.pow(1-t,3)));}
     boolean levelMomentReady(){long n=nowMillis();return pendingLevelCoins>0&&!spinning&&n>=winFlashUntil&&n>=bigWinUntil;}
     long pendingLevelReward(){return pendingLevelCoins;}
     long collectLevelReward(){
@@ -737,7 +738,7 @@ public class SlotsView extends View {
             float ly = ctrlY + btnH + w * 0.042f;
             p.setFakeBoldText(true); p.setTextAlign(Paint.Align.CENTER); p.setTextSize(w * 0.032f);
             p.setColor(th.soft); cv.drawText("BET", w * 0.215f, ly, p);
-            if (lastWin > 0) { p.setColor(0xFFFFD166); cv.drawText("WIN " + lastWin, w * 0.70f, ly, p); }
+            if (lastWin > 0) { p.setColor(0xFFFFD166); cv.drawText("WIN " + displayedLastWin(now), w * 0.70f, ly, p); }
             else { p.setColor(th.soft); cv.drawText(autoSpin ? "AUTO - tap to stop" : spinning ? "TAP TO STOP" : "HOLD = AUTO", w * 0.70f, ly, p); }
             p.setFakeBoldText(false);
         }
