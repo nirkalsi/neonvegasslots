@@ -9,11 +9,11 @@ import org.robolectric.annotation.Config;
 @RunWith(RobolectricTestRunner.class) @Config(sdk=34)
 public class RedesignInputTest {
  private static MotionEvent down(float x,float y){return MotionEvent.obtain(0,0,MotionEvent.ACTION_DOWN,x,y,0);}
- private static float nodeY(){float w=720,h=1480;float top=h*.22f+(w/5f-8)*3+16+24+h*.07f+w*.055f;float bottom=h-w*.10f;return top+Math.min(bottom-top,w*.62f)*.40f;}
+ private static float nodeY(){float w=720,h=1480;float top=SlotsView.ctrlY(w,h)+h*.07f+w*.055f;float bottom=h-w*.10f;return top+Math.min(bottom-top,w*.62f)*.40f;}
  @Test public void artDoesNotMoveControlsOrChangeStartingEconomy(){
   SlotsView v=new SlotsView(RuntimeEnvironment.getApplication()); v.layout(0,0,720,1480);
   long original=v.getBalance(); assertEquals(500,original);
-  float cy=1480*.22f+(720/5f-8)*3+16+24+20;
+  float cy=SlotsView.ctrlY(720,1480)+20;
   v.onTouchEvent(down(720*.69f,cy));
   assertEquals(original-10,v.getBalance());
   v.onTouchEvent(down(720*.69f,cy));

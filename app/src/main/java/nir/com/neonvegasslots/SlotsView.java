@@ -415,8 +415,17 @@ public class SlotsView extends View {
         invalidate();
     }
 
+    /** Reel cell height: a little taller than wide when the screen has room (doc: reels deserve more space), never smaller than square. */
+    static float cellH(float w, float h) {
+        float cw = w / 5f - 8;
+        float avail = h - h * 0.195f - (h * 0.07f + w * 0.10f + w * 0.19f + h * 0.05f);
+        float k = Math.max(1f, Math.min(1.22f, (avail - 16) / (3 * cw)));
+        return cw * k;
+    }
+    static float ctrlY(float w, float h) { return h * 0.195f + cellH(w, h) * 3 + 16 + 24; }
+    private float cellH() { return cellH(getWidth(), getHeight()); }
     private float gridTop() { return getHeight() * 0.195f; }
-    private float trailTop() { return gridTop() + (getWidth() / 5f - 8) * 3 + 16 + 24 + getHeight() * 0.07f + getWidth() * 0.055f; }
+    private float trailTop() { return ctrlY(getWidth(), getHeight()) + getHeight() * 0.07f + getWidth() * 0.055f; }
     private float trailBottom() { return trailTop() + getWidth() * 0.19f; } // compact strip; the full map opens in a dialog
     private float trailNodeY() {
         float top = trailTop(), height = Math.min(trailBottom() - top, getWidth() * .68f);
@@ -443,7 +452,8 @@ public class SlotsView extends View {
         cv.drawRect(0, bandH - 1, w, bandH + 1, p);
         float cellW = w / 5f - 8;
         float gridTop = gridTop();
-        float gridH = cellW * 3 + 16;
+        float cellH = cellH(w, getHeight());
+        float gridH = cellH * 3 + 16;
 
         // title
         titleGlow = (float) ((now % 4000L) / 4000.0 * 6.2832); // elapsed-time pulse: same speed at any redraw cadence
@@ -490,11 +500,11 @@ public class SlotsView extends View {
                     if (now / 60 % 2 == 0) grid[r][c] = pickSymbol();
                 }
                 float x = 4 + c * (cellW + 8);
-                float y = gridTop + r * (cellW + 8);
+                float y = gridTop + r * (cellH + 8);
                 // settle bounce: a just-stopped column drops in with a small overshoot
                 float settle = (now - stopAt[c]) / 260f;
                 if (settle >= 0 && settle < 1) y -= cellW * 0.12f * (1 - settle) * (float) Math.cos(settle * 6.9f);
-                rf.set(x + 2, y, x + cellW + 2, y + cellW);
+                rf.set(x + 2, y, x + cellW + 2, y + cellH);
                 boolean hot = winCell[r][c] && flash;
                 p.setColor(hot ? th.cellHot : th.cellBg);
                 cv.drawRoundRect(rf, 12, 12, p);
@@ -505,12 +515,12 @@ public class SlotsView extends View {
                 p.setStyle(Paint.Style.FILL);
                 if (spinning && now < stopAt[c]) {
                     // scrolling strip: symbol + dimmed neighbours sliding upward, clipped to the cell
-                    float pitch = cellW * 0.82f;
+                    float pitch = cellH * 0.82f;
                     float scroll = (now * 1.15f + c * 173 + r * 61) % pitch;
                     cv.save();
-                    cv.clipRect(x + 2, y, x + cellW + 2, y + cellW);
+                    cv.clipRect(x + 2, y, x + cellW + 2, y + cellH);
                     int sym = grid[r][c];
-                    float cx = x + 2 + cellW / 2, cy = y + cellW / 2;
+                    float cx = x + 2 + cellW / 2, cy = y + cellH / 2;
                     art.symbol(cv, sym, cx, cy - pitch + scroll, cellW * 0.74f);
                     p.setColor(0x30FFFFFF); cv.drawRect(x + 2, cy - pitch * 1.4f + scroll, x + cellW + 2, cy - pitch * 0.55f + scroll, p);
                     art.symbol(cv, sym, cx, cy + scroll, cellW * 0.82f);
@@ -519,13 +529,13 @@ public class SlotsView extends View {
                     cv.restore();
                 } else {
                     float pls = (winCell[r][c] && now < winFlashUntil) ? 1f + 0.09f * (float) Math.sin(now / 110.0) : 1f; // winning symbols pulse
-                    art.symbol(cv, grid[r][c], x + 2 + cellW / 2, y + cellW / 2, cellW * 0.82f * pls);
+                    art.symbol(cv, grid[r][c], x + 2 + cellW / 2, y + cellH / 2, cellW * 0.84f * pls);
                 }
             }
         }
         if (!spinning && now < winFlashUntil) { // win line: a glowing path through the winning cells, left to right
-            float cw0 = w / 5f - 8; float[] lx = new float[5], ly = new float[5]; int n = 0;
-            for (int c = 0; c < 5; c++) for (int r = 0; r < 3; r++) if (winCell[r][c]) { lx[n] = 4 + c * (cw0 + 8) + 2 + cw0 / 2; ly[n] = gridTop + r * (cw0 + 8) + cw0 / 2; n++; break; }
+            float cw0 = w / 5f - 8, ch0 = cellH(w, getHeight()); float[] lx = new float[5], ly = new float[5]; int n = 0;
+            for (int c = 0; c < 5; c++) for (int r = 0; r < 3; r++) if (winCell[r][c]) { lx[n] = 4 + c * (cw0 + 8) + 2 + cw0 / 2; ly[n] = gridTop + r * (ch0 + 8) + ch0 / 2; n++; break; }
             if (n >= 2) {
                 p.setStyle(Paint.Style.STROKE); p.setStrokeCap(Paint.Cap.ROUND); p.setStrokeJoin(Paint.Join.ROUND);
                 p.setShadowLayer(14, 0, 0, th.title);
@@ -557,7 +567,7 @@ public class SlotsView extends View {
                     float pulse = 0.5f + 0.5f * (float) Math.sin(now / 90.0);
                     // column tint so the suspense is readable even mid-pulse
                     p.setColor(th.title & 0x00FFFFFF | ((int) (24 + 30 * pulse) << 24));
-                    rf.set(gx, gridTop - 2, gx + cellWn + 4, gridTop + cellWn * 3 + 22);
+                    rf.set(gx, gridTop - 2, gx + cellWn + 4, gridTop + cellH * 3 + 22);
                     cv.drawRoundRect(rf, 16, 16, p);
                     p.setStyle(Paint.Style.STROKE);
                     p.setStrokeWidth(5 + 4 * pulse);
@@ -690,7 +700,7 @@ public class SlotsView extends View {
     private void levelBurst(Canvas cv, float w, float gridTop, SlotArt.Theme th, long now) {
         float p1 = 1 - Math.max(0, (levelFlashUntil - now)) / 2000f;
         if (p1 < 0 || p1 > 1) return;
-        float cy = gridTop() + (getWidth() / 5f - 8) * 1.5f + 8;
+        float cy = gridTop() + cellH() * 1.5f + 8;
         float r = w * .10f + p1 * w * .45f;
         p.setStyle(Paint.Style.STROKE);
         p.setStrokeWidth(w * .012f * (1 - p1) + 1);
@@ -721,7 +731,7 @@ public class SlotsView extends View {
         if (act != MotionEvent.ACTION_DOWN) return true;
         float w = getWidth();
         float gridTop = gridTop();
-        float ctrlY = gridTop + (w / 5f - 8) * 3 + 16 + 24;
+        float ctrlY = ctrlY(w, getHeight());
         float btnH = getHeight() * 0.07f;
         float x = e.getX(), y = e.getY();
         if (chipPlus.contains(x, y)) { if (listener != null) listener.onOpenShop(); return true; }

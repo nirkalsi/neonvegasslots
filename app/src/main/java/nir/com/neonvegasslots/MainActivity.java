@@ -61,7 +61,7 @@ public class MainActivity extends Activity implements SlotsView.Listener, Billin
             @Override protected void onMeasure(int wSpec, int hSpec) {
                 super.onMeasure(wSpec, hSpec);
                 float w = getMeasuredWidth();
-                int need = (int) ((w * 0.50f + 3 * (w / 5f - 8) + 40 + w * 0.155f) / 0.71f);
+                int need = (int) ((w * 0.50f + 3 * (w / 5f - 8) * 1.22f + 40 + w * 0.155f) / 0.71f);
                 int vh = getMeasuredHeight();
                 int want = Math.max(vh, need);
                 // ScrollView measures its child UNSPECIFIED and ignores LayoutParams.height; minimum height is what it honours.
@@ -75,7 +75,7 @@ public class MainActivity extends Activity implements SlotsView.Listener, Billin
                 int vh = getHeight(), gh = game.getHeight();
                 if (!touched && vh > 0 && gh > vh) { // short screen: open with the reels AND the BET/SPIN row in view
                     float w = getWidth();
-                    int ctrlBottom = (int) (gh * 0.195f + 3 * (w / 5f - 8) + 16 + 24 + gh * 0.07f + 12);
+                    int ctrlBottom = (int) (gh * 0.195f + 3 * (w / 5f - 8) * 1.22f + 16 + 24 + gh * 0.07f + 12);
                     scrollTo(0, Math.max(0, Math.min(gh - vh, ctrlBottom - vh)));
                 }
             }
