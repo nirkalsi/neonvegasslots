@@ -31,6 +31,10 @@ final class IconTile extends View {
         setClickable(true); setFocusable(true);
     }
 
+    @Override public void setPressed(boolean pressed){
+        boolean changed=pressed!=isPressed();super.setPressed(pressed);if(!changed)return;
+        animate().cancel();if(pressed){setScaleX(.95f);setScaleY(.95f);}else animate().scaleX(1).scaleY(1).setDuration(210).setInterpolator(new OvershootInterpolator(1.5f)).start();invalidate();
+    }
     @Override public boolean performClick(){
         android.content.Context c=getContext();while(c instanceof android.content.ContextWrapper && !(c instanceof MainActivity))c=((android.content.ContextWrapper)c).getBaseContext();
         if(c instanceof MainActivity)((MainActivity)c).playUi(false);
