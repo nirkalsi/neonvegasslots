@@ -59,6 +59,7 @@ final class GameDialog {
 
         Dialog show() {
             Dialog d = build();
+            if (activity.isFinishing() || activity.isDestroyed()) return d; // never attach a window to a dead activity (BadTokenException seen on Test Lab)
             d.show();
             View content = d.getWindow() != null ? d.getWindow().getDecorView() : null;
             if (content != null) {
