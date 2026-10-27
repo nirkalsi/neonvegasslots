@@ -73,6 +73,12 @@ public class SlotsView extends View {
     private long bigWinStartAt = 0;
     private long bigWinUntil = 0;
     private long bigWinAmount = 0;
+    private int bigWinTier = 0; private long bigWinMs = 3000;
+    /** Graded celebrations: BIG from 25x the bet, MEGA from 60x, EPIC from 150x. Longer, louder, more coins each step. */
+    static final String[] TIER_NAME = {"BIG WIN!", "MEGA WIN!", "EPIC WIN!"};
+    static final long[] TIER_MS = {3000, 3800, 4600};
+    static final int[] TIER_COLOR = {0xFFFFD54A, 0xFFFF9F43, 0xFFFF5E7E};
+    static int winTier(long win, long bet) { return win >= 150 * bet ? 2 : win >= 60 * bet ? 1 : 0; }
     private boolean anticipationGiven = false;
     private boolean[][] winCell = new boolean[3][5];
     private float titleGlow = 0f;
@@ -360,7 +366,7 @@ public class SlotsView extends View {
             balance += win; lastWin = win;
             fx(win >= 25 * bet ? SoundFx.Effect.BIG_WIN : SoundFx.Effect.WIN);
             winStartAt = System.currentTimeMillis();
-            if (win >= 25 * bet) { bigWinStartAt = winStartAt; bigWinUntil = winStartAt + 3000; bigWinAmount = win; winFlashUntil = winStartAt + 3000; }
+            if (win >= 25 * bet) { bigWinTier = winTier(win, bet); bigWinMs = TIER_MS[bigWinTier]; bigWinStartAt = winStartAt; bigWinUntil = winStartAt + bigWinMs; bigWinAmount = win; winFlashUntil = winStartAt + bigWinMs; }
             else winFlashUntil = winStartAt + 1600;
         }
         int oldUnlocks = unlockedCount(level);
@@ -609,8 +615,9 @@ public class SlotsView extends View {
 
     private void coinShower(Canvas cv, float w, float gridTop, float gridH, SlotArt.Theme th, long now) {
         float t = (now - winStartAt) / 1000f;
-        if (t < 0 || t > 1.6f) return;
-        for (int i = 0; i < 22; i++) {
+        if (t < 0 || t > (bigWinUntil > System.currentTimeMillis() ? bigWinMs / 1000f : 1.6f)) return;
+        int coinsN = 22 + (bigWinUntil > now ? 18 * (bigWinTier + 1) : 0);
+        for (int i = 0; i < coinsN; i++) {
             float x = w * (((i * 73856093) & 0xFFFF) / 65535f);
             float speed = gridH * (0.55f + (i % 5) * 0.16f);
             float y = gridTop - w * .05f + ((t * speed + i * 37) % (gridH + w * .12f));
@@ -623,7 +630,7 @@ public class SlotsView extends View {
     }
 
     private void bigWinOverlay(Canvas cv, float w, SlotArt.Theme th, long now) {
-        float t = (now - bigWinStartAt) / 3000f;
+        float t = (now - bigWinStartAt) / (float) bigWinMs;
         if (t < 0 || t > 1) return;
         float cy = getHeight() * 0.42f;
         p.setColor(0x99000000);
@@ -633,11 +640,11 @@ public class SlotsView extends View {
         p.setTextAlign(Paint.Align.CENTER);
         p.setFakeBoldText(true);
         p.setTextSize(w * 0.14f * pop);
-        p.setColor(0xFFFFD54A);
+        p.setColor(TIER_COLOR[bigWinTier]);
         p.setShadowLayer(w * 0.03f * pop, 0, 0, 0xFFFFA000);
-        cv.drawText("BIG WIN!", w / 2, cy, p);
+        cv.drawText(TIER_NAME[bigWinTier], w / 2, cy, p);
         p.clearShadowLayer();
-        long shown = bigWinAmount * Math.min(100, (long) (t * 140)) / 100;
+        long shown = bigWinAmount * Math.min(100, (long) (t * 140 * 3000f / bigWinMs)) / 100;
         p.setTextSize(w * 0.10f * pop);
         p.setColor(0xFFFFFFFF);
         p.setShadowLayer(w * 0.02f, 0, 0, 0xFF7CFC00);
