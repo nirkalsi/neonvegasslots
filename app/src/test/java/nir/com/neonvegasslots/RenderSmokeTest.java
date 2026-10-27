@@ -336,7 +336,9 @@ public class RenderSmokeTest {
         t = 4000;
         sc.dispatchTouchEvent(evT(t, t, MotionEvent.ACTION_DOWN, gw * 0.69f, cyNow.get()));
         org.robolectric.shadows.ShadowLooper.idleMainLooper(700, java.util.concurrent.TimeUnit.MILLISECONDS);
-        assertTrue("long press via scroll container starts auto", g.isAuto());
+        assertFalse("long press requests choices instead of silently enabling auto", g.isAuto());
+        g.startAuto(10); // model the player's explicit choice; menu content is covered by AutoMenuTest
+        assertTrue("chosen run starts auto", g.isAuto());
         sc.dispatchTouchEvent(evT(t, t + 800, MotionEvent.ACTION_UP, gw * 0.69f, cyNow.get()));
         t = 6000;
         sc.dispatchTouchEvent(evT(t, t, MotionEvent.ACTION_DOWN, gw * 0.69f, cyNow.get()));
