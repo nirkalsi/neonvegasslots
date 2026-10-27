@@ -122,6 +122,16 @@ public class RenderSmokeTest {
         renderComposed(a, latestDialog(), "/tmp/renders/neonvegasslots-daily-composed.png");
     }
 
+    @GraphicsMode(GraphicsMode.Mode.NATIVE)
+    @Test public void renderDailyDaySevenComposed() throws Exception {
+        MainActivity a=activity();
+        java.lang.reflect.Field f=MainActivity.class.getDeclaredField("sp");f.setAccessible(true);
+        java.lang.reflect.Method y=MainActivity.class.getDeclaredMethod("yesterday");y.setAccessible(true);
+        ((android.content.SharedPreferences)f.get(a)).edit().putString("daily_last",(String)y.invoke(a)).putInt("daily_streak",6).commit();
+        callPrivate(a,"maybeDailyBonus");
+        renderComposed(a,latestDialog(),"/tmp/renders/neonvegasslots-daily-day7-composed.png");
+    }
+
     @Test public void tallDialogIsCappedAndScrollable() throws Exception {
         MainActivity a = activity();
         android.widget.LinearLayout tall = new android.widget.LinearLayout(a);

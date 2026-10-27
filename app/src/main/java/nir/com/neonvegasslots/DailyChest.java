@@ -12,15 +12,18 @@ final class DailyChest extends View {
     private final RectF r=new RectF();
     private final long start=System.currentTimeMillis();
     private float progress=-1;
+    private ValueAnimator activeAnimator;
+    private boolean detached;
+    @Override protected void onDetachedFromWindow(){detached=true;if(activeAnimator!=null)activeAnimator.cancel();super.onDetachedFromWindow();}
     DailyChest(Context c){super(c);setContentDescription("Daily treasure chest");}
     void setProgress(float t){progress=t;invalidate();}
     static View hero(Context c){return new DailyChest(c);}
     static void celebrate(Activity a,View game,long coins,float tx,float ty){
         if(a.isFinishing()||a.isDestroyed())return;
         ViewGroup root=(ViewGroup)a.findViewById(android.R.id.content);
-        DailyChest chest=new DailyChest(a);chest.setProgress(0);root.addView(chest,new ViewGroup.LayoutParams(-1,-1));
-        ValueAnimator animator=ValueAnimator.ofFloat(0,1);animator.setDuration(850);animator.addUpdateListener(v->chest.setProgress((float)v.getAnimatedValue()));
-        animator.addListener(new android.animation.AnimatorListenerAdapter(){@Override public void onAnimationEnd(android.animation.Animator x){root.removeView(chest);if(!a.isDestroyed())ClaimBurst.play(game,coins,tx,ty);}});animator.start();
+        DailyChest chest=new DailyChest(a);chest.setProgress(0);chest.setClickable(true);root.addView(chest,new ViewGroup.LayoutParams(-1,-1));
+        ValueAnimator animator=ValueAnimator.ofFloat(0,1);chest.activeAnimator=animator;animator.setDuration(850);animator.addUpdateListener(v->chest.setProgress((float)v.getAnimatedValue()));
+        animator.addListener(new android.animation.AnimatorListenerAdapter(){@Override public void onAnimationEnd(android.animation.Animator x){if(chest.detached)return;boolean fly=!a.isFinishing()&&!a.isDestroyed();root.removeView(chest);if(fly)ClaimBurst.play(game,coins,tx,ty);}});animator.start();
     }
     @Override protected void onDraw(Canvas c){
         float w=getWidth(),h=getHeight();boolean claiming=progress>=0;
