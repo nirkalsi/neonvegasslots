@@ -37,6 +37,8 @@ final class TopIcons {
                 p.setColor(0xFFFFD166); cv.drawCircle(11 * u, 11 * u, 9 * u, p);
                 p.setStyle(Paint.Style.STROKE); p.setStrokeWidth(1.6f * u); p.setColor(0xFFB8860B); cv.drawCircle(11 * u, 11 * u, 6 * u, p);
                 p.setStyle(Paint.Style.FILL); p.setColor(0xFFFFF3C4); cv.drawCircle(8.5f * u, 8f * u, 2f * u, p);
+                p.setColor(0xFF163047);cv.drawRoundRect(new RectF(11*u,12*u,22*u,21*u),2*u,2*u,p);
+                p.setColor(0xFFFFFFFF);Path play=new Path();play.moveTo(14*u,13.5f*u);play.lineTo(19*u,16.5f*u);play.lineTo(14*u,19.5f*u);play.close();cv.drawPath(play,p);
                 break; }
             case "MISSIONS": {
                 p.setColor(0xFFFFFFFF); cv.drawRoundRect(new RectF(4 * u, 2 * u, 18 * u, 20 * u), 3 * u, 3 * u, p);

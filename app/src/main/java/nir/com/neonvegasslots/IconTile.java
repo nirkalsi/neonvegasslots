@@ -26,7 +26,7 @@ final class IconTile extends View {
         d = c.getResources().getDisplayMetrics().density;
         this.top = top; this.bot = bot; this.rim = rim;
         icon = TopIcons.icon(c, key, accent, (int) iconDp);
-        baseDesc = desc;label=key.equals("FREE COINS")?"COINS":key;
+        baseDesc = desc;label=key.equals("FREE COINS")?"WATCH AD":key;
         setContentDescription(desc);
         setClickable(true); setFocusable(true);
     }

@@ -174,7 +174,7 @@ public class MainActivity extends Activity implements SlotsView.Listener, Billin
         row.setGravity(Gravity.CENTER_VERTICAL);
         row.setPadding((int) (6 * dn), (int) (2 * dn), (int) (6 * dn), 0);
         int vTop = 0xFF8B5AE0, vBot = 0xFF2E1560, gold = 0xFFE8B84A;
-        IconTile coins = new IconTile(this, "FREE COINS", 0xFFFFD166, vTop, vBot, gold, "Free coins", 30);
+        IconTile coins = new IconTile(this, "FREE COINS", 0xFFFFD166, vTop, vBot, gold, "Watch an ad for free coins", 30);
         coins.setOnClickListener(v -> freeCoins());
         missionsTile = new IconTile(this, "MISSIONS", 0xFFFFD166, vTop, vBot, gold, "Missions", 30);
         missionsTile.setOnClickListener(v -> showMissions());
