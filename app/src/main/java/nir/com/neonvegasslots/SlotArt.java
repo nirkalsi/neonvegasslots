@@ -168,12 +168,15 @@ final class SlotArt {
         ink.setStrokeWidth((r-l)*.006f); color(th.title);
         box.set(l+(r-l)*.012f,t+(r-l)*.012f,r-(r-l)*.012f,b-(r-l)*.012f); c.drawRoundRect(box,rad,rad,ink);
         ink.setStyle(Paint.Style.FILL);
-        // chase bulbs along top edge
-        int n=12; float bw=r-l;
+        // Full perimeter marquee, chasing faster while reels spin (phase supplied by caller).
+        int n=42;float bw=r-l,bh=b-t,perimeter=2*(bw+bh);
         for(int i=0;i<n;i++){
-            float x=l+bw*.06f+i*(bw*.88f/(n-1));
-            color((phase+i)%2==0?0xFFFFE9A0:th.neon);
-            c.drawCircle(x,t-(r-l)*.006f,(r-l)*.009f,ink);
+            float d=perimeter*i/n,x,y;
+            if(d<bw){x=l+d;y=t;}else if(d<bw+bh){x=r;y=t+d-bw;}
+            else if(d<2*bw+bh){x=r-(d-bw-bh);y=b;}else{x=l;y=b-(d-2*bw-bh);}
+            boolean on=(i+phase)%4<2;color(on?0xFFFFF1B5:0xFF4A315B);
+            if(on)ink.setShadowLayer(bw*.012f,0,0,th.neon);
+            c.drawCircle(x,y,bw*.007f,ink);ink.clearShadowLayer();
         }
     }
 
@@ -336,6 +339,24 @@ final class SlotArt {
         android.graphics.Paint t = new android.graphics.Paint();
         t.setColor((tint & 0x00FFFFFF) | 0x33000000); c.drawRect(0, 0, w, h, t);
         return true;
+    }
+    /** Skin-specific idle and win motion. Pure presentation: never changes symbol or payout. */
+    void symbolAnimated(Canvas c,int id,float cx,float cy,float size,long now,boolean win){
+        float phase=now/210f+id*1.7f;
+        float wave=(float)Math.sin(phase);
+        c.save();
+        float energy=win?.9f:.35f+.1f*wave;
+        if(win){if(id==2)c.rotate(wave*9,cx,cy-size*.2f);else c.scale(1+.045f*wave,1+.045f*wave,cx,cy);}
+        int[] colors={0xFFFF4DAB,0xFF63EEFF,0xFFFFE164,0xFFFF4F90,0xFFFFFF70,0xFFB392FF};
+        ink.setShader(null);ink.setColor((colors[id%6]&0xFFFFFF)|((int)(energy*150)<<24));
+        ink.setShadowLayer(size*.13f,0,0,colors[id%6]);c.drawOval(cx-size*.34f,cy-size*.38f,cx+size*.34f,cy+size*.38f,ink);ink.clearShadowLayer();
+        symbol(c,id,cx,cy,size);
+        if(win || (id<2 && (now/100+id)%17<2)){
+            float sx=cx+size*.20f*wave,sy=cy-size*.22f;
+            ink.setColor(0xDDEBFFFF);ink.setStrokeWidth(size*.019f);ink.setShadowLayer(size*.06f,0,0,colors[id%6]);
+            c.drawLine(sx-size*.065f,sy,sx+size*.065f,sy,ink);c.drawLine(sx,sy-size*.065f,sx,sy+size*.065f,ink);ink.clearShadowLayer();
+        }
+        ink.setShader(null);ink.clearShadowLayer();ink.setStyle(Paint.Style.FILL);c.restore();
     }
     void symbol(Canvas c, int id, float cx, float cy, float size) {
         if (bmp != null && id >= 0 && id < bmp.length && bmp[id] != null) {

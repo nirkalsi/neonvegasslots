@@ -344,7 +344,11 @@ public class SlotsView extends View {
     private SoundFx sfx;
     private final boolean[] stopSounded = new boolean[5];
     public void setSoundFx(SoundFx s) { sfx = s; }
-    private void fx(SoundFx.Effect e) { if (sfx != null) sfx.play(e); }
+    private void fx(SoundFx.Effect e) {
+        if (sfx != null) sfx.play(e);
+        if(e==SoundFx.Effect.REEL_STOP || e==SoundFx.Effect.WIN || e==SoundFx.Effect.BIG_WIN)
+            performHapticFeedback(android.view.HapticFeedbackConstants.CLOCK_TICK);
+    }
 
     /** Turn auto-spin off (player tap, low coins, big win, level-up, dialog or leaving the screen). */
     public void stopAuto() {
@@ -558,7 +562,7 @@ public class SlotsView extends View {
                     cv.restore();
                 } else {
                     float pls = (winCell[r][c] && now < winFlashUntil) ? 1f + 0.09f * (float) Math.sin(now / 110.0) : 1f; // winning symbols pulse
-                    art.symbol(cv, grid[r][c], x + 2 + cellW / 2, y + cellH / 2, cellW * 0.84f * pls);
+                    art.symbolAnimated(cv, grid[r][c], x + 2 + cellW / 2, y + cellH / 2, cellW * 0.84f * pls,now,winCell[r][c] && now < winFlashUntil);
                 }
             }
         }
@@ -599,7 +603,7 @@ public class SlotsView extends View {
                     if (run > bestRun) bestRun = run;
                 }
                 if (bestRun >= 3) {
-                    if (!anticipationGiven) { stopAt[4] += 1100; anticipationGiven = true; }
+                    if (!anticipationGiven) { stopAt[4] += 1100; anticipationGiven = true; fx(SoundFx.Effect.ANTICIPATION); }
                     // pulsing glow ring around the spinning last column
                     float cellWn = w / 5f - 8;
                     float gx = 4 + 4 * (cellWn + 8);

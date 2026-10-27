@@ -13,13 +13,14 @@ import java.util.Map;
 /** Short original action sounds, synthesised in code (no audio files, no licensing, no background music).
  *  Plays through SoundPool on the game stream, respects the system media volume and a saved on/off switch. */
 public final class SoundFx {
-    public enum Effect { SPIN, REEL_STOP, WIN, BIG_WIN }
+    public enum Effect { SPIN, REEL_STOP, WIN, BIG_WIN, ANTICIPATION }
     public static final int RATE = 22050;
     private static final String PREF = "sound_fx_on";
 
     /** Pure and deterministic: the samples for one effect (16-bit mono PCM at RATE). */
     public static short[] render(Effect e) {
         switch (e) {
+            case ANTICIPATION: return seq(new double[]{392, 494, 587, 784}, 140, 0.42);
             case SPIN:      return seq(new double[]{330.0, 392.0, 494.0}, 55, 0.5);
             case REEL_STOP: return seq(new double[]{196.0}, 40, 0.55);
             case WIN:       return seq(new double[]{523.25, 659.25, 783.99}, 90, 0.55);

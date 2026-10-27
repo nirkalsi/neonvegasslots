@@ -687,4 +687,20 @@ public class RenderSmokeTest {
         f = SlotsView.class.getDeclaredField("bigWinAmount"); f.setAccessible(true); f.setLong(v, 1250);
         renderView(v, 720, 1480, "/tmp/renders/neonvegasslots-frame-bigwin.png");
     }
+    @GraphicsMode(GraphicsMode.Mode.NATIVE)
+    @Test public void renderSymbolSkinComposed() throws Exception {
+        MainActivity a=activity();java.lang.reflect.Field f=MainActivity.class.getDeclaredField("game");f.setAccessible(true);SlotsView g=(SlotsView)f.get(a);
+        java.lang.reflect.Field grid=SlotsView.class.getDeclaredField("grid");grid.setAccessible(true);
+        grid.set(g,new int[][]{{0,1,2,3,4},{5,0,1,2,3},{4,5,0,1,2}});
+        View root=a.findViewById(android.R.id.content);android.util.DisplayMetrics dm=a.getResources().getDisplayMetrics();
+        renderView(root,dm.widthPixels,dm.heightPixels,"/tmp/renders/neonvegasslots-symbol-skin-composed.png");
+        SlotArt art=new SlotArt();art.loadBitmaps(a);Bitmap[] frames=new Bitmap[2];
+        for(int k=0;k<2;k++){frames[k]=Bitmap.createBitmap(720,300,Bitmap.Config.ARGB_8888);Canvas c=new Canvas(frames[k]);c.drawColor(0xFF0A0715);
+            for(int id=0;id<6;id++)art.symbolAnimated(c,id,60+id*120,150,106,1000+k*350,true);
+        }
+        boolean different=false;for(int y=0;y<300&&!different;y+=3)for(int x=0;x<720;x+=3)if(frames[0].getPixel(x,y)!=frames[1].getPixel(x,y)){different=true;break;}
+        assertTrue("win frames must actually change pixels",different);
+        Bitmap sheet=Bitmap.createBitmap(720,600,Bitmap.Config.ARGB_8888);Canvas cv=new Canvas(sheet);cv.drawBitmap(frames[0],0,0,null);cv.drawBitmap(frames[1],0,300,null);
+        try(FileOutputStream o=new FileOutputStream("/tmp/renders/neonvegasslots-symbol-win-sheet.png")){sheet.compress(Bitmap.CompressFormat.PNG,100,o);}
+    }
 }
