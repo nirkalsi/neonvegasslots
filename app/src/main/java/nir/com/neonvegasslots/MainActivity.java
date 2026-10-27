@@ -148,7 +148,7 @@ public class MainActivity extends Activity implements SlotsView.Listener, Billin
         strip.setBackgroundColor(0xFF2A1450);
         questText = new TextView(this);
         questText.setTextColor(0xFFFFD36B); questText.setTextSize(android.util.TypedValue.COMPLEX_UNIT_DIP, 12f); questText.setTypeface(Typeface.DEFAULT_BOLD);
-        questText.setSingleLine(true); questText.setEllipsize(android.text.TextUtils.TruncateAt.END);
+        questText.setSingleLine(false); questText.setMaxLines(2);
         questBar = new android.widget.ProgressBar(this, null, android.R.attr.progressBarStyleHorizontal);
         questBar.setMax(20);
         questBar.getProgressDrawable().setColorFilter(0xFFFFB300, android.graphics.PorterDuff.Mode.SRC_IN);
@@ -166,7 +166,8 @@ public class MainActivity extends Activity implements SlotsView.Listener, Billin
         questBar.setProgress((int) Math.min(cur.goal, cur.progress));
         refreshClaimBadge();
         String reward = cur.done() && !cur.claimed ? "tap to claim +" + cur.reward : "reward +" + cur.reward + " coins";
-        questText.setText("Quest " + (step + 1) + "/" + q.size() + ": spin " + cur.goal + " times (" + Math.min(cur.goal, cur.progress) + "/" + cur.goal + ") - " + reward);
+        String next=step+1<q.size()?"Next "+q.get(step+1).goal+" spins: +"+q.get(step+1).reward+" coins":"Final milestone";
+        questText.setText("Quest "+(step+1)+"/"+q.size()+": "+Math.min(cur.goal,cur.progress)+"/"+cur.goal+" spins - "+reward+"\n"+next+" | "+missions.questTimeLeft());
     }
 
     private IconTile missionsTile;

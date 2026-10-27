@@ -34,4 +34,7 @@ public class QuestTest {
   m.onSpin(0,10,1,19);
   assertTrue(m.weeklyQuest().get(0).done());
  }
+ @Test public void chainRewardsRemainVisibleAfterFirstClaim()throws Exception{
+  Splash.enabled=false;Reminders.promptEnabled=false;MainActivity a=org.robolectric.Robolectric.buildActivity(MainActivity.class).create().start().resume().visible().get();java.lang.reflect.Field mf=MainActivity.class.getDeclaredField("missions");mf.setAccessible(true);MissionsManager m=(MissionsManager)mf.get(a);for(int n=0;n<20;n++)m.onSpin(0,10,1,n);java.lang.reflect.Method refresh=MainActivity.class.getDeclaredMethod("refreshQuestStrip");refresh.setAccessible(true);refresh.invoke(a);java.lang.reflect.Field tf=MainActivity.class.getDeclaredField("questText");tf.setAccessible(true);String text=((android.widget.TextView)tf.get(a)).getText().toString();assertTrue(text.contains("tap to claim +100"));assertTrue(text.contains("Next 100 spins: +400"));assertEquals(100,m.claim(m.weeklyQuest().get(0)));refresh.invoke(a);text=((android.widget.TextView)tf.get(a)).getText().toString();assertTrue(text.contains("Quest 2/5"));assertTrue(text.contains("Next 300 spins: +1000"));assertFalse(text.contains("left left"));
+ }
 }
