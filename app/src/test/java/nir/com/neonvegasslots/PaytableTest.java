@@ -8,6 +8,7 @@ public class PaytableTest {
  @Test public void paytableShowsRealPayouts() throws Exception {
   Splash.enabled=false;Splash.pulse=false;Reminders.promptEnabled=false;
   MainActivity a=Robolectric.buildActivity(MainActivity.class).create().start().resume().visible().get();
+  assertFalse("auto menu removed",java.util.Arrays.stream(MainActivity.class.getDeclaredMethods()).anyMatch(m -> m.getName().equals("showAutoMenu")));
   a.onOpenPaytable();assertNotNull(GameDialog.cur);assertTrue(GameDialog.cur.isShowing());
   View v=GameDialog.cur.getWindow().getDecorView();
   assertTrue(has(v,"Paytable & paylines"));assertTrue(has(v,"Close"));

@@ -217,7 +217,7 @@ public class MainActivity extends Activity implements SlotsView.Listener, Billin
         LinearLayout dailyBox = new LinearLayout(this);
         dailyBox.setOrientation(LinearLayout.VERTICAL);
         dailyBox.addView(GameDialog.rewardHero(this, GameDialog.fromTheme(SlotArt.THEMES[game.getThemeIdx()])),
-            new LinearLayout.LayoutParams(-1, (int) (120 * getResources().getDisplayMetrics().density)));
+            new LinearLayout.LayoutParams(-1, (int) (72 * getResources().getDisplayMetrics().density)));
         dailyBox.addView(dailyLadder(streak));
         dlg().title("Daily bonus - day " + streak)
             .body("Come back every day to grow your streak.\nCoins are virtual only - no cash value, no prizes.")
