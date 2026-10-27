@@ -45,6 +45,9 @@ final class GameDialog {
 
     /** Popup queue state (main thread only). */
     static boolean showing = false;
+    /** Gameplay actions (spins, merges, taps on the board) since the last popup closed. Starts at 1 so the first popup is not blocked. */
+    static int actionsSinceClose = 1;
+    static void noteAction() { actionsSinceClose++; }
     static java.util.function.BooleanSupplier busy;
     static final java.util.ArrayDeque<Builder> pending = new java.util.ArrayDeque<>();
     private static boolean drainScheduled = false;
@@ -54,18 +57,19 @@ final class GameDialog {
         new android.os.Handler(android.os.Looper.getMainLooper()).postDelayed(() -> {
             drainScheduled = false;
             if (a.isFinishing() || a.isDestroyed()) { pending.clear(); showing = false; return; }
-            if (showing || (busy != null && busy.getAsBoolean())) { if (!pending.isEmpty()) scheduleDrain(a); return; }
-            Builder b = pending.poll();
-            if (b != null) b.show();
+            Builder b = pending.peek();
+            if (b == null) return;
+            if (showing || (busy != null && busy.getAsBoolean()) || (b.auto && actionsSinceClose < 1)) { scheduleDrain(a); return; }
+            pending.poll().show();
         }, 700);
     }
-    static void resetQueue() { showing = false; pending.clear(); drainScheduled = false; }
+    static void resetQueue() { showing = false; actionsSinceClose = 1; pending.clear(); drainScheduled = false; }
 
     static final class Builder {
         private final Activity activity;
         private final Palette theme;
         private String title; private CharSequence body; private View content;
-        private boolean cancelable = true;
+        private boolean cancelable = true, auto = false;
         private final List<Btn> buttons = new ArrayList<>();
 
         Builder(Activity a, Palette p) { activity = a; theme = p; }
@@ -73,15 +77,17 @@ final class GameDialog {
         Builder body(CharSequence b) { body = b; return this; }
         Builder content(View v) { content = v; return this; }
         Builder cancelable(boolean c) { cancelable = c; return this; }
+        /** Popup the app opens on its own (not from a tap): it also waits for at least one gameplay action since the last popup closed. */
+        Builder auto() { auto = true; return this; }
         Builder add(Btn b) { buttons.add(b); return this; }
 
         Dialog show() {
             Dialog d = build();
             if (activity.isFinishing() || activity.isDestroyed()) return d; // never attach a window to a dead activity (BadTokenException seen on Test Lab)
             // Popup queue: one popup at a time, never while the reels spin; the rest wait their turn.
-            if (showing || (busy != null && busy.getAsBoolean())) { pending.add(this); scheduleDrain(activity); return d; }
+            if (showing || (busy != null && busy.getAsBoolean()) || (auto && actionsSinceClose < 1)) { pending.add(this); scheduleDrain(activity); return d; }
             showing = true;
-            d.setOnDismissListener(x -> { showing = false; scheduleDrain(activity); });
+            d.setOnDismissListener(x -> { showing = false; actionsSinceClose = 0; scheduleDrain(activity); });
             d.show();
             View content = d.getWindow() != null ? d.getWindow().getDecorView() : null;
             if (content != null) {

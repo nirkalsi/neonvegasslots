@@ -92,6 +92,11 @@ public class SlotsView extends View {
     public long getBalance() { return balance; }
     public int getLevel() { return level; }
     boolean isSpinning() { return spinning; }
+    /** True while a spin, win count-up, level-up or unlock animation is still resolving: popups wait. */
+    boolean isBusyAnimating() {
+        long n = System.currentTimeMillis();
+        return spinning || n < winFlashUntil || n < bigWinUntil || n < levelFlashUntil || n < unlockFlashUntil || n < trophyFlashUntil;
+    }
     long getLastWin() { return lastWin; }
     void debugLevelUp() { levelFlashUntil = System.currentTimeMillis() + 2000; invalidate(); }
     public long getSpinsDone() { return spinsDone; }
@@ -350,6 +355,7 @@ public class SlotsView extends View {
         xp += xpForBet(bet);
         lastWin = 0;
         spinning = true;
+        GameDialog.noteAction();
         long now = System.currentTimeMillis();
         for (int c = 0; c < 5; c++) { stopAt[c] = now + 600 + c * 380; stopSounded[c] = false; }
         fx(SoundFx.Effect.SPIN);

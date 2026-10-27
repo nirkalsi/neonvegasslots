@@ -52,7 +52,7 @@ public class MainActivity extends Activity implements SlotsView.Listener, Billin
         game = new SlotsView(this);
         game.setListener(this);
         GameDialog.resetQueue();
-        GameDialog.busy = () -> game != null && game.isSpinning();
+        GameDialog.busy = () -> game != null && game.isBusyAnimating();
         sfx = new SoundFx(this);
         music = new Music(this);
         game.setSoundFx(sfx);
@@ -228,7 +228,7 @@ public class MainActivity extends Activity implements SlotsView.Listener, Billin
             .content(dailyBox)
             .add(GameDialog.Btn.primary("Claim +" + bonus, () -> grantDaily(streak, bonus)))
             .add(GameDialog.Btn.secondary("Watch ad for 2X", () -> ads.showRewarded(() -> grantDaily(streak, bonus * 2))))
-            .show();
+            .auto().show();
     }
 
     private View dailyLadder(int streak) {
@@ -489,7 +489,7 @@ public class MainActivity extends Activity implements SlotsView.Listener, Billin
             .add(GameDialog.Btn.primary("Watch ad  (+300)", () -> ads.showRewarded(() -> game.addCoins(300))));
         if (!sp.getBoolean("ads_removed", false) && billing.priceOf(BillingManager.REMOVE_ADS) != null)
             b.add(GameDialog.Btn.secondary("Remove banner & interstitial ads", () -> offerRemoveAds("outofcoins")));
-        b.add(GameDialog.Btn.secondary("Not now", null)).show();
+        b.add(GameDialog.Btn.secondary("Not now", null)).auto().show();
     }
 
     @Override public void onSpinComplete(int spinsDone, long win, long bet) {
@@ -553,7 +553,7 @@ public class MainActivity extends Activity implements SlotsView.Listener, Billin
     private void maybeAskNotifications() {
         if (isFinishing() || isDestroyed() || !Reminders.promptEnabled) return;
         if (!today().equals(sp.getString("daily_last", ""))) return; // daily bonus first; never stack dialogs
-        if (GameDialog.showing || !GameDialog.pending.isEmpty() || (game != null && game.isSpinning())) { handler.postDelayed(this::maybeAskNotifications, 1500); return; }
+        if (GameDialog.showing || !GameDialog.pending.isEmpty() || (game != null && game.isBusyAnimating()) || GameDialog.actionsSinceClose < 1) { handler.postDelayed(this::maybeAskNotifications, 1500); return; }
         boolean enabled, rationale = false;
         android.app.NotificationManager nm = (android.app.NotificationManager) getSystemService(NOTIFICATION_SERVICE);
         enabled = nm == null || nm.areNotificationsEnabled();
