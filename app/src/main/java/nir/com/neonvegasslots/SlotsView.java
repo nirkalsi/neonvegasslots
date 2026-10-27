@@ -79,6 +79,8 @@ public class SlotsView extends View {
     private String trophyNewName = null;
 
     private boolean spinning = false;
+    private long spinStartedAt=0;
+    static float reelDistance(long elapsed){float t=Math.max(0,elapsed);return t<220?1.15f*t*t/440f:1.15f*(t-110);}
     private long[] stopAt = new long[5];
     private long winStartAt = 0;
     private long winFlashUntil = 0;
@@ -457,6 +459,7 @@ public class SlotsView extends View {
         spinning = true;
         GameDialog.noteAction();
         long now = System.currentTimeMillis();
+        spinStartedAt=now;
         for (int c = 0; c < 5; c++) { stopAt[c] = now + 600 + c * 150; stopSounded[c] = false; }
         fx(SoundFx.Effect.SPIN);
         anticipationGiven = false;
@@ -608,13 +611,15 @@ public class SlotsView extends View {
                 if (spinning && now < stopAt[c]) {
                     // scrolling strip: symbol + dimmed neighbours sliding upward, clipped to the cell
                     float pitch = cellH * 0.82f;
-                    float scroll = (now * 1.15f + c * 173 + r * 61) % pitch;
+                    float scroll = (reelDistance(now-spinStartedAt) + c * 173 + r * 61) % pitch;
                     cv.save();
                     cv.clipRect(x + 2, y, x + cellW + 2, y + cellH);
                     int sym = grid[r][c];
                     float cx = x + 2 + cellW / 2, cy = y + cellH / 2;
                     art.symbol(cv, sym, cx, cy - pitch + scroll, cellW * 0.74f);
                     p.setColor(0x30FFFFFF); cv.drawRect(x + 2, cy - pitch * 1.4f + scroll, x + cellW + 2, cy - pitch * 0.55f + scroll, p);
+                    // Low-alpha motion echoes make the moving strip read as blur, never alter outcomes.
+                    for(int ghost=1;ghost<=3;ghost++){cv.saveLayerAlpha(x+2,y,x+cellW+2,y+cellH,45-ghost*9);art.symbol(cv,sym,cx,cy+scroll-ghost*cellH*.075f,cellW*.82f);cv.restore();}
                     art.symbol(cv, sym, cx, cy + scroll, cellW * 0.82f);
                     art.symbol(cv, sym, cx, cy + pitch + scroll, cellW * 0.74f);
                     p.setColor(0x30FFFFFF); cv.drawRect(x + 2, cy + pitch * 0.55f + scroll, x + cellW + 2, cy + pitch * 1.4f + scroll, p);
