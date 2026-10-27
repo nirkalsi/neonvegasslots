@@ -615,7 +615,7 @@ public class SlotsView extends View {
 
     private void coinShower(Canvas cv, float w, float gridTop, float gridH, SlotArt.Theme th, long now) {
         float t = (now - winStartAt) / 1000f;
-        if (t < 0 || t > (bigWinUntil > System.currentTimeMillis() ? bigWinMs / 1000f : 1.6f)) return;
+        if (t < 0 || t > (bigWinUntil > nowMillis() ? bigWinMs / 1000f : 1.6f)) return;
         int coinsN = 22 + (bigWinUntil > now ? 18 * (bigWinTier + 1) : 0);
         for (int i = 0; i < coinsN; i++) {
             float x = w * (((i * 73856093) & 0xFFFF) / 65535f);
