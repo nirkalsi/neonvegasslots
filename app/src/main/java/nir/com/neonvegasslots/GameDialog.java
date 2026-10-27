@@ -183,6 +183,7 @@ final class GameDialog {
                 b.setSingleLine(false); // wrap long labels instead of clipping
                 b.setMinHeight((int) (48 * density)); b.setMinimumHeight((int) (48 * density));
                 b.setAllCaps(false);
+                if(btn.label.startsWith("Watch ad for 2X")){RewardedBadge badge=new RewardedBadge();badge.setBounds(0,0,(int)(56*density),(int)(40*density));b.setCompoundDrawables(badge,null,null,null);b.setCompoundDrawablePadding((int)(8*density));b.setPadding((int)(12*density),0,(int)(12*density),0);}
                 if (btn.primary) {
                     GradientDrawable pb = new GradientDrawable();
                     pb.setColor(theme.accent); pb.setCornerRadius(14 * density);
