@@ -31,7 +31,8 @@ public class WinTierFramesTest {
         v.measure(View.MeasureSpec.makeMeasureSpec(540, View.MeasureSpec.EXACTLY), View.MeasureSpec.makeMeasureSpec(1110, View.MeasureSpec.EXACTLY));
         v.layout(0, 0, 540, 1110);
         Bitmap b = Bitmap.createBitmap(540, 1110, Bitmap.Config.ARGB_8888);
-        v.draw(new Canvas(b));
+        v.draw(new Canvas(b)); // establish this tier's neon activation
+        now[0]+=200;v.draw(new Canvas(b));now[0]-=200;
         try (FileOutputStream f = new FileOutputStream("/tmp/renders/neonvegasslots-win-t" + tier + "-f" + k + ".png")) { b.compress(Bitmap.CompressFormat.PNG, 100, f); }
       }
     }

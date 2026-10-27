@@ -80,6 +80,7 @@ public class SlotsView extends View {
 
     private boolean spinning = false;
     private long spinStartedAt=0;
+    private long neonSoundStart=-1,neonTierAt=0;private int neonSoundTier=-1;
     static float reelDistance(long elapsed){float t=Math.max(0,elapsed);return t<220?1.15f*t*t/440f:1.15f*(t-110);}
     private long[] stopAt = new long[5];
     private long winStartAt = 0;
@@ -775,6 +776,7 @@ public class SlotsView extends View {
         }
     }
 
+    static int neonLitLetters(String sign,long elapsed){return Math.min(sign.length(),Math.max(0,(int)(elapsed/65)+1));}
     static long shownTierWin(long amount,long elapsed,long duration){float t=Math.max(0,Math.min(1,elapsed/(duration*.78f)));return Math.round(amount*(1-Math.pow(1-t,2)));}
     static int presentationTier(long shown,long bet,int finalTier){return Math.min(finalTier,winTier(shown,Math.max(1,bet)));}
     private void bigWinOverlay(Canvas cv, float w, SlotArt.Theme th, long now) {
@@ -792,7 +794,12 @@ public class SlotsView extends View {
         int liveTier=presentationTier(shown,BETS[betIdx],bigWinTier);
         p.setColor(TIER_COLOR[liveTier]);
         p.setShadowLayer(w * 0.03f * pop, 0, 0, 0xFFFFA000);
-        cv.drawText(TIER_NAME[liveTier], w / 2, cy, p);
+        if(neonSoundStart!=bigWinStartAt){neonSoundStart=bigWinStartAt;neonSoundTier=-1;}
+        if(liveTier!=neonSoundTier){neonSoundTier=liveTier;neonTierAt=now;fx(SoundFx.Effect.NEON_BUZZ);}
+        String sign=TIER_NAME[liveTier];float signW=p.measureText(sign),sx=w*.5f-signW*.5f;
+        int lit=neonLitLetters(sign,now-neonTierAt);
+        for(int letter=0;letter<sign.length();letter++){String glyph=sign.substring(letter,letter+1);p.setColor(letter<lit?TIER_COLOR[liveTier]:0xFF352C50);if(letter<lit)p.setShadowLayer(w*.025f,0,0,th.neon);else p.clearShadowLayer();cv.drawText(glyph,sx+p.measureText(glyph)*.5f,cy,p);sx+=p.measureText(glyph);}
+
         p.clearShadowLayer();
 
         p.setTextSize(w * 0.10f * pop);
