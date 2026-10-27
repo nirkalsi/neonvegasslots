@@ -307,6 +307,9 @@ public class SlotsView extends View {
         return 0xFF000000 | ((int) (r * (1 - f)) << 16) | ((int) (g * (1 - f)) << 8) | (int) (b * (1 - f));
     }
     /** Glossy rounded button: soft drop shadow, vertical gradient, top gloss, rim, optional glow ring. */
+    private int pressedControl;private long controlReleaseAt;private boolean controlDown;
+    private float controlScale(int id,long now){if(pressedControl!=id)return 1; if(controlDown)return .95f;float t=(now-controlReleaseAt)/210f;if(t>=1){pressedControl=0;return 1;}postInvalidateDelayed(16);return 1-.05f*(float)Math.cos(t*Math.PI*2)*(1-t);}
+    private void pressControl(int id){pressedControl=id;controlDown=true;controlReleaseAt=0;fx(SoundFx.Effect.CLICK);performHapticFeedback(android.view.HapticFeedbackConstants.KEYBOARD_TAP);invalidate();}
     private void modernButton(Canvas cv, RectF r, int top, int bottom, int rim, float glow) {
         float rad = r.height() * 0.32f;
         Paint q = new Paint(Paint.ANTI_ALIAS_FLAG);
@@ -695,6 +698,7 @@ public class SlotsView extends View {
         float btnH = getHeight() * 0.07f;
         boolean canSpin = !spinning && balance >= BETS[betIdx];
         float pulse = canSpin && !autoSpin ? (float) (0.5 + 0.5 * Math.sin(now / 520.0)) : 0f;
+        cv.save();float bsControl=controlScale(1,now);cv.scale(bsControl,bsControl,w*.215f,ctrlY+btnH/2);
         // BET: minus / amount / plus (icons and numbers only)
         rf.set(w * 0.03f, ctrlY, w * 0.40f, ctrlY + btnH);
         modernButton(cv, rf, lighten(th.betBg, 0.28f), darken(th.betBg, 0.25f), th.title, 0f);
@@ -718,6 +722,8 @@ public class SlotsView extends View {
             cv.drawText("Next "+betLabel(BETS[betIdx+1])+" at Lv "+BET_UNLOCK[betIdx+1],pcx,pcy+ph*.23f,p);
 
         }
+        if(controlDown&&pressedControl==1){p.setColor(0x33000000);cv.drawRoundRect(w*.03f,ctrlY,w*.40f,ctrlY+btnH,btnH*.32f,btnH*.32f,p);}
+        cv.restore();cv.save();float ssControl=controlScale(2,now);cv.scale(ssControl,ssControl,w*.70f,ctrlY+btnH/2);
         // SPIN: the hero button
         rf.set(w * 0.43f, ctrlY, w * 0.97f, ctrlY + btnH);
         int sTop = autoSpin ? 0xFFFF6B63 : spinning ? 0xFFFFB24A : (canSpin ? 0xFF86F26A : lighten(th.spinOff, 0.12f));
@@ -739,7 +745,7 @@ public class SlotsView extends View {
             GameFonts.hero(cv,"SPIN",scx-btnH*.10f,scy+btnH*.16f,p,0xFFFFFFFF,0xFFD9FFD0);
             loopIcon(cv, rf.right - btnH * .35f, scy, btnH * .14f, 0xCCFFFFFF); // hold opens auto choices
         }
-        p.clearShadowLayer();
+        p.clearShadowLayer();if(controlDown&&pressedControl==2){p.setColor(0x33000000);cv.drawRoundRect(w*.43f,ctrlY,w*.97f,ctrlY+btnH,btnH*.32f,btnH*.32f,p);}cv.restore();
         { // labels under the control row: BET caption and WIN readout
             float ly = ctrlY + btnH + w * 0.042f;
             p.setFakeBoldText(true); p.setTextAlign(Paint.Align.CENTER); p.setTextSize(w * 0.032f);
@@ -863,7 +869,7 @@ public class SlotsView extends View {
 
     @Override public boolean onTouchEvent(MotionEvent e) {
         int act = e.getActionMasked();
-        if (act == MotionEvent.ACTION_UP || act == MotionEvent.ACTION_CANCEL) { spinHeld = false; lpHandler.removeCallbacks(longPressAuto); return true; }
+        if (act == MotionEvent.ACTION_UP || act == MotionEvent.ACTION_CANCEL) {controlDown=false;controlReleaseAt=nowMillis();invalidate(); spinHeld = false; lpHandler.removeCallbacks(longPressAuto); return true; }
         if (act != MotionEvent.ACTION_DOWN) return true;
         float w = getWidth();
         float gridTop = gridTop();
@@ -876,8 +882,9 @@ public class SlotsView extends View {
         if(x>=w*.21f&&x<=w*.40f&&y>ctrlY+btnH&&y<=ctrlY+btnH+w*.055f){maxBet();return true;}
         if (y >= ctrlY && y <= ctrlY + btnH) {
             if (x >= w * 0.03f && x <= w * 0.40f) {
-                if (!spinning && !autoSpin) betStep(x < w * 0.03f + w * 0.37f * 0.33f ? -1 : 1);
+                if (!spinning && !autoSpin){pressControl(1);betStep(x < w * 0.03f + w * 0.37f * 0.33f ? -1 : 1);}
             } else if (x > w * 0.40f && x <= w * 0.97f) {
+                pressControl(2);
                 // tap: one spin; hold ~0.5 s: the spin continues as auto; any tap while auto stops it
                 if (autoSpin) stopAuto();
                 else if (spinning) quickStop();

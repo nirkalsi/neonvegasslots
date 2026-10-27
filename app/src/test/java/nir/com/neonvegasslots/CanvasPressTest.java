@@ -1,0 +1,8 @@
+package nir.com.neonvegasslots;
+import static org.junit.Assert.*;import android.graphics.*;import android.view.*;import org.junit.*;import org.junit.runner.RunWith;import org.robolectric.*;import org.robolectric.annotation.*;
+@RunWith(RobolectricTestRunner.class)@Config(sdk=34)@GraphicsMode(GraphicsMode.Mode.NATIVE)public class CanvasPressTest{
+ @Test public void betPressReleaseIsPresentationOnly()throws Exception{final long[] clock={System.currentTimeMillis()};SlotsView v=new SlotsView(RuntimeEnvironment.getApplication()){@Override long nowMillis(){return clock[0];}};v.layout(0,0,720,1480);long balance=v.getBalance();float y=SlotsView.ctrlY(720,1480)+30;
+  v.onTouchEvent(MotionEvent.obtain(0,0,0,110,y,0));java.lang.reflect.Method scale=SlotsView.class.getDeclaredMethod("controlScale",int.class,long.class);scale.setAccessible(true);assertEquals(.95f,(float)scale.invoke(v,1,clock[0]),.001f);String saved=v.serialize();Bitmap a=Bitmap.createBitmap(720,1480,Bitmap.Config.ARGB_8888);v.draw(new Canvas(a));try(java.io.FileOutputStream f=new java.io.FileOutputStream("/tmp/renders/neonvegasslots-canvas-pressed.png")){a.compress(Bitmap.CompressFormat.PNG,100,f);}assertEquals(balance,v.getBalance());
+  v.onTouchEvent(MotionEvent.obtain(0,20,1,110,y,0));clock[0]+=250;assertEquals(1f,(float)scale.invoke(v,1,clock[0]),.001f);Bitmap b=Bitmap.createBitmap(720,1480,Bitmap.Config.ARGB_8888);v.draw(new Canvas(b));assertFalse(a.sameAs(b));String[] before=saved.split(";",-1),after=v.serialize().split(";",-1);for(int i=0;i<before.length;i++)if(i!=3)assertEquals("field "+i,before[i],after[i]);
+ }
+}
