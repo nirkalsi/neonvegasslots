@@ -63,6 +63,7 @@ public class SlotsView extends View {
     private int level = 1;
     private long levelFlashUntil = 0;
     private long pendingLevelCoins=0,levelMomentAt=0;
+    private int pendingLevelFrom=1;
     private final RectF levelCollect=new RectF();
     private int themeIdx = 0;
     private long unlockFlashUntil = 0;
@@ -161,7 +162,7 @@ public class SlotsView extends View {
         tryTrophyDrop(rng.nextFloat(), today);
     }
 
-    public String serialize() { return balance + ";" + spinsDone + ";" + betIdx + ";" + lastRegenAt + ";" + xp + ";" + level + ";" + themeIdx + ";" + trophyMask + ";" + trophyDay + ";" + pendingLevelCoins; }
+    public String serialize() { return balance + ";" + spinsDone + ";" + betIdx + ";" + lastRegenAt + ";" + xp + ";" + level + ";" + themeIdx + ";" + trophyMask + ";" + trophyDay + ";" + pendingLevelCoins + ";" + pendingLevelFrom; }
     public void restore(String s) {
         try {
             String[] a = s.split(";",-1);
@@ -180,6 +181,7 @@ public class SlotsView extends View {
             if (a.length > 7) trophyMask = Integer.parseInt(a[7]) & 0xFFF;
             if (a.length > 8) trophyDay = a[8];
             if(a.length>9&&!a[9].isEmpty())pendingLevelCoins=Math.max(0,Long.parseLong(a[9]));
+            pendingLevelFrom=a.length>10&&!a[10].isEmpty()?Math.max(1,Math.min(level,Integer.parseInt(a[10]))):Math.max(1,level-1);
         } catch (Exception ignored) {}
     }
 
@@ -192,6 +194,9 @@ public class SlotsView extends View {
         float[] target=chipCenterOnScreen();if(getParent()!=null)ClaimBurst.play(this,reward,target[0],target[1]);
         invalidate();return reward;
     }
+    String levelBetReward(){if(betCount(level)==BETS.length&&betCount(pendingLevelFrom)==BETS.length)return "All bets unlocked";return betCount(level)>betCount(pendingLevelFrom)?"Bet unlocked: "+BETS[betCount(level)-1]:"Next bet at level "+nextBetLevel();}
+    private int nextBetLevel(){int n=level+1;while(n<1000&&betCount(n)==betCount(level))n++;return n;}
+    String levelLandReward(){return unlockedCount(level)>unlockedCount(pendingLevelFrom)?"New stop: "+SlotArt.THEMES[unlockedCount(level)-1].name:"Current stop: "+SlotArt.THEMES[unlockedCount(level)-1].name;}
     private void drawLevelCollect(Canvas c,float w,SlotArt.Theme th){
         long n=nowMillis();if(levelMomentAt==0)levelMomentAt=n;
         float t=Math.min(1,(n-levelMomentAt)/400f),q=t-1,pop=1+2.70158f*q*q*q+1.70158f*q*q;
@@ -205,8 +210,8 @@ public class SlotsView extends View {
         p.setColor(th.title);c.drawCircle(w*.5f,cy-w*.18f,w*.12f,p);p.setColor(th.panelBg);p.setTextAlign(Paint.Align.CENTER);p.setFakeBoldText(true);p.setTextSize(w*.13f);c.drawText(""+level,w*.5f,cy-w*.13f,p);
         p.setColor(0xFFFFFFFF);p.setTextSize(w*.075f);c.drawText("LEVEL UP!",w*.5f,cy+w*.015f,p);
         p.setColor(th.title);p.setTextSize(w*.05f);c.drawText("+"+pendingLevelCoins+" coins",w*.5f,cy+w*.105f,p);
-        p.setColor(th.soft);p.setTextSize(w*.032f);c.drawText("Bet range: up to "+BETS[betCount(level)-1],w*.5f,cy+w*.17f,p);
-        c.drawText("Land: "+SlotArt.THEMES[unlockedCount(level)-1].name,w*.5f,cy+w*.22f,p);
+        p.setColor(th.soft);p.setTextSize(w*.032f);c.drawText(levelBetReward(),w*.5f,cy+w*.17f,p);
+        c.drawText(levelLandReward(),w*.5f,cy+w*.22f,p);
         levelCollect.set(w*.22f,cy+w*.28f,w*.78f,cy+w*.40f);p.setColor(th.spinBg);c.drawRoundRect(levelCollect,w*.055f,w*.055f,p);p.setColor(0xFFFFFFFF);p.setTextSize(w*.052f);c.drawText("COLLECT",w*.5f,cy+w*.359f,p);
         c.restore();
         if(n-levelMomentAt<1300){float age=(n-levelMomentAt)/1300f;
@@ -458,6 +463,7 @@ public class SlotsView extends View {
         int oldUnlocks = unlockedCount(level);
         while (xp >= xpNeeded()) {
             xp -= xpNeeded();
+            if(pendingLevelCoins==0)pendingLevelFrom=level;
             level++;
             long reward = 150L * level;
             pendingLevelCoins += reward; // held until Collect; saved with the new level
