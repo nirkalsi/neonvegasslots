@@ -547,7 +547,7 @@ public class MainActivity extends Activity implements SlotsView.Listener, Billin
         if (android.os.Build.VERSION.SDK_INT >= 33) rationale = shouldShowRequestPermissionRationale("android.permission.POST_NOTIFICATIONS");
         // Android 13+ before any prompt reports notifications disabled; only treat as a refusal if a rationale exists or the asked flag is set.
         if (android.os.Build.VERSION.SDK_INT >= 33 && !enabled && !rationale) enabled = true;
-        if (!Reminders.shouldAsk(Reminders.asked(this), Reminders.isOn(this), enabled, rationale)) return;
+        if (!Reminders.shouldAsk(Reminders.legacyCohort(this), Reminders.asked(this), Reminders.isOn(this), enabled, rationale)) return;
         Reminders.markAsked(this); // shown once, whatever the answer
         new android.app.AlertDialog.Builder(this)
             .setTitle("Get game reminders?")

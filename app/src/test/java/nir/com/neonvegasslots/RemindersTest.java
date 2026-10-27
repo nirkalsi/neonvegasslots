@@ -28,11 +28,17 @@ public class RemindersTest {
     assertEquals(0, org.robolectric.Shadows.shadowOf(am).getScheduledAlarms().size());
     assertFalse(Reminders.isOn(c));
   }
-  @Test public void consentPopupOnlyForNeverExposedPlayers() {
-    assertTrue(Reminders.shouldAsk(false, false, true, false));   // never exposed
-    assertFalse(Reminders.shouldAsk(true, false, true, false));   // already asked once (any answer)
-    assertFalse(Reminders.shouldAsk(false, true, true, false));   // already opted in
-    assertFalse(Reminders.shouldAsk(false, false, false, false)); // system notifications off: treated as a prior refusal
-    assertFalse(Reminders.shouldAsk(false, false, true, true));   // denied the system prompt once: never re-ask
+  @Test public void consentPopupOnlyForNewInstallsNeverExposed() {
+    assertTrue(Reminders.shouldAsk(false, false, false, true, false));  // new install, never exposed
+    assertFalse(Reminders.shouldAsk(true, false, false, true, false));  // legacy upgrade: ambiguous cohort, no auto popup
+    assertFalse(Reminders.shouldAsk(false, true, false, true, false));  // already asked
+    assertFalse(Reminders.shouldAsk(false, false, true, true, false));  // already opted in
+    assertFalse(Reminders.shouldAsk(false, false, false, false, false)); // system notifications off
+    assertFalse(Reminders.shouldAsk(false, false, false, true, true));  // denied system prompt once
+    assertFalse(Reminders.shouldAsk(true, false, false, true, true));   // double denial on a legacy install: never re-asked
+  }
+  @Test public void legacyCohortFromInstallTimes() {
+    assertFalse(Reminders.isLegacy(1000L, 1000L));
+    assertTrue(Reminders.isLegacy(1000L, 1000L + 3600000L));
   }
 }

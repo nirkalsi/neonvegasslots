@@ -40,12 +40,27 @@ public class Reminders extends BroadcastReceiver {
      *  opted in, already answered, or whose system notifications are off / who denied the system prompt once (rationale true)
      *  is treated as a prior refusal and is never asked again; Settings stays the route. Old builds stored no "asked" flag,
      *  so these two system signals are the only evidence available of an earlier refusal. */
-    static boolean shouldAsk(boolean askedFlag, boolean remindOn, boolean notificationsEnabled, boolean rationaleShown) {
+    static boolean shouldAsk(boolean legacyUpgrade, boolean askedFlag, boolean remindOn, boolean notificationsEnabled, boolean rationaleShown) {
+        if (legacyUpgrade) return false; // upgraded from a build that stored no "asked" flag: refusals are indistinguishable, so no automatic popup (Settings still opts in)
         if (askedFlag || remindOn) return false;
         if (!notificationsEnabled) return false;
         if (rationaleShown) return false;
         return true;
     }
+    /** True when this install existed before the build that introduced the popup (first install time differs from the last update by more than a minute).
+     *  Decided once and stored, so later updates do not change the cohort. */
+    static boolean legacyCohort(Context c) {
+        SharedPreferences sp = c.getSharedPreferences(MainActivity.PREFS, Context.MODE_PRIVATE);
+        if (sp.contains("notif_cohort_legacy")) return sp.getBoolean("notif_cohort_legacy", true);
+        boolean legacy = true;
+        try {
+            android.content.pm.PackageInfo pi = c.getPackageManager().getPackageInfo(c.getPackageName(), 0);
+            legacy = isLegacy(pi.firstInstallTime, pi.lastUpdateTime);
+        } catch (Exception e) { /* unknown: treat as legacy, never risk re-asking a refusal */ }
+        sp.edit().putBoolean("notif_cohort_legacy", legacy).apply();
+        return legacy;
+    }
+    static boolean isLegacy(long firstInstall, long lastUpdate) { return lastUpdate - firstInstall > 60000L; }
     static boolean asked(Context c) { return c.getSharedPreferences(MainActivity.PREFS, Context.MODE_PRIVATE).getBoolean(ASKED_KEY, false); }
     static void markAsked(Context c) { c.getSharedPreferences(MainActivity.PREFS, Context.MODE_PRIVATE).edit().putBoolean(ASKED_KEY, true).apply(); }
     static boolean isOn(Context c) { return c.getSharedPreferences(MainActivity.PREFS, Context.MODE_PRIVATE).getBoolean(PREFS_KEY, false); }
