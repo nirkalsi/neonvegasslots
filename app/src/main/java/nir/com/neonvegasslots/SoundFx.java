@@ -13,13 +13,18 @@ import java.util.Map;
 /** Short original action sounds, synthesised in code (no audio files, no licensing, no background music).
  *  Plays through SoundPool on the game stream, respects the system media volume and a saved on/off switch. */
 public final class SoundFx {
-    public enum Effect { SPIN, REEL_STOP, WIN, BIG_WIN, ANTICIPATION, NEON_BUZZ }
+    public enum Effect { SPIN, REEL_STOP, WIN, BIG_WIN, ANTICIPATION, NEON_BUZZ, SPIN_LOOP, CLICK, COLLECT, MEGA_WIN, EPIC_WIN }
     public static final int RATE = 22050;
     private static final String PREF = "sound_fx_on";
 
     /** Pure and deterministic: the samples for one effect (16-bit mono PCM at RATE). */
     public static short[] render(Effect e) {
         switch (e) {
+            case SPIN_LOOP: return reelLoop();
+            case CLICK: return seq(new double[]{880,660}, 20, .30);
+            case COLLECT: return seq(new double[]{1046,1318,1568}, 55, .45);
+            case MEGA_WIN: return seq(new double[]{659,784,1046,1318,1568}, 120, .58);
+            case EPIC_WIN: return seq(new double[]{523,784,1046,1318,1568,2093}, 135, .60);
             case NEON_BUZZ: return neonBuzz();
             case ANTICIPATION: return seq(new double[]{392, 494, 587, 784}, 140, 0.42);
             case SPIN:      return seq(new double[]{330.0, 392.0, 494.0}, 55, 0.5);
@@ -30,6 +35,14 @@ public final class SoundFx {
     }
 
     private static short[] neonBuzz(){short[] out=new short[RATE*420/1000];for(int i=0;i<out.length;i++){double t=i/(double)RATE,env=Math.min(1,i/(RATE*.009))*Math.max(0,(out.length-1-i)/(RATE*.09));env=Math.min(1,env);double buzz=Math.sin(2*Math.PI*110*t)+.32*Math.sin(2*Math.PI*330*t)+.14*Math.sin(2*Math.PI*880*t);out[i]=(short)(buzz/1.46*env*.48*32767);}return out;}
+    private static short[] reelLoop(){
+        short[] a=new short[RATE/2];
+        for(int i=0;i<a.length;i++){double t=i/(double)RATE;
+            // Integer cycles over half a second give a click-free repeating mechanical roll.
+            double pulse=.55+.45*Math.cos(2*Math.PI*24*t);
+            a[i]=(short)(12500*pulse*(.65*Math.sin(2*Math.PI*120*t)+.35*Math.sin(2*Math.PI*360*t)));}
+        return a;
+    }
     private static short[] seq(double[] freqs, int noteMs, double peak) {
         int per = RATE * noteMs / 1000, tail = RATE * 120 / 1000;
         short[] out = new short[per * freqs.length + tail];
@@ -76,6 +89,7 @@ public final class SoundFx {
     private final Map<Integer, Boolean> loaded = new java.util.HashMap<>();
 
     private int played;
+    private int reelStream; private boolean wantsReelLoop;
     public SoundFx(Context c) { ctx = c.getApplicationContext(); }
     /** Number of effects actually handed to the audio engine (for device tests). */
     public int playedCount() { return played; }
@@ -91,6 +105,7 @@ public final class SoundFx {
                 .setUsage(AudioAttributes.USAGE_GAME).setContentType(AudioAttributes.CONTENT_TYPE_SONIFICATION).build()).build();
             pool.setOnLoadCompleteListener((p, id, status) -> {
                 loaded.put(id, status == 0);
+                if(status==0 && wantsReelLoop && ids.get(Effect.SPIN_LOOP)!=null && ids.get(Effect.SPIN_LOOP)==id)startReelLoop();
                 android.util.Log.i("SoundFx", "loaded id=" + id + " status=" + status);
             });
             for (Effect e : Effect.values()) {
@@ -103,7 +118,7 @@ public final class SoundFx {
 
     /** Plays one action effect unless the player switched sounds off. Never throws. */
     public void play(Effect e) {
-        if (!isOn(ctx)) return;
+        if (!isOn(ctx)) {stopReelLoop();return;}
         try {
             ensure();
             Integer id = ids.get(e);
@@ -114,5 +129,11 @@ public final class SoundFx {
         } catch (Exception ex) { android.util.Log.w("SoundFx", "play failed " + ex); }
     }
 
-    public void release() { if (pool != null) { pool.release(); pool = null; ids.clear(); loaded.clear(); } }
+    public void startReelLoop(){
+        wantsReelLoop=true;if(!isOn(ctx)||reelStream!=0)return;ensure();
+        Integer id=ids.get(Effect.SPIN_LOOP);if(pool!=null&&id!=null&&Boolean.TRUE.equals(loaded.get(id)))reelStream=pool.play(id,.34f,.34f,0,-1,1f);
+    }
+    boolean reelLoopRequested(){return wantsReelLoop;}
+    public void stopReelLoop(){wantsReelLoop=false;if(pool!=null&&reelStream!=0)pool.stop(reelStream);reelStream=0;}
+    public void release() {stopReelLoop(); if (pool != null) { pool.release(); pool = null; ids.clear(); loaded.clear(); } }
 }

@@ -38,7 +38,7 @@ public class MainActivity extends Activity implements SlotsView.Listener, Billin
     /** Debug-only motion demo for emulator video review: never runs in release builds or unit tests. */
     @Override protected void onResume() {
         super.onResume();
-        if (music != null) music.start();
+        if (music != null) music.start();if(game!=null&&game.isSpinning()&&sfx!=null)sfx.startReelLoop();
     }
 
     @Override protected void onCreate(Bundle b) {
@@ -521,9 +521,10 @@ public class MainActivity extends Activity implements SlotsView.Listener, Billin
         }
     }
 
-    @Override protected void onPause() { super.onPause(); if (music != null) music.pause(); saveState(); }
+    @Override protected void onPause() { super.onPause(); if (music != null) music.pause();if(sfx!=null)sfx.stopReelLoop(); saveState(); }
     private SoundFx sfx;
     SoundFx sfxForTest() { return sfx; }
+    void playUi(boolean collect){if(sfx!=null)sfx.play(collect?SoundFx.Effect.COLLECT:SoundFx.Effect.CLICK);}
     private Button reminderBtn;
     /** One-time yes/no notification question for players never asked before. No = never asked again (Settings still works). */
     private void maybeAskNotifications() {

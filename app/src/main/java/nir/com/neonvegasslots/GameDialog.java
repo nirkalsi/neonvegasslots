@@ -197,7 +197,7 @@ final class GameDialog {
                 LinearLayout.LayoutParams lp = new LinearLayout.LayoutParams(-1, -2);
                 lp.topMargin = gap;
                 card.addView(b, lp);
-                b.setOnClickListener(v -> { d.dismiss(); if (btn.onClick != null) btn.onClick.run(); });
+                b.setOnClickListener(v -> { if(activity instanceof MainActivity)((MainActivity)activity).playUi(btn.label.toLowerCase(java.util.Locale.US).contains("claim")||btn.label.toLowerCase(java.util.Locale.US).contains("collect"));v.performHapticFeedback(android.view.HapticFeedbackConstants.KEYBOARD_TAP);d.dismiss(); if (btn.onClick != null) btn.onClick.run(); });
             }
 
             GameFonts.apply(card);

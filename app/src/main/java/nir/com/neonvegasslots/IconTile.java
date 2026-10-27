@@ -31,6 +31,11 @@ final class IconTile extends View {
         setClickable(true); setFocusable(true);
     }
 
+    @Override public boolean performClick(){
+        android.content.Context c=getContext();while(c instanceof android.content.ContextWrapper && !(c instanceof MainActivity))c=((android.content.ContextWrapper)c).getBaseContext();
+        if(c instanceof MainActivity)((MainActivity)c).playUi(false);
+        performHapticFeedback(android.view.HapticFeedbackConstants.KEYBOARD_TAP);return super.performClick();
+    }
     void setBadge(int n) {
         if (n == badge) return;
         boolean wasZero = badge == 0;

@@ -19,7 +19,8 @@ public class SoundFxTest {
             assertTrue(e + " too quiet", peak > 8000);
             assertTrue(e + " too loud / clipping", peak <= 0.65 * 32767);
             assertTrue(e + " has DC offset", Math.abs(sum / p.length) < 400);
-            assertTrue(e + " must fade out (no click)", Math.abs(p[p.length - 1]) < 60);
+            if(e!=SoundFx.Effect.SPIN_LOOP)assertTrue(e + " must fade out (no click)", Math.abs(p[p.length - 1]) < 60);
+            else assertTrue("loop seam must be no steeper than one ordinary sample",Math.abs(p[p.length-1]-p[0])<800);
             assertTrue(e + " too long for an action sound", p.length < SoundFx.RATE * 1.0);
             assertTrue(e + " too short", p.length > SoundFx.RATE * 0.12);
         }
@@ -27,6 +28,18 @@ public class SoundFxTest {
     @Test public void render_isDeterministic_andEffectsDiffer() {
         assertArrayEquals(SoundFx.render(SoundFx.Effect.SPIN), SoundFx.render(SoundFx.Effect.SPIN));
         assertNotEquals(SoundFx.render(SoundFx.Effect.SPIN).length, SoundFx.render(SoundFx.Effect.BIG_WIN).length);
+    }
+    @Test public void loopStopsOnCancelAndMute(){
+        Context c=RuntimeEnvironment.getApplication();SoundFx.setOn(c,false);SoundFx fx=new SoundFx(c);fx.startReelLoop();assertTrue(fx.reelLoopRequested());assertEquals(0,fx.playedCount());fx.stopReelLoop();assertFalse(fx.reelLoopRequested());fx.release();assertFalse(fx.reelLoopRequested());
+    }
+    @Test public void tierJinglesAndCollectAreDistinct(){
+        assertFalse(java.util.Arrays.equals(SoundFx.render(SoundFx.Effect.WIN),SoundFx.render(SoundFx.Effect.MEGA_WIN)));
+        assertFalse(java.util.Arrays.equals(SoundFx.render(SoundFx.Effect.MEGA_WIN),SoundFx.render(SoundFx.Effect.EPIC_WIN)));
+        assertFalse(java.util.Arrays.equals(SoundFx.render(SoundFx.Effect.CLICK),SoundFx.render(SoundFx.Effect.COLLECT)));
+    }
+    @Test public void exportAudioReviewSamples()throws Exception{
+        java.io.File dir=new java.io.File("/tmp/audio-review/neonvegasslots");dir.mkdirs();
+        for(SoundFx.Effect e:SoundFx.Effect.values())try(java.io.FileOutputStream f=new java.io.FileOutputStream(new java.io.File(dir,e.name()+".wav"))){f.write(SoundFx.wav(SoundFx.render(e)));}
     }
     @Test public void wav_hasValidHeader() {
         short[] p = SoundFx.render(SoundFx.Effect.WIN);

@@ -199,7 +199,7 @@ public class SlotsView extends View {
     long collectLevelReward(){
         if(!levelMomentReady())return 0;
         long reward=pendingLevelCoins;pendingLevelCoins=0;levelMomentAt=0;levelCollect.setEmpty();
-        balance+=reward;persist();fx(SoundFx.Effect.WIN);GameDialog.noteAction();
+        balance+=reward;persist();fx(SoundFx.Effect.COLLECT);GameDialog.noteAction();
         float[] target=chipCenterOnScreen();if(getParent()!=null)ClaimBurst.play(this,reward,target[0],target[1]);
         invalidate();return reward;
     }
@@ -419,7 +419,7 @@ public class SlotsView extends View {
     public void setSoundFx(SoundFx s) { sfx = s; }
     private void fx(SoundFx.Effect e) {
         if (sfx != null) sfx.play(e);
-        if(e==SoundFx.Effect.REEL_STOP || e==SoundFx.Effect.WIN || e==SoundFx.Effect.BIG_WIN)
+        if(e==SoundFx.Effect.REEL_STOP || e==SoundFx.Effect.WIN || e==SoundFx.Effect.BIG_WIN || e==SoundFx.Effect.MEGA_WIN || e==SoundFx.Effect.EPIC_WIN)
             performHapticFeedback(android.view.HapticFeedbackConstants.CLOCK_TICK);
     }
 
@@ -439,8 +439,8 @@ public class SlotsView extends View {
         autoCount++;
         spin();
     }
-    @Override protected void onDetachedFromWindow() { lpHandler.removeCallbacks(longPressAuto); stopAuto(); super.onDetachedFromWindow(); }
-    @Override protected void onWindowVisibilityChanged(int v) { if (v != VISIBLE) stopAuto(); super.onWindowVisibilityChanged(v); }
+    @Override protected void onDetachedFromWindow() { lpHandler.removeCallbacks(longPressAuto); stopAuto();if(sfx!=null)sfx.stopReelLoop(); super.onDetachedFromWindow(); }
+    @Override protected void onWindowVisibilityChanged(int v) { if (v != VISIBLE) {stopAuto();if(sfx!=null)sfx.stopReelLoop();}else if(spinning&&sfx!=null)sfx.startReelLoop(); super.onWindowVisibilityChanged(v); }
 
     /** Tap SPIN while the reels run: the remaining reels stop left to right, 110 ms apart. */
     private void quickStop() {
@@ -462,7 +462,7 @@ public class SlotsView extends View {
         long now = System.currentTimeMillis();
         spinStartedAt=now;
         for (int c = 0; c < 5; c++) { stopAt[c] = now + 600 + c * 150; stopSounded[c] = false; }
-        fx(SoundFx.Effect.SPIN);
+        fx(SoundFx.Effect.SPIN);if(sfx!=null)sfx.startReelLoop();
         anticipationGiven = false;
         for (int r = 0; r < 3; r++) for (int c = 0; c < 5; c++) winCell[r][c] = false;
         persist();
@@ -470,13 +470,13 @@ public class SlotsView extends View {
     }
 
     private void finishSpin() {
-        spinning = false;
+        spinning = false;if(sfx!=null)sfx.stopReelLoop();
         spinsDone++;
         long bet = BETS[betIdx];
         long win = evaluate(grid, bet, winCell);
         if (win > 0) {
             balance += win; lastWin = win;
-            fx(win >= 25 * bet ? SoundFx.Effect.BIG_WIN : SoundFx.Effect.WIN);
+            fx(win<25*bet?SoundFx.Effect.WIN:winTier(win,bet)==2?SoundFx.Effect.EPIC_WIN:winTier(win,bet)==1?SoundFx.Effect.MEGA_WIN:SoundFx.Effect.BIG_WIN);
             winStartAt = System.currentTimeMillis();
             if (win >= 25 * bet) { bigWinTier = winTier(win, bet); bigWinMs = TIER_MS[bigWinTier]; bigWinStartAt = winStartAt; bigWinUntil = winStartAt + bigWinMs; bigWinAmount = win; winFlashUntil = winStartAt + bigWinMs; }
             else winFlashUntil = winStartAt + 1600;
