@@ -38,15 +38,7 @@ public class MainActivity extends Activity implements SlotsView.Listener, Billin
     @Override protected void onResume() {
         super.onResume();
         if (music != null) music.start();
-        boolean dbg = (getApplicationInfo().flags & android.content.pm.ApplicationInfo.FLAG_DEBUGGABLE) != 0
-                && !String.valueOf(android.os.Build.FINGERPRINT).toLowerCase().contains("robolectric");
-        if (dbg && !demoStarted && game != null) {
-            demoStarted = true;
-            game.postDelayed(() -> { game.debugLevelUp(); }, 7000);
-            game.postDelayed(() -> { float[] t = game.chipCenterOnScreen(); ClaimBurst.play(game, 120, t[0], t[1]); if (missionsTile != null) missionsTile.bounce(); }, 11000);
-        }
     }
-    private boolean demoStarted = false;
 
     @Override protected void onCreate(Bundle b) {
         super.onCreate(b);
@@ -59,6 +51,8 @@ public class MainActivity extends Activity implements SlotsView.Listener, Billin
         root.addView(buildQuestStrip());
         game = new SlotsView(this);
         game.setListener(this);
+        GameDialog.resetQueue();
+        GameDialog.busy = () -> game != null && game.isSpinning();
         sfx = new SoundFx(this);
         music = new Music(this);
         game.setSoundFx(sfx);
@@ -121,7 +115,11 @@ public class MainActivity extends Activity implements SlotsView.Listener, Billin
         if (removed) sp.edit().putBoolean("ads_removed", true).apply();
         ads.setAdsRemoved(removed);
         if (removed) applyAdsRemoved();
-        ads.initWithConsent(() -> { if (!removed) ads.attachBanner(bannerBox); });
+        int sessions = sp.getInt("sessions_started", 0) + 1;
+        sp.edit().putInt("sessions_started", sessions).apply();
+        final boolean firstSession = sessions <= 1 && !Reminders.legacyCohort(this);
+        // No banner during the player's first session (design spec A1); from the second session on the bottom banner shows as before.
+        ads.initWithConsent(() -> { if (!removed && !firstSession) ads.attachBanner(bannerBox); });
 
         billing = new BillingManager(this, this);
 
@@ -129,7 +127,9 @@ public class MainActivity extends Activity implements SlotsView.Listener, Billin
             sp.edit().putString("first_run", today()).apply();
 
         refreshQuestStrip();
-        handler.postDelayed(this::maybeDailyBonus, 900);
+        // New installs get to play first: the daily bonus waits for a few spins and a first win (design spec A1). Returning players see it at launch as before.
+        if (!Reminders.legacyCohort(this) && sp.getString("daily_last", "").isEmpty()) handler.postDelayed(this::dailyBonusWhenReady, 2500);
+        else handler.postDelayed(this::maybeDailyBonus, 900);
         handler.postDelayed(this::maybeDay2Offer, 2000);
         handler.postDelayed(this::maybeAskNotifications, 1800);
     }
@@ -145,7 +145,7 @@ public class MainActivity extends Activity implements SlotsView.Listener, Billin
         questText.setTextColor(0xFFFFD36B); questText.setTextSize(android.util.TypedValue.COMPLEX_UNIT_DIP, 12f); questText.setTypeface(Typeface.DEFAULT_BOLD);
         questText.setSingleLine(true); questText.setEllipsize(android.text.TextUtils.TruncateAt.END);
         questBar = new android.widget.ProgressBar(this, null, android.R.attr.progressBarStyleHorizontal);
-        questBar.setMax(1000);
+        questBar.setMax(20);
         questBar.getProgressDrawable().setColorFilter(0xFFFFB300, android.graphics.PorterDuff.Mode.SRC_IN);
         strip.addView(questText);
         strip.addView(questBar, new LinearLayout.LayoutParams(-1, (int) (6 * getResources().getDisplayMetrics().density)));
@@ -155,10 +155,13 @@ public class MainActivity extends Activity implements SlotsView.Listener, Billin
     private void refreshQuestStrip() {
         if (questText == null || missions == null) return;
         List<MissionsManager.Item> q = missions.weeklyQuest();
-        long n = q.get(0).progress;
-        questBar.setProgress((int) Math.min(1000, n));
+        int step = 0; while (step < q.size() - 1 && q.get(step).claimed) step++;
+        MissionsManager.Item cur = q.get(step);
+        questBar.setMax((int) cur.goal);
+        questBar.setProgress((int) Math.min(cur.goal, cur.progress));
         refreshClaimBadge();
-        questText.setText("Neon Quest " + Math.min(1000, n) + "/1000 spins - " + missions.questTimeLeft());
+        String reward = cur.done() && !cur.claimed ? "tap to claim +" + cur.reward : "reward +" + cur.reward + " coins";
+        questText.setText("Quest " + (step + 1) + "/" + q.size() + ": spin " + cur.goal + " times (" + Math.min(cur.goal, cur.progress) + "/" + cur.goal + ") - " + reward);
     }
 
     private IconTile missionsTile;
@@ -201,6 +204,13 @@ public class MainActivity extends Activity implements SlotsView.Listener, Billin
     private String yesterday() {
         Calendar c = Calendar.getInstance(); c.add(Calendar.DAY_OF_YEAR, -1);
         return new SimpleDateFormat("yyyy-MM-dd", Locale.US).format(c.getTime());
+    }
+
+    private void dailyBonusWhenReady() {
+        if (isFinishing() || isDestroyed()) return;
+        long spins = game.getSpinsDone();
+        if (spins >= 4 && (game.getLastWin() > 0 || spins >= 8) && !game.isSpinning()) maybeDailyBonus();
+        else handler.postDelayed(this::dailyBonusWhenReady, 1500);
     }
 
     private void maybeDailyBonus() {
@@ -543,6 +553,7 @@ public class MainActivity extends Activity implements SlotsView.Listener, Billin
     private void maybeAskNotifications() {
         if (isFinishing() || isDestroyed() || !Reminders.promptEnabled) return;
         if (!today().equals(sp.getString("daily_last", ""))) return; // daily bonus first; never stack dialogs
+        if (GameDialog.showing || !GameDialog.pending.isEmpty() || (game != null && game.isSpinning())) { handler.postDelayed(this::maybeAskNotifications, 1500); return; }
         boolean enabled, rationale = false;
         android.app.NotificationManager nm = (android.app.NotificationManager) getSystemService(NOTIFICATION_SERVICE);
         enabled = nm == null || nm.areNotificationsEnabled();

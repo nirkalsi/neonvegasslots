@@ -43,6 +43,24 @@ final class GameDialog {
         static Btn secondary(String label, Runnable r) { return new Btn(label, false, r); }
     }
 
+    /** Popup queue state (main thread only). */
+    static boolean showing = false;
+    static java.util.function.BooleanSupplier busy;
+    static final java.util.ArrayDeque<Builder> pending = new java.util.ArrayDeque<>();
+    private static boolean drainScheduled = false;
+    static void scheduleDrain(Activity a) {
+        if (drainScheduled) return;
+        drainScheduled = true;
+        new android.os.Handler(android.os.Looper.getMainLooper()).postDelayed(() -> {
+            drainScheduled = false;
+            if (a.isFinishing() || a.isDestroyed()) { pending.clear(); showing = false; return; }
+            if (showing || (busy != null && busy.getAsBoolean())) { if (!pending.isEmpty()) scheduleDrain(a); return; }
+            Builder b = pending.poll();
+            if (b != null) b.show();
+        }, 700);
+    }
+    static void resetQueue() { showing = false; pending.clear(); drainScheduled = false; }
+
     static final class Builder {
         private final Activity activity;
         private final Palette theme;
@@ -60,6 +78,10 @@ final class GameDialog {
         Dialog show() {
             Dialog d = build();
             if (activity.isFinishing() || activity.isDestroyed()) return d; // never attach a window to a dead activity (BadTokenException seen on Test Lab)
+            // Popup queue: one popup at a time, never while the reels spin; the rest wait their turn.
+            if (showing || (busy != null && busy.getAsBoolean())) { pending.add(this); scheduleDrain(activity); return d; }
+            showing = true;
+            d.setOnDismissListener(x -> { showing = false; scheduleDrain(activity); });
             d.show();
             View content = d.getWindow() != null ? d.getWindow().getDecorView() : null;
             if (content != null) {

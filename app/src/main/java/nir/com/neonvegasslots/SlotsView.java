@@ -91,6 +91,8 @@ public class SlotsView extends View {
     public void addCoins(long n) { balance += n; persist(); invalidate(); }
     public long getBalance() { return balance; }
     public int getLevel() { return level; }
+    boolean isSpinning() { return spinning; }
+    long getLastWin() { return lastWin; }
     void debugLevelUp() { levelFlashUntil = System.currentTimeMillis() + 2000; invalidate(); }
     public long getSpinsDone() { return spinsDone; }
     public int getThemeIdx() { return themeIdx; }

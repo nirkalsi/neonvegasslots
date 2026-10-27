@@ -44,7 +44,7 @@ public class MissionsManager {
         String w = weekId(System.currentTimeMillis());
         if (!w.equals(sp.getString("quest_week", ""))) {
             sp.edit().putString("quest_week", w).putLong("wq", 0)
-                .putBoolean("wq1c", false).putBoolean("wq2c", false).putBoolean("wq3c", false).putBoolean("wq4c", false).apply();
+                .putBoolean("wq0c", false).putBoolean("wq1c", false).putBoolean("wq2c", false).putBoolean("wq3c", false).putBoolean("wq4c", false).apply();
         }
     }
     /** Neon Quest: weekly spin milestones, free to progress, same rewards for everyone, ends at a real fixed time. */
@@ -52,6 +52,7 @@ public class MissionsManager {
         rollWeeklyIfNeeded();
         long n = sp.getLong("wq", 0);
         List<Item> out = new ArrayList<>();
+        out.add(mk("wq0", "Quest: spin 20 times", 20, 100, n, sp.getBoolean("wq0c", false)));
         out.add(mk("wq1", "Quest: spin 100 times", 100, 400, n, sp.getBoolean("wq1c", false)));
         out.add(mk("wq2", "Quest: spin 300 times", 300, 1000, n, sp.getBoolean("wq2c", false)));
         out.add(mk("wq3", "Quest: spin 600 times", 600, 2200, n, sp.getBoolean("wq3c", false)));
