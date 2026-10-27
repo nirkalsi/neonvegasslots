@@ -214,11 +214,20 @@ public class SlotsView extends View {
         c.drawText(levelLandReward(),w*.5f,cy+w*.22f,p);
         levelCollect.set(w*.22f,cy+w*.28f,w*.78f,cy+w*.40f);p.setColor(th.spinBg);c.drawRoundRect(levelCollect,w*.055f,w*.055f,p);p.setColor(0xFFFFFFFF);p.setTextSize(w*.052f);c.drawText("COLLECT",w*.5f,cy+w*.359f,p);
         c.restore();
+        drawLevelTheme(c,w,cy,n-levelMomentAt);
         if(n-levelMomentAt<1300){float age=(n-levelMomentAt)/1300f;
             for(int k=0;k<28;k++){double a=k*2.399963;float radius=w*(.16f+age*.42f);float x=w*.5f+(float)Math.cos(a)*radius,y=cy+(float)Math.sin(a)*radius+age*age*w*.3f;
                 p.setColor(k%2==0?th.title:0xFFFFFFFF);p.setAlpha((int)(220*(1-age)));c.drawCircle(x,y,w*(.004f+(k%3)*.002f),p);}
         }
         p.setAlpha(255);p.setFakeBoldText(false);p.setStyle(Paint.Style.FILL);postInvalidateDelayed(33);
+    }
+
+    private void drawLevelTheme(Canvas c,float w,float cy,long age){
+        // Cyan and pink sign sparks keep this skin's celebration distinct from Dragon's lanterns.
+        for(int side=0;side<2;side++){float x=w*(side==0?.12f:.88f),y=cy-w*.39f;float u=((age+side*400)%1600)/1600f;
+            p.setColor(side==0?0xFF31F5FF:0xFFFF3BA7);p.setAlpha((int)(230*(1-u)));p.setStrokeWidth(w*.006f);
+            for(int j=0;j<8;j++){double a=j*Math.PI/4;float r=w*(.02f+u*.08f);c.drawLine(x+(float)Math.cos(a)*r*.5f,y+(float)Math.sin(a)*r*.5f,x+(float)Math.cos(a)*r,y+(float)Math.sin(a)*r,p);}p.setAlpha(255);
+        }
     }
 
     // HUD coin chip: dark pill, gold rim, coin disc, amount, green "+" that opens the shop (original art).
