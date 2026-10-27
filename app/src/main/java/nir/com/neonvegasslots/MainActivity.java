@@ -447,6 +447,25 @@ public class MainActivity extends Activity implements SlotsView.Listener, Billin
 
     // ---------- SlotsView.Listener ----------
     @Override public void onOpenShop() { showShop(); }
+    @Override public void onOpenAuto() { showAutoMenu(); }
+    private void showAutoMenu() {
+        game.stopAuto();
+        android.widget.LinearLayout content = new android.widget.LinearLayout(this);
+        content.setOrientation(android.widget.LinearLayout.VERTICAL);
+        android.widget.CheckBox turbo = new android.widget.CheckBox(this);
+        turbo.setText("Turbo - faster reel stops"); turbo.setTextColor(android.graphics.Color.WHITE);
+        turbo.setTextSize(16); turbo.setChecked(game.isTurbo());
+        turbo.setOnCheckedChangeListener((button, checked) -> game.setTurbo(checked));
+        content.addView(turbo, new android.widget.LinearLayout.LayoutParams(-1, (int)(52 * getResources().getDisplayMetrics().density)));
+        dlg().title("Auto-spin")
+            .body("Choose a run. Stops early for a big win, level-up, trophy or low coins. Tap STOP at any time. Each spin uses your selected bet in virtual coins.")
+            .content(content)
+            .add(GameDialog.Btn.primary("10 spins", () -> game.startAuto(10)))
+            .add(GameDialog.Btn.secondary("25 spins", () -> game.startAuto(25)))
+            .add(GameDialog.Btn.secondary("50 spins", () -> game.startAuto(50)))
+            .add(GameDialog.Btn.secondary("Until a feature", () -> game.startAuto(0)))
+            .add(GameDialog.Btn.secondary("Cancel", null)).show();
+    }
     @Override public void onOpenMap() { dlg().title("City Tour").content(new MapView(this, game)).add(GameDialog.Btn.secondary("Close", null)).show(); }
 
     @Override public void onOutOfCoins() {

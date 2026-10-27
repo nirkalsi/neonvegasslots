@@ -19,6 +19,7 @@ public class SlotsView extends View {
         void saveState();
         default void onOpenShop() {}
         default void onOpenMap() {}
+        default void onOpenAuto() {}
     }
 
     private static final int[] WEIGHT = {4, 7, 10, 16, 18, 12};
@@ -336,6 +337,11 @@ public class SlotsView extends View {
 
     private boolean autoSpin = false;          // session-only, never persisted
     private int autoCount = 0;
+    private int autoLimit = 0; // 0 = until a feature, never persisted
+    private boolean turbo = false; // session only
+    public boolean isTurbo() { return turbo; }
+    public void setTurbo(boolean value) { turbo = value; invalidate(); }
+    public int autoLimit() { return autoLimit; }
     private final Runnable autoRunner = new Runnable() { @Override public void run() { autoStep(); } };
     private SoundFx sfx;
     private final boolean[] stopSounded = new boolean[5];
@@ -348,14 +354,17 @@ public class SlotsView extends View {
         if (autoSpin) { autoSpin = false; invalidate(); }
     }
     public boolean isAuto() { return autoSpin; }
-    private void startAuto() {
+    private void startAuto() { startAuto(0); }
+    public void startAuto(int count) {
+        if (count != 0 && count != 10 && count != 25 && count != 50) throw new IllegalArgumentException("Auto count must be 10, 25, 50 or 0 (until feature)");
         if (balance < BETS[betIdx]) { if (listener != null) listener.onOutOfCoins(); return; }
-        autoSpin = true; autoCount = 0;
+        autoLimit = count; autoSpin = true; autoCount = 0;
         if (!spinning) autoStep(); else invalidate();
     }
     private void autoStep() {
         if (!autoSpin || spinning) return;
         if (balance < BETS[betIdx]) { stopAuto(); return; }
+        if (autoLimit > 0 && autoCount >= autoLimit) { stopAuto(); return; }
         autoCount++;
         spin();
     }
@@ -379,7 +388,7 @@ public class SlotsView extends View {
         spinning = true;
         GameDialog.noteAction();
         long now = System.currentTimeMillis();
-        for (int c = 0; c < 5; c++) { stopAt[c] = now + 600 + c * 380; stopSounded[c] = false; }
+        for (int c = 0; c < 5; c++) { stopAt[c] = now + (turbo ? 260 : 600) + c * (turbo ? 80 : 150); stopSounded[c] = false; }
         fx(SoundFx.Effect.SPIN);
         anticipationGiven = false;
         for (int r = 0; r < 3; r++) for (int c = 0; c < 5; c++) winCell[r][c] = false;
@@ -419,7 +428,8 @@ public class SlotsView extends View {
         boolean trophy = trophyFlashUntil > System.currentTimeMillis();
         if (autoSpin) {
             if (win >= 25 * bet || leveled || trophy || balance < BETS[betIdx]) autoSpin = false;
-            else postDelayed(autoRunner, win > 0 ? 1900 : 700);
+            else if (autoLimit > 0 && autoCount >= autoLimit) stopAuto();
+            else postDelayed(autoRunner, win > 0 ? (turbo ? 1000 : 1900) : (turbo ? 250 : 700));
         }
         if (listener != null) {
             if (win >= 25 * bet) listener.onBigWin(win, bet);
@@ -665,8 +675,9 @@ public class SlotsView extends View {
             p.setTextAlign(Paint.Align.CENTER); p.setTextSize(btnH * 0.46f);
             cv.drawText("STOP", scx, scy + btnH * 0.16f, p);
         } else {
-            spinIcon(cv, scx - btnH * 0.28f, scy, btnH * 0.30f);
-            loopIcon(cv, scx + btnH * 0.62f, scy, btnH * 0.16f, 0xCCFFFFFF); // hold = auto
+            p.setTextAlign(Paint.Align.CENTER); p.setTextSize(btnH * .46f);
+            cv.drawText("SPIN", scx - btnH * .10f, scy + btnH * .16f, p);
+            loopIcon(cv, rf.right - btnH * .35f, scy, btnH * .14f, 0xCCFFFFFF); // hold opens auto choices
         }
         p.clearShadowLayer();
         { // labels under the control row: BET caption and WIN readout
@@ -674,7 +685,7 @@ public class SlotsView extends View {
             p.setFakeBoldText(true); p.setTextAlign(Paint.Align.CENTER); p.setTextSize(w * 0.032f);
             p.setColor(th.soft); cv.drawText("BET", w * 0.215f, ly, p);
             if (lastWin > 0) { p.setColor(0xFFFFD166); cv.drawText("WIN " + lastWin, w * 0.70f, ly, p); }
-            else { p.setColor(th.soft); cv.drawText(autoSpin ? "AUTO - tap to stop" : spinning ? "TAP TO STOP" : "TAP = SPIN   HOLD = AUTO", w * 0.70f, ly, p); }
+            else { p.setColor(th.soft); cv.drawText(autoSpin ? "AUTO - tap to stop" : spinning ? "TAP TO STOP" : "HOLD FOR AUTO", w * 0.70f, ly, p); }
             p.setFakeBoldText(false);
         }
         p.setFakeBoldText(false); p.setTextAlign(Paint.Align.CENTER); p.setTextSize(w * 0.045f);
@@ -751,9 +762,9 @@ public class SlotsView extends View {
     private final android.os.Handler lpHandler = new android.os.Handler(android.os.Looper.getMainLooper());
     private boolean spinHeld = false;       // finger is down on SPIN
     private final Runnable longPressAuto = new Runnable() { @Override public void run() {
-        if (spinHeld && !autoSpin && balance >= BETS[betIdx]) { // silent: no out-of-coins dialog from a long press
-            autoSpin = true; autoCount = 0; performHapticFeedback(android.view.HapticFeedbackConstants.LONG_PRESS);
-            if (!spinning) autoStep(); else invalidate();
+        if (spinHeld && !autoSpin && balance >= BETS[betIdx] && listener != null) {
+            spinHeld = false; performHapticFeedback(android.view.HapticFeedbackConstants.LONG_PRESS);
+            listener.onOpenAuto(); // the popup queue waits for this spin/win to settle
         } } };
 
     @Override public boolean onTouchEvent(MotionEvent e) {
