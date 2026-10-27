@@ -131,7 +131,7 @@ public class MainActivity extends Activity implements SlotsView.Listener, Billin
         refreshQuestStrip();
         handler.postDelayed(this::maybeDailyBonus, 900);
         handler.postDelayed(this::maybeDay2Offer, 2000);
-        getWindow().getDecorView().post(this::maybeAskNotifications);
+        handler.postDelayed(this::maybeAskNotifications, 1800);
     }
 
     private android.widget.ProgressBar questBar;
@@ -263,6 +263,7 @@ public class MainActivity extends Activity implements SlotsView.Listener, Billin
         missions.onDailyClaimed(streak);
         game.addCoins(coins);
         Toast.makeText(this, "+" + coins + " daily coins!", Toast.LENGTH_SHORT).show();
+        handler.postDelayed(this::maybeAskNotifications, 700);
     }
 
     // ---------- rewarded free coins ----------
@@ -540,7 +541,8 @@ public class MainActivity extends Activity implements SlotsView.Listener, Billin
     private Button reminderBtn;
     /** One-time yes/no notification question for players never asked before. No = never asked again (Settings still works). */
     private void maybeAskNotifications() {
-        if (isFinishing() || !Reminders.promptEnabled) return;
+        if (isFinishing() || isDestroyed() || !Reminders.promptEnabled) return;
+        if (!today().equals(sp.getString("daily_last", ""))) return; // daily bonus first; never stack dialogs
         boolean enabled, rationale = false;
         android.app.NotificationManager nm = (android.app.NotificationManager) getSystemService(NOTIFICATION_SERVICE);
         enabled = nm == null || nm.areNotificationsEnabled();
