@@ -130,7 +130,6 @@ public class MainActivity extends Activity implements SlotsView.Listener, Billin
         // New installs get to play first: the daily bonus waits for a few spins and a first win (design spec A1). Returning players see it at launch as before.
         if (!Reminders.legacyCohort(this) && sp.getString("daily_last", "").isEmpty()) handler.postDelayed(this::dailyBonusWhenReady, 2500);
         else handler.postDelayed(this::maybeDailyBonus, 900);
-        handler.postDelayed(this::maybeDay2Offer, 2000);
         handler.postDelayed(this::maybeAskNotifications, 1800);
     }
 
@@ -180,10 +179,7 @@ public class MainActivity extends Activity implements SlotsView.Listener, Billin
         missionsTile.setOnClickListener(v -> showMissions());
         IconTile shop = new IconTile(this, "SHOP", 0xFF107A2C, 0xFF5BE36F, 0xFF107A2C, 0xFFFFD36B, "Shop", 34);
         shop.setOnClickListener(v -> showShop());
-        IconTile noAds = new IconTile(this, "NO ADS", 0xFFFFD166, vTop, vBot, gold, "Remove ads", 30);
-        noAds.setOnClickListener(v -> buyRemoveAds());
-        removeAdsTile = noAds;
-        IconTile[] tiles = {coins, missionsTile, shop, noAds};
+        IconTile[] tiles = {coins, missionsTile, shop};
         for (int i = 0; i < tiles.length; i++) {
             int size = (int) ((tiles[i] == shop ? 72 : 64) * dn); // every tap area is at least 48dp
             if (i > 0) row.addView(new View(this), new LinearLayout.LayoutParams(0, 1, 1f));
@@ -439,43 +435,9 @@ public class MainActivity extends Activity implements SlotsView.Listener, Billin
             .add(GameDialog.Btn.secondary("Close", null)).show();
     }
 
-    private void buyRemoveAds() {
-        if (billing.getDetails(BillingManager.REMOVE_ADS) != null) {
-            billing.buy(this, BillingManager.REMOVE_ADS);
-        } else {
-            Toast.makeText(this, "Remove ads is not available right now", Toast.LENGTH_SHORT).show();
-        }
-    }
-
-    private void offerRemoveAds(String why) {
-        if (sp.getBoolean("ads_removed", false)) return;
-        String price = billing.priceOf(BillingManager.REMOVE_ADS);
-        if (price == null) return; // never offer a purchase without the live localized price
-        String text = "Enjoying Neon Vegas Slots? Remove banner and between-round ads forever with one small one-time purchase"
-            + " (" + price + "). Free rewarded ads for coins stay available either way.";
-        dlg().title("Remove ads")
-            .body(text)
-            .add(GameDialog.Btn.primary("Remove ads - " + price, this::buyRemoveAds))
-            .add(GameDialog.Btn.secondary("No thanks", null))
-            .show();
-    }
-
     private void onInterstitialShown() {
         int total = sp.getInt("inter_total", 0) + 1;
         sp.edit().putInt("inter_total", total).apply();
-        if (total == 3 && !sp.getBoolean("offer3_done", false)) {
-            sp.edit().putBoolean("offer3_done", true).apply();
-            handler.postDelayed(() -> offerRemoveAds("after3"), 1500);
-        }
-    }
-
-    private void maybeDay2Offer() {
-        if (sp.getBoolean("ads_removed", false) || sp.getBoolean("offer_day2_done", false)) return;
-        String first = sp.getString("first_run", today());
-        if (!today().equals(first)) {
-            sp.edit().putBoolean("offer_day2_done", true).apply();
-            offerRemoveAds("day2");
-        }
     }
 
     private void applyAdsRemoved() {
@@ -491,8 +453,6 @@ public class MainActivity extends Activity implements SlotsView.Listener, Billin
         GameDialog.Builder b = dlg().title("Out of coins")
             .body("Watch a short ad for +300 free coins?\nCoins also refill slowly over time.\n\nCoins are virtual only - no cash value, no prizes.")
             .add(GameDialog.Btn.primary("Watch ad  (+300)", () -> ads.showRewarded(() -> game.addCoins(300))));
-        if (!sp.getBoolean("ads_removed", false) && billing.priceOf(BillingManager.REMOVE_ADS) != null)
-            b.add(GameDialog.Btn.secondary("Remove banner & interstitial ads", () -> offerRemoveAds("outofcoins")));
         b.add(GameDialog.Btn.secondary("Not now", null)).auto().show();
     }
 

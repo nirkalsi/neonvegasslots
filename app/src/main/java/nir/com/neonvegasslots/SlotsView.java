@@ -199,6 +199,12 @@ public class SlotsView extends View {
         p.setStyle(Paint.Style.FILL);
         float dcx = cx + pad + disc / 2, dcy = cy + h / 2;
         chipCx = cx + cw / 2f; chipCy = dcy;
+        if (balance < 100) { // refill timer: +5 coins per full minute below 100, also while the app is closed
+            long left = Math.max(0, 60000 - (System.currentTimeMillis() - lastRegenAt)) / 1000;
+            p.setTextSize(w * 0.036f); p.setFakeBoldText(true); p.setColor(0xFFBFE9C8);
+            cv.drawText(String.format(java.util.Locale.US, "+5 in %d:%02d", left / 60, left % 60), cx + cw + w * 0.025f, dcy + p.getTextSize() * 0.35f, p);
+            p.setTextSize(w * 0.052f);
+        }
         p.setColor(0xFFFFC83A); cv.drawCircle(dcx, dcy, disc / 2, p);
         p.setColor(0xFFE09A12); cv.drawCircle(dcx, dcy, disc * 0.34f, p);
         p.setColor(0xFFFFE27A); cv.drawCircle(dcx - disc * 0.1f, dcy - disc * 0.1f, disc * 0.12f, p);
@@ -311,14 +317,21 @@ public class SlotsView extends View {
         for (int r = 0; r < 3; r++) for (int c = 0; c < 5; c++) grid[r][c] = pickSymbol();
     }
 
-    private void regen() {
-        long now = System.currentTimeMillis();
-        if (balance < 100 && now - lastRegenAt >= 60000) {
+    private void regen() { regenAt(System.currentTimeMillis()); }
+    /** +5 coins per full minute while under 100 (cap 100); time while the app was closed counts, because lastRegenAt is saved. */
+    void regenAt(long now) {
+        if (balance >= 100) { lastRegenAt = now; return; } // the refill clock only runs while below the cap
+        if (now - lastRegenAt >= 60000) {
             long steps = (now - lastRegenAt) / 60000;
             balance = Math.min(100, balance + 5 * steps);
-            lastRegenAt = now;
+            lastRegenAt = balance >= 100 ? now : lastRegenAt + steps * 60000; // keep the partial minute
             persist();
         }
+    }
+    /** test seam: put the refill state in place without playing. */
+    void setRefillStateForTest(long bal, long lastAt) { balance = bal; lastRegenAt = lastAt; }
+    long balanceForTest() { return balance; }
+    long lastRegenAtForTest() { return lastRegenAt; }
     }
 
     private boolean autoSpin = false;          // session-only, never persisted
@@ -476,7 +489,8 @@ public class SlotsView extends View {
         cv.drawText("LV " + level, w * 0.14f, gridTop * 0.90f, p);
         float barL = w * 0.24f, barR = w * 0.76f, barY = gridTop * 0.835f, barH = w * 0.034f;
         rf.set(barL, barY, barR, barY + barH);
-        p.setColor(th.cellStroke); cv.drawRoundRect(rf, 8, 8, p);
+        p.setColor(0xCC000000); cv.drawRoundRect(rf, 8, 8, p);
+        p.setStyle(Paint.Style.STROKE); p.setStrokeWidth(w * 0.004f); p.setColor(th.title); cv.drawRoundRect(rf, 8, 8, p); p.setStyle(Paint.Style.FILL);
         float frac = Math.min(1f, xp / (float) xpNeeded());
         rf.set(barL, barY, barL + (barR - barL) * frac, barY + barH);
         p.setColor(th.title); cv.drawRoundRect(rf, 8, 8, p);
