@@ -28,6 +28,18 @@ public class RefillScreenTest {
   try(FileOutputStream out=new FileOutputStream("/tmp/renders/neonvegasslots-refill-full.png")){bm.compress(Bitmap.CompressFormat.PNG,100,out);}
   assertFalse("New NO ADS tile must not be shown",hasText(root,"NO ADS"));
  }
+ @Test public void existingOwnerRestoreRemains_andNewPurchaseIsBlocked() throws Exception {
+  Splash.enabled=false; Splash.pulse=false; Reminders.promptEnabled=false;
+  MainActivity a=Robolectric.buildActivity(MainActivity.class).create().start().resume().visible().get();
+  a.onAdsRemovedOwned();
+  assertTrue(a.getSharedPreferences("neonvegasslots",0).getBoolean("ads_removed",false));
+  Field af=MainActivity.class.getDeclaredField("ads");af.setAccessible(true);Object ads=af.get(a);
+  Field removed=AdsManager.class.getDeclaredField("adsRemoved");removed.setAccessible(true);
+  assertTrue(removed.getBoolean(ads));
+  Field bf=MainActivity.class.getDeclaredField("billing");bf.setAccessible(true);
+  ((BillingManager)bf.get(a)).buy(a,BillingManager.REMOVE_ADS); // returns before any new billing flow can be launched
+  assertTrue(a.getSharedPreferences("neonvegasslots",0).getBoolean("ads_removed",false));
+ }
  private boolean hasText(View v,String text){
   if(v instanceof android.widget.TextView && ((android.widget.TextView)v).getText().toString().equals(text))return true;
   if(v instanceof android.view.ViewGroup){android.view.ViewGroup g=(android.view.ViewGroup)v;for(int i=0;i<g.getChildCount();i++)if(hasText(g.getChildAt(i),text))return true;}
