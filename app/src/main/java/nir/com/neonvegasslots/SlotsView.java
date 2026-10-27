@@ -83,7 +83,8 @@ public class SlotsView extends View {
     private boolean[][] winCell = new boolean[3][5];
     private float titleGlow = 0f;
 
-    public SlotsView(Context c) { super(c); randomizeAll(); }
+    public SlotsView(Context c) {
+        super(c); art.loadBitmaps(c); randomizeAll(); }
 
     long nowMillis() { return System.currentTimeMillis(); } // overridable for tests
 
@@ -98,7 +99,6 @@ public class SlotsView extends View {
         return spinning || n < winFlashUntil || n < bigWinUntil || n < levelFlashUntil || n < unlockFlashUntil || n < trophyFlashUntil;
     }
     long getLastWin() { return lastWin; }
-    void debugLevelUp() { levelFlashUntil = System.currentTimeMillis() + 2000; invalidate(); }
     public long getSpinsDone() { return spinsDone; }
     public int getThemeIdx() { return themeIdx; }
     private long xpNeeded() { return level * 500L; }
@@ -419,7 +419,7 @@ public class SlotsView extends View {
         regen();
         SlotArt.Theme th = SlotArt.THEMES[themeIdx];
         int phase = (int) (now / 350);
-        art.backdrop(cv, getWidth(), getHeight(), th, phase);
+        if (!art.sceneBackdrop(cv, getWidth(), getHeight(), th.skyTop)) art.backdrop(cv, getWidth(), getHeight(), th, phase);
 
         float w = getWidth();
         // HUD bar: fully opaque backing for title and balance; scene art is clipped below

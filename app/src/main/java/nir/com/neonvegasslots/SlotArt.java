@@ -277,7 +277,44 @@ final class SlotArt {
     }
 
     // ---------- symbols (unchanged art, kept from approved first increment) ----------
+    private android.graphics.Bitmap[] bmp;
+    private static final int[] SYM_FILE = {1,5,2,0,3,4};
+    private final android.graphics.Paint bp = new android.graphics.Paint(android.graphics.Paint.ANTI_ALIAS_FLAG | android.graphics.Paint.FILTER_BITMAP_FLAG);
+    private final android.graphics.RectF bd = new android.graphics.RectF();
+    /** Original generated symbol art (res/drawable-nodpi). Falls back to the vector art when a bitmap is missing. */
+    void loadBitmaps(android.content.Context ctx) {
+        if (bmp != null) return;
+        android.graphics.Bitmap[] b = new android.graphics.Bitmap[SYM_FILE.length];
+        for (int i = 0; i < b.length; i++) {
+            int rid = ctx.getResources().getIdentifier("nvs_" + SYM_FILE[i], "drawable", ctx.getPackageName());
+            if (rid != 0) b[i] = android.graphics.BitmapFactory.decodeResource(ctx.getResources(), rid);
+        }
+        bmp = b;
+        int bid = ctx.getResources().getIdentifier("nv_bg", "drawable", ctx.getPackageName());
+        if (bid != 0) bgBmp = android.graphics.BitmapFactory.decodeResource(ctx.getResources(), bid);
+    }
+    private android.graphics.Bitmap bgBmp;
+    private final android.graphics.Rect bgSrc = new android.graphics.Rect();
+    private final android.graphics.RectF bgDst = new android.graphics.RectF();
+    /** Illustrated scene behind the whole game (cover-fit), tinted toward the current land. Returns false when the art is missing. */
+    boolean sceneBackdrop(Canvas c, float w, float h, int tint) {
+        if (bgBmp == null) return false;
+        float s = Math.max(w / bgBmp.getWidth(), h / bgBmp.getHeight());
+        float sw = w / s, sh = h / s;
+        bgSrc.set((int) ((bgBmp.getWidth() - sw) / 2), (int) ((bgBmp.getHeight() - sh) / 2), (int) ((bgBmp.getWidth() + sw) / 2), (int) ((bgBmp.getHeight() + sh) / 2));
+        bgDst.set(0, 0, w, h);
+        c.drawBitmap(bgBmp, bgSrc, bgDst, bp);
+        android.graphics.Paint t = new android.graphics.Paint();
+        t.setColor((tint & 0x00FFFFFF) | 0x33000000); c.drawRect(0, 0, w, h, t);
+        return true;
+    }
     void symbol(Canvas c, int id, float cx, float cy, float size) {
+        if (bmp != null && id >= 0 && id < bmp.length && bmp[id] != null) {
+            float h = size * 1.12f;
+            bd.set(cx - h / 2, cy - h / 2, cx + h / 2, cy + h / 2);
+            c.drawBitmap(bmp[id], null, bd, bp);
+            return;
+        }
         c.save(); c.translate(cx,cy); c.scale(size/100f,size/100f);
         ink.setStyle(Paint.Style.FILL); ink.setShader(null);
         ink.setShadowLayer(5,0,3,0x88000000);
