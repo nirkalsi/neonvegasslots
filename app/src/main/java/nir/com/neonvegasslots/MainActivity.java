@@ -37,6 +37,7 @@ public class MainActivity extends Activity implements SlotsView.Listener, Billin
     /** Debug-only motion demo for emulator video review: never runs in release builds or unit tests. */
     @Override protected void onResume() {
         super.onResume();
+        if (music != null) music.start();
         boolean dbg = (getApplicationInfo().flags & android.content.pm.ApplicationInfo.FLAG_DEBUGGABLE) != 0
                 && !String.valueOf(android.os.Build.FINGERPRINT).toLowerCase().contains("robolectric");
         if (dbg && !demoStarted && game != null) {
@@ -59,6 +60,7 @@ public class MainActivity extends Activity implements SlotsView.Listener, Billin
         game = new SlotsView(this);
         game.setListener(this);
         sfx = new SoundFx(this);
+        music = new Music(this);
         game.setSoundFx(sfx);
         // Short screens: the game view is taller than the viewport so the progression trail panel keeps a readable size; scroll to reach it.
         ScrollView gameScroll = new ScrollView(this) {
@@ -309,7 +311,11 @@ public class MainActivity extends Activity implements SlotsView.Listener, Billin
         snd.setAllCaps(false); snd.setBackgroundColor(0xFF3A1F66); snd.setTextColor(Color.WHITE);
         snd.setText("Sound effects: " + (SoundFx.isOn(this) ? "ON" : "OFF"));
         snd.setOnClickListener(v -> { SoundFx.setOn(this, !SoundFx.isOn(this)); snd.setText("Sound effects: " + (SoundFx.isOn(this) ? "ON" : "OFF")); });
-        box.addView(snd); box.addView(rem); box.addView(remNote);
+        Button mus = new Button(this);
+        mus.setAllCaps(false); mus.setBackgroundColor(0xFF3A1F66); mus.setTextColor(Color.WHITE);
+        mus.setText("Music: " + (Music.isOn(this) ? "ON" : "OFF"));
+        mus.setOnClickListener(v -> { boolean on = !Music.isOn(this); Music.setOn(this, on); if (on) { if (music != null) music.start(); } else if (music != null) music.pause(); mus.setText("Music: " + (on ? "ON" : "OFF")); });
+        box.addView(snd); box.addView(mus); box.addView(rem); box.addView(remNote);
         dlg().title("Missions").content(box)
             .add(GameDialog.Btn.secondary("Close", null)).show();
     }
@@ -527,7 +533,7 @@ public class MainActivity extends Activity implements SlotsView.Listener, Billin
         }
     }
 
-    @Override protected void onPause() { super.onPause(); saveState(); }
+    @Override protected void onPause() { super.onPause(); if (music != null) music.pause(); saveState(); }
     private SoundFx sfx;
     SoundFx sfxForTest() { return sfx; }
     private Button reminderBtn;
@@ -543,7 +549,8 @@ public class MainActivity extends Activity implements SlotsView.Listener, Billin
         Reminders.setOn(this, granted); // denied: stays off, nothing scheduled
         refreshReminderBtn();
     }
-    @Override protected void onDestroy() { super.onDestroy(); if (sfx != null) sfx.release(); }
+    private Music music;
+    @Override protected void onDestroy() { super.onDestroy(); if (sfx != null) sfx.release(); if (music != null) music.release(); }
     @Override protected void onStop() { super.onStop(); Reminders.schedule(this); }
     @Override protected void onStart() { super.onStart(); Reminders.cancel(this); }
 }
