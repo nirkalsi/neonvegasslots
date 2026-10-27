@@ -319,7 +319,7 @@ public class MainActivity extends Activity implements SlotsView.Listener, Billin
         Button snd = new Button(this);
         snd.setAllCaps(false); snd.setBackgroundColor(0xFF3A1F66); snd.setTextColor(Color.WHITE);
         snd.setText("Sound effects: " + (SoundFx.isOn(this) ? "ON" : "OFF"));
-        snd.setOnClickListener(v -> { SoundFx.setOn(this, !SoundFx.isOn(this)); snd.setText("Sound effects: " + (SoundFx.isOn(this) ? "ON" : "OFF")); });
+        snd.setOnClickListener(v -> { SoundFx.setOn(this, !SoundFx.isOn(this));if(sfx!=null){if(!SoundFx.isOn(this))sfx.stopReelLoop();else if(game.isSpinning())sfx.startReelLoop();} snd.setText("Sound effects: " + (SoundFx.isOn(this) ? "ON" : "OFF")); });
         Button mus = new Button(this);
         mus.setAllCaps(false); mus.setBackgroundColor(0xFF3A1F66); mus.setTextColor(Color.WHITE);
         mus.setText("Music: " + (Music.isOn(this) ? "ON" : "OFF"));
