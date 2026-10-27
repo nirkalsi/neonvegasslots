@@ -88,6 +88,7 @@ public class RenderSmokeTest {
                    View.MeasureSpec.makeMeasureSpec(0, View.MeasureSpec.UNSPECIFIED));
         int dh = Math.min(dv.getMeasuredHeight(), maxH);
         if (lp.height > 0) dh = Math.min(lp.height, maxH);
+        dv.measure(View.MeasureSpec.makeMeasureSpec(dw, View.MeasureSpec.EXACTLY),View.MeasureSpec.makeMeasureSpec(dh, View.MeasureSpec.EXACTLY));
         dv.layout(0, 0, dw, dh);
         // Position from the actual window gravity + offsets, the way WindowManager does.
         int grav = lp.gravity != 0 ? lp.gravity : android.view.Gravity.CENTER;
@@ -130,6 +131,27 @@ public class RenderSmokeTest {
         ((android.content.SharedPreferences)f.get(a)).edit().putString("daily_last",(String)y.invoke(a)).putInt("daily_streak",6).commit();
         callPrivate(a,"maybeDailyBonus");
         renderComposed(a,latestDialog(),"/tmp/renders/neonvegasslots-daily-day7-composed.png");
+    }
+
+    @GraphicsMode(GraphicsMode.Mode.NATIVE)
+    @Test public void renderJourneyComposed() throws Exception {
+        MainActivity a=activity();a.onOpenMap();
+        Dialog d=latestDialog();renderComposed(a,d,"/tmp/renders/neonvegasslots-journey-composed.png");
+        android.widget.ScrollView sv=journeyScroller(d.getWindow().getDecorView());assertNotNull(sv);sv.scrollTo(0,100000);assertTrue("journey shelf must be scrollable",sv.getScrollY()>0);
+        renderComposed(a,d,"/tmp/renders/neonvegasslots-journey-bottom-composed.png");
+    }
+
+    @GraphicsMode(GraphicsMode.Mode.NATIVE)
+    @Test public void renderJourneyCollectedComposed() throws Exception {
+        MainActivity a=activity();java.lang.reflect.Field f=MainActivity.class.getDeclaredField("game");f.setAccessible(true);SlotsView game=(SlotsView)f.get(a);
+        game.restore("500;0;1;0;0;16;0");java.lang.reflect.Field trophies=SlotsView.class.getDeclaredField("trophyMask");trophies.setAccessible(true);trophies.setInt(game,0b101011);
+        a.onOpenMap();Dialog d=latestDialog();renderComposed(a,d,"/tmp/renders/neonvegasslots-journey-unlocked-composed.png");
+        android.widget.ScrollView sv=journeyScroller(d.getWindow().getDecorView());sv.scrollTo(0,100000);renderComposed(a,d,"/tmp/renders/neonvegasslots-journey-collected-composed.png");
+    }
+
+    private android.widget.ScrollView journeyScroller(View v){
+        if(v instanceof android.widget.ScrollView)return (android.widget.ScrollView)v;
+        if(v instanceof android.view.ViewGroup){android.view.ViewGroup g=(android.view.ViewGroup)v;for(int i=0;i<g.getChildCount();i++){android.widget.ScrollView s=journeyScroller(g.getChildAt(i));if(s!=null)return s;}}return null;
     }
 
     @Test public void tallDialogIsCappedAndScrollable() throws Exception {

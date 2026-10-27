@@ -30,7 +30,7 @@ public class RedesignInputTest {
   SlotsView v=new SlotsView(RuntimeEnvironment.getApplication());v.layout(0,0,720,1480);
   v.restore("500;0;1;0;0;10;0"); // level 10 unlocks every stop
   MapView mv=new MapView(RuntimeEnvironment.getApplication(),v); mv.measure(android.view.View.MeasureSpec.makeMeasureSpec(720,android.view.View.MeasureSpec.EXACTLY),android.view.View.MeasureSpec.makeMeasureSpec(0,android.view.View.MeasureSpec.UNSPECIFIED)); mv.layout(0,0,720,mv.getMeasuredHeight());
-  mv.onTouchEvent(down(SlotArt.nodeX(720,3),Math.min(mv.getHeight(),720*.68f)*.38f)); // the map now lives in a dialog
+  mv.onTouchEvent(android.view.MotionEvent.obtain(0,0,android.view.MotionEvent.ACTION_UP,mv.stopX(3),mv.stopY(3),0)); // the map now lives in a dialog
   assertEquals(3,v.getThemeIdx());
   assertEquals("3",v.serialize().split(";")[6]);
   SlotsView v2=new SlotsView(RuntimeEnvironment.getApplication());
@@ -95,5 +95,11 @@ public class RedesignInputTest {
   SlotsView v2=new SlotsView(RuntimeEnvironment.getApplication());
   v2.restore(v.serialize());
   assertEquals(v.getTrophyMask(),v2.getTrophyMask());
+ }
+ @Test public void mapLockedAndDragNeverSwitchTheme(){
+  SlotsView v=new SlotsView(RuntimeEnvironment.getApplication());MapView m=new MapView(RuntimeEnvironment.getApplication(),v);
+  m.measure(android.view.View.MeasureSpec.makeMeasureSpec(720,1073741824),android.view.View.MeasureSpec.makeMeasureSpec(0,0));m.layout(0,0,720,m.getMeasuredHeight());
+  m.onTouchEvent(down(m.stopX(1),m.stopY(1)));m.onTouchEvent(android.view.MotionEvent.obtain(0,1,1,m.stopX(1),m.stopY(1),0));assertEquals(0,v.getThemeIdx());
+  v.restore("500;0;1;0;0;16;0");m.onTouchEvent(down(m.stopX(1),m.stopY(1)-100));m.onTouchEvent(android.view.MotionEvent.obtain(0,1,2,m.stopX(1),m.stopY(1),0));m.onTouchEvent(android.view.MotionEvent.obtain(0,2,1,m.stopX(1),m.stopY(1),0));assertEquals(0,v.getThemeIdx());
  }
 }
