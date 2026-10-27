@@ -107,6 +107,11 @@ public class MainActivity extends Activity implements SlotsView.Listener, Billin
 
         String s = sp.getString(KEY, null);
         if (s != null) game.restore(s);
+        // The existing500starting coins are the gift. This moment never credits extra currency.
+        if(s==null&&!sp.getBoolean("welcome_shown",false)){
+            sp.edit().putBoolean("welcome_shown",true).apply();
+            handler.postDelayed(()->{if(!isFinishing()&&!isDestroyed()){game.welcomeGiftMoment();float[] target=game.chipCenterOnScreen();ClaimBurst.play(game,500,target[0],target[1]);}},700);
+        }
 
         missions = new MissionsManager(this, null);
 
@@ -203,10 +208,11 @@ public class MainActivity extends Activity implements SlotsView.Listener, Billin
         return new SimpleDateFormat("yyyy-MM-dd", Locale.US).format(c.getTime());
     }
 
+    private boolean firstMeaningfulWin=false;
     private void dailyBonusWhenReady() {
         if (isFinishing() || isDestroyed()) return;
         long spins = game.getSpinsDone();
-        if (spins >= 4 && (game.getLastWin() > 0 || spins >= 8) && !game.isSpinning()) maybeDailyBonus();
+        if (spins >= 4 && (firstMeaningfulWin || game.getLastWin() > 0) && !game.isSpinning()) maybeDailyBonus();
         else handler.postDelayed(this::dailyBonusWhenReady, 1500);
     }
 
@@ -460,6 +466,7 @@ public class MainActivity extends Activity implements SlotsView.Listener, Billin
     }
 
     @Override public void onSpinComplete(int spinsDone, long win, long bet) {
+        if(win>0)firstMeaningfulWin=true;
         missions.onSpin(win, bet, game.getLevel(), spinsDone);
         // interstitials never fire during play (AdMob: logical breaks only)
         refreshQuestStrip();

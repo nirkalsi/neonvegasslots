@@ -245,6 +245,8 @@ public class SlotsView extends View {
         float cx = chipCx > 0 ? chipCx : getWidth() / 2f, cy = chipCy > 0 ? chipCy : getHeight() * 0.12f;
         return new float[]{l[0] + cx, l[1] + cy};
     }
+    private long welcomeUntil=0;
+    void welcomeGiftMoment(){shownBalance=0;welcomeUntil=nowMillis()+1700;coinPulseUntil=welcomeUntil;invalidate();}
     private long shownBalance=-1,lastBalanceFrame=Long.MIN_VALUE;
     private long coinPulseUntil=0;
     private void drawCoinChip(Canvas cv, float w, float gridTop) {
@@ -756,6 +758,7 @@ public class SlotsView extends View {
         art.trailCompact(cv, w, trailTop(), trailBottom(), level, xp, xpNeeded(), themeIdx, ju);
         if (setComplete(themeIdx)) art.frameOrnament(cv, w / 2, gridTop - w * .022f, w * .05f, th);
 
+        if(now<welcomeUntil){p.setStyle(Paint.Style.FILL);p.setColor(0xDD140A2A);rf.set(w*.24f,gridTop+w*.02f,w*.76f,gridTop+w*.11f);cv.drawRoundRect(rf,w*.04f,w*.04f,p);p.setTextAlign(Paint.Align.CENTER);p.setFakeBoldText(true);p.setTextSize(w*.037f);p.setColor(th.title);cv.drawText("WELCOME GIFT",w*.5f,gridTop+w*.08f,p);p.setFakeBoldText(false);postInvalidateDelayed(33);}
         if(levelMomentReady())drawLevelCollect(cv,w,th); // final foreground layer above every control
         // legal line lives in Settings (Missions dialog), not on the game screen
     }
