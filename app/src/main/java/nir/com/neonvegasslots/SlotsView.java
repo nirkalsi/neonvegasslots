@@ -506,7 +506,16 @@ public class SlotsView extends View {
         // machine frame: neon marquee with chase bulbs
         art.frame(cv, 4, gridTop - 8, w - 4, gridTop + gridH + 8, th, phase);
 
-        // cells
+        // Five continuous reel strips, not fifteen separate tile cards (spec A3).
+        for (int column = 0; column < 5; column++) {
+            float sx = 6 + column * (cellW + 8);
+            rf.set(sx, gridTop, sx + cellW, gridTop + gridH);
+            p.setShader(new android.graphics.LinearGradient(sx, 0, sx + cellW, 0,
+                new int[]{0xFF08050D, th.cellBg, th.cellBg, 0xFF08050D},
+                new float[]{0f, .15f, .85f, 1f}, android.graphics.Shader.TileMode.CLAMP));
+            cv.drawRoundRect(rf, w * .018f, w * .018f, p); p.setShader(null);
+        }
+        // Symbols keep their existing positions and touch geometry.
         boolean flash = now < winFlashUntil && (now / 300) % 2 == 0;
         for (int r = 0; r < 3; r++) {
             for (int c = 0; c < 5; c++) {
@@ -520,13 +529,11 @@ public class SlotsView extends View {
                 if (settle >= 0 && settle < 1) y -= cellW * 0.12f * (1 - settle) * (float) Math.cos(settle * 6.9f);
                 rf.set(x + 2, y, x + cellW + 2, y + cellH);
                 boolean hot = winCell[r][c] && flash;
-                p.setColor(hot ? th.cellHot : th.cellBg);
-                cv.drawRoundRect(rf, 12, 12, p);
-                p.setStyle(Paint.Style.STROKE);
-                p.setStrokeWidth(2);
-                p.setColor(hot ? th.cellHotStroke : th.cellStroke);
-                cv.drawRoundRect(rf, 12, 12, p);
-                p.setStyle(Paint.Style.FILL);
+                if (hot) { // only winning positions get a local highlight
+                    p.setColor(th.cellHot & 0x00FFFFFF | 0x66000000); cv.drawRoundRect(rf,12,12,p);
+                    p.setStyle(Paint.Style.STROKE); p.setStrokeWidth(2); p.setColor(th.cellHotStroke);
+                    cv.drawRoundRect(rf,12,12,p); p.setStyle(Paint.Style.FILL);
+                }
                 if (spinning && now < stopAt[c]) {
                     // scrolling strip: symbol + dimmed neighbours sliding upward, clipped to the cell
                     float pitch = cellH * 0.82f;
@@ -547,6 +554,16 @@ public class SlotsView extends View {
                 }
             }
         }
+        // Cabinet trim is above the reel strips so it is not hidden by the symbols.
+        p.setStrokeWidth(Math.max(3, w * .006f));
+        for (int column = 1; column < 5; column++) {
+            float dx = 2 + column * (cellW + 8);
+            p.setShader(new android.graphics.LinearGradient(0, gridTop, 0, gridTop + gridH,
+                new int[]{th.title, th.neon, th.title}, null, android.graphics.Shader.TileMode.CLAMP));
+            cv.drawLine(dx,gridTop,dx,gridTop+gridH,p);p.setShader(null);
+        }
+        art.frame(cv, w * .012f, gridTop - 5, w * .988f, gridTop + gridH + 5, th,
+            spinning ? (int)(now / 100) : phase);
         if (!spinning && now < winFlashUntil) { // win line: a glowing path through the winning cells, left to right
             float cw0 = w / 5f - 8, ch0 = cellH(w, getHeight()); float[] lx = new float[5], ly = new float[5]; int n = 0;
             for (int c = 0; c < 5; c++) for (int r = 0; r < 3; r++) if (winCell[r][c]) { lx[n] = 4 + c * (cw0 + 8) + 2 + cw0 / 2; ly[n] = gridTop + r * (ch0 + 8) + ch0 / 2; n++; break; }
