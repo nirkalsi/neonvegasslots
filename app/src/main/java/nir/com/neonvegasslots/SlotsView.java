@@ -698,11 +698,12 @@ public class SlotsView extends View {
         rf.set(w * 0.03f, ctrlY, w * 0.40f, ctrlY + btnH);
         modernButton(cv, rf, lighten(th.betBg, 0.28f), darken(th.betBg, 0.25f), th.title, 0f);
         float bcy = rf.centerY(), bu = btnH * 0.2f;
-        coinIcon(cv, rf.centerX() - btnH * 0.40f, bcy, bu, th);
         p.setFakeBoldText(true); p.setTextAlign(Paint.Align.CENTER); p.setColor(0xFFFFFFFF);
         String bl = betLabel(BETS[betIdx]);
         p.setTextSize(w * (bl.length() > 3 ? 0.044f : 0.054f));
-        cv.save();float bt=Math.min(1,Math.max(0,(now-betBumpAt)/260f));float bs=1+.15f*(float)Math.sin(bt*Math.PI);cv.scale(bs,bs,rf.centerX(),bcy);cv.drawText(bl, rf.centerX() + btnH * 0.22f, bcy + btnH * 0.17f, p);cv.restore();if(bt<1)postInvalidateDelayed(16);
+        float textW=p.measureText(bl),coinR=btnH*.15f,gap=btnH*.13f;float groupW=coinR*2+gap+textW;float coinX=rf.centerX()-groupW/2+coinR;float valueX=rf.centerX()+groupW/2-textW/2;
+        coinIcon(cv,coinX,bcy,coinR,th);p.setColor(0xFFFFFFFF);p.setTextAlign(Paint.Align.CENTER);
+        cv.save();float bt=Math.min(1,Math.max(0,(now-betBumpAt)/260f));float bs=1+.15f*(float)Math.sin(bt*Math.PI);cv.scale(bs,bs,rf.centerX(),bcy);cv.drawText(bl, valueX, bcy + btnH * 0.17f, p);cv.restore();if(bt<1)postInvalidateDelayed(16);
         p.setStyle(Paint.Style.STROKE); p.setStrokeCap(Paint.Cap.ROUND); p.setStrokeWidth(btnH * 0.09f); p.setColor(0xFFFFFFFF);
         float mx = rf.left + btnH * 0.34f, px = rf.right - btnH * 0.34f;
         cv.drawLine(mx - bu * 0.7f, bcy, mx + bu * 0.7f, bcy, p);                    // minus
@@ -710,14 +711,11 @@ public class SlotsView extends View {
         cv.drawLine(px, bcy - bu * 0.7f, px, bcy + bu * 0.7f, p);
         p.setStrokeCap(Paint.Cap.BUTT); p.setStyle(Paint.Style.FILL);
         if (betIdx + 1 < BETS.length && betIdx + 1 >= betCount(level)) { // next step is locked: gold pill on the BET button edge, padlock + "LV n"
-            float ph = w * 0.052f, pw = w * 0.17f, pcx = rf.right - pw * 0.55f, pcy = rf.top;
-            qr.set(pcx - pw / 2, pcy - ph / 2, pcx + pw / 2, pcy + ph / 2);
-            p.setColor(0xFFFFD166); cv.drawRoundRect(qr, ph / 2, ph / 2, p);
-            float lx = qr.left + ph * 0.62f, ly = pcy + ph * 0.02f, ls = ph * 0.2f;
-            p.setColor(0xFF3D2A00); cv.drawRoundRect(lx - ls * 1.1f, ly - ls * 0.2f, lx + ls * 1.1f, ly + ls * 1.5f, 2, 2, p);
-            p.setStyle(Paint.Style.STROKE); p.setStrokeWidth(ls * 0.45f); cv.drawArc(lx - ls * 0.7f, ly - ls * 1.5f, lx + ls * 0.7f, ly + ls * 0.3f, 180, 180, false, p); p.setStyle(Paint.Style.FILL);
-            p.setTextAlign(Paint.Align.LEFT); p.setFakeBoldText(true); p.setTextSize(ph * 0.58f);
-            cv.drawText("LV " + BET_UNLOCK[betIdx + 1], lx + ls * 1.9f, pcy + ph * 0.2f, p);
+            float ph=w*.045f,pw=w*.29f,pcx=rf.centerX(),pcy=rf.top;
+            qr.set(pcx-pw/2,pcy-ph/2,pcx+pw/2,pcy+ph/2);p.setColor(0xFFFFD166);cv.drawRoundRect(qr,ph/2,ph/2,p);
+            p.setColor(0xFF3D2A00);p.setTextAlign(Paint.Align.CENTER);p.setFakeBoldText(true);p.setTextSize(w*.026f);
+            cv.drawText("Next "+betLabel(BETS[betIdx+1])+" at Lv "+BET_UNLOCK[betIdx+1],pcx,pcy+ph*.23f,p);
+
         }
         // SPIN: the hero button
         rf.set(w * 0.43f, ctrlY, w * 0.97f, ctrlY + btnH);
