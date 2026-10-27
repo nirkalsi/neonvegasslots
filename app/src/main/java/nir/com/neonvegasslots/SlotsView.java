@@ -18,6 +18,7 @@ public class SlotsView extends View {
         void onLevelUp(int level, long reward);
         void saveState();
         default void onOpenShop() {}
+        default void onOpenMap() {}
     }
 
     private static final int[] WEIGHT = {4, 7, 10, 16, 18, 12};
@@ -109,6 +110,8 @@ public class SlotsView extends View {
     }
 
     /** Tap-to-apply an unlocked machine theme. Returns false when still locked. */
+    /** Full progression map for the map dialog (same art as before, now off the main screen). */
+    void drawFullMap(Canvas c, float w, float h) { art.trail(c, w, 0, h, level, xp, xpNeeded(), themeIdx, null, trophyMask); }
     public boolean selectTheme(int i) {
         if (i < 0 || i >= SlotArt.THEMES.length) return false;
         if (level < SlotArt.THEMES[i].unlockLevel) return false;
@@ -414,7 +417,7 @@ public class SlotsView extends View {
 
     private float gridTop() { return getHeight() * 0.195f; }
     private float trailTop() { return gridTop() + (getWidth() / 5f - 8) * 3 + 16 + 24 + getHeight() * 0.07f + getWidth() * 0.055f; }
-    private float trailBottom() { return getHeight() - getWidth() * 0.10f; }
+    private float trailBottom() { return trailTop() + getWidth() * 0.19f; } // compact strip; the full map opens in a dialog
     private float trailNodeY() {
         float top = trailTop(), height = Math.min(trailBottom() - top, getWidth() * .68f);
         return top + height * .38f;
@@ -515,8 +518,22 @@ public class SlotsView extends View {
                     p.setColor(0x30FFFFFF); cv.drawRect(x + 2, cy + pitch * 0.55f + scroll, x + cellW + 2, cy + pitch * 1.4f + scroll, p);
                     cv.restore();
                 } else {
-                    art.symbol(cv, grid[r][c], x + 2 + cellW / 2, y + cellW / 2, cellW * 0.82f);
+                    float pls = (winCell[r][c] && now < winFlashUntil) ? 1f + 0.09f * (float) Math.sin(now / 110.0) : 1f; // winning symbols pulse
+                    art.symbol(cv, grid[r][c], x + 2 + cellW / 2, y + cellW / 2, cellW * 0.82f * pls);
                 }
+            }
+        }
+        if (!spinning && now < winFlashUntil) { // win line: a glowing path through the winning cells, left to right
+            float cw0 = w / 5f - 8; float[] lx = new float[5], ly = new float[5]; int n = 0;
+            for (int c = 0; c < 5; c++) for (int r = 0; r < 3; r++) if (winCell[r][c]) { lx[n] = 4 + c * (cw0 + 8) + 2 + cw0 / 2; ly[n] = gridTop + r * (cw0 + 8) + cw0 / 2; n++; break; }
+            if (n >= 2) {
+                p.setStyle(Paint.Style.STROKE); p.setStrokeCap(Paint.Cap.ROUND); p.setStrokeJoin(Paint.Join.ROUND);
+                p.setShadowLayer(14, 0, 0, th.title);
+                p.setStrokeWidth(w * 0.016f); p.setColor(0xFFFFFFFF);
+                for (int i = 1; i < n; i++) cv.drawLine(lx[i - 1], ly[i - 1], lx[i], ly[i], p);
+                p.clearShadowLayer(); p.setStrokeWidth(w * 0.008f); p.setColor(th.title);
+                for (int i = 1; i < n; i++) cv.drawLine(lx[i - 1], ly[i - 1], lx[i], ly[i], p);
+                p.setStyle(Paint.Style.FILL); p.setStrokeCap(Paint.Cap.BUTT);
             }
         }
         if (spinning) {
@@ -624,7 +641,7 @@ public class SlotsView extends View {
         String ju;
         if (now < trophyFlashUntil) ju = "TROPHY:" + trophyNewName;
         else ju = now < unlockFlashUntil ? unlockedName : null;
-        art.trail(cv, w, trailTop(), trailBottom(), level, xp, xpNeeded(), themeIdx, ju, trophyMask);
+        art.trailCompact(cv, w, trailTop(), trailBottom(), level, xp, xpNeeded(), themeIdx, ju);
         if (setComplete(themeIdx)) art.frameOrnament(cv, w / 2, gridTop - w * .022f, w * .05f, th);
 
         // legal line lives in Settings (Missions dialog), not on the game screen
@@ -719,6 +736,7 @@ public class SlotsView extends View {
             }
             return true;
         }
+        if (y >= trailTop() && y <= trailBottom()) { if (listener != null) listener.onOpenMap(); return true; }
         // progression trail: tap an unlocked stop to apply its theme
         float tt = trailTop(), tb = trailBottom();
         if (y >= tt && y <= Math.min(tb, tt + w * .68f)) {

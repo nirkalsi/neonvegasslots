@@ -29,7 +29,8 @@ public class RedesignInputTest {
  @Test public void trailTapAppliesUnlockedThemeAndPersists(){
   SlotsView v=new SlotsView(RuntimeEnvironment.getApplication());v.layout(0,0,720,1480);
   v.restore("500;0;1;0;0;10;0"); // level 10 unlocks every stop
-  v.onTouchEvent(down(SlotArt.nodeX(720,3),nodeY()));
+  MapView mv=new MapView(RuntimeEnvironment.getApplication(),v); mv.measure(android.view.View.MeasureSpec.makeMeasureSpec(720,android.view.View.MeasureSpec.EXACTLY),android.view.View.MeasureSpec.makeMeasureSpec(0,android.view.View.MeasureSpec.UNSPECIFIED)); mv.layout(0,0,720,mv.getMeasuredHeight());
+  mv.onTouchEvent(down(SlotArt.nodeX(720,3),Math.min(mv.getHeight(),720*.68f)*.38f)); // the map now lives in a dialog
   assertEquals(3,v.getThemeIdx());
   assertEquals("3",v.serialize().split(";")[6]);
   SlotsView v2=new SlotsView(RuntimeEnvironment.getApplication());

@@ -485,6 +485,7 @@ public class MainActivity extends Activity implements SlotsView.Listener, Billin
 
     // ---------- SlotsView.Listener ----------
     @Override public void onOpenShop() { showShop(); }
+    @Override public void onOpenMap() { dlg().title("City Tour").content(new MapView(this, game)).add(GameDialog.Btn.secondary("Close", null)).show(); }
 
     @Override public void onOutOfCoins() {
         GameDialog.Builder b = dlg().title("Out of coins")
