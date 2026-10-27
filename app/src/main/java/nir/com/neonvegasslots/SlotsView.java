@@ -43,8 +43,11 @@ public class SlotsView extends View {
     int betIdx() { return betIdx; }
     void betStep(int dir) {
         int n = betCount(level);
-        betIdx = ((betIdx + dir) % n + n) % n; persist(); invalidate();
+        betIdx = ((betIdx + dir) % n + n) % n; betBumpAt=nowMillis();persist(); invalidate();
     }
+
+    private long betBumpAt=0;
+    void maxBet(){if(spinning||autoSpin||pendingLevelCoins>0)return;betIdx=betCount(level)-1;betBumpAt=nowMillis();persist();invalidate();}
 
     private final SlotArt art = new SlotArt();
     private final Random rng = new Random();
@@ -695,7 +698,7 @@ public class SlotsView extends View {
         p.setFakeBoldText(true); p.setTextAlign(Paint.Align.CENTER); p.setColor(0xFFFFFFFF);
         String bl = betLabel(BETS[betIdx]);
         p.setTextSize(w * (bl.length() > 3 ? 0.044f : 0.054f));
-        cv.drawText(bl, rf.centerX() + btnH * 0.22f, bcy + btnH * 0.17f, p);
+        cv.save();float bt=Math.min(1,Math.max(0,(now-betBumpAt)/260f));float bs=1+.15f*(float)Math.sin(bt*Math.PI);cv.scale(bs,bs,rf.centerX(),bcy);cv.drawText(bl, rf.centerX() + btnH * 0.22f, bcy + btnH * 0.17f, p);cv.restore();if(bt<1)postInvalidateDelayed(16);
         p.setStyle(Paint.Style.STROKE); p.setStrokeCap(Paint.Cap.ROUND); p.setStrokeWidth(btnH * 0.09f); p.setColor(0xFFFFFFFF);
         float mx = rf.left + btnH * 0.34f, px = rf.right - btnH * 0.34f;
         cv.drawLine(mx - bu * 0.7f, bcy, mx + bu * 0.7f, bcy, p);                    // minus
@@ -737,7 +740,8 @@ public class SlotsView extends View {
         { // labels under the control row: BET caption and WIN readout
             float ly = ctrlY + btnH + w * 0.042f;
             p.setFakeBoldText(true); p.setTextAlign(Paint.Align.CENTER); p.setTextSize(w * 0.032f);
-            p.setColor(th.soft); cv.drawText("BET", w * 0.215f, ly, p);
+            p.setColor(th.soft); cv.drawText("BET", w * 0.10f, ly, p);
+            p.setColor(th.title);p.setTextSize(w*.026f);cv.drawText("MAX BET",w*.31f,ly,p);p.setTextSize(w*.032f);
             if (lastWin > 0) { p.setColor(0xFFFFD166); cv.drawText("WIN " + displayedLastWin(now), w * 0.70f, ly, p); }
             else { p.setColor(th.soft); cv.drawText(autoSpin ? "AUTO - tap to stop" : spinning ? "TAP TO STOP" : "HOLD = AUTO", w * 0.70f, ly, p); }
             p.setFakeBoldText(false);
@@ -835,6 +839,7 @@ public class SlotsView extends View {
         if(pendingLevelCoins>0){if(levelMomentReady()&&levelCollect.contains(x,y))collectLevelReward();return true;}
         if (Math.abs(x-w*.90f)<=w*.065f && Math.abs(y-w*.18f)<=w*.065f) { if(listener!=null)listener.onOpenPaytable();return true; }
         if (chipPlus.contains(x, y)) { if (listener != null) listener.onOpenShop(); return true; }
+        if(x>=w*.21f&&x<=w*.40f&&y>ctrlY+btnH&&y<=ctrlY+btnH+w*.055f){maxBet();return true;}
         if (y >= ctrlY && y <= ctrlY + btnH) {
             if (x >= w * 0.03f && x <= w * 0.40f) {
                 if (!spinning && !autoSpin) betStep(x < w * 0.03f + w * 0.37f * 0.33f ? -1 : 1);
