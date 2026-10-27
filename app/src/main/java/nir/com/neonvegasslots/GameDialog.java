@@ -79,6 +79,8 @@ final class GameDialog {
         Builder title(String t) { title = t; return this; }
         Builder body(CharSequence b) { body = b; return this; }
         Builder content(View v) { content = v; return this; }
+        private boolean pinned=false;
+        Builder pinnedChrome(){pinned=true;return this;}
         Builder cancelable(boolean c) { cancelable = c; return this; }
         /** Popup the app opens on its own (not from a tap): it also waits for at least one gameplay action since the last popup closed. */
         Builder auto() { auto = true; return this; }
@@ -111,6 +113,7 @@ final class GameDialog {
             int pad = (int) (20 * density), gap = (int) (12 * density);
 
             LinearLayout card = new LinearLayout(activity);
+            ScrollView pinSv=null;LinearLayout.LayoutParams pinLp=null;
             card.setOrientation(LinearLayout.VERTICAL);
             card.setPadding(pad, pad, pad, pad);
             GradientDrawable bg = new GradientDrawable();
@@ -168,7 +171,7 @@ final class GameDialog {
             if (content != null) {
                 LinearLayout.LayoutParams lp = new LinearLayout.LayoutParams(-1, -2);
                 lp.topMargin = gap;
-                card.addView(content, lp);
+                if(pinned){pinSv=new ScrollView(activity);pinSv.addView(content);pinLp=lp;card.addView(pinSv,lp);}else card.addView(content, lp);
             }
             for (final Btn btn : buttons) {
                 Button b = new Button(activity);
@@ -192,9 +195,8 @@ final class GameDialog {
                 b.setOnClickListener(v -> { d.dismiss(); if (btn.onClick != null) btn.onClick.run(); });
             }
 
-            ScrollView sv = new ScrollView(activity);
-            sv.addView(card);
-            d.setContentView(sv);
+            boolean pin=pinned&&pinSv!=null;ScrollView sv=null;
+            if(pin)d.setContentView(card);else{sv=new ScrollView(activity);sv.addView(card);d.setContentView(sv);}
             d.setCancelable(cancelable);
             d.setCanceledOnTouchOutside(cancelable);
             Window w = d.getWindow();
@@ -209,11 +211,13 @@ final class GameDialog {
             int sw = activity.getResources().getDisplayMetrics().widthPixels;
             int sh = activity.getResources().getDisplayMetrics().heightPixels;
             int width = (int) (sw * 0.88f);
-            sv.measure(View.MeasureSpec.makeMeasureSpec(width, View.MeasureSpec.EXACTLY),
+            View measured=pin?card:sv;
+            measured.measure(View.MeasureSpec.makeMeasureSpec(width, View.MeasureSpec.EXACTLY),
                        View.MeasureSpec.makeMeasureSpec(0, View.MeasureSpec.UNSPECIFIED));
             int max = (int) (sh * 0.78f);
+            if(pin&&measured.getMeasuredHeight()>max){pinLp.height=0;pinLp.weight=1;pinSv.setLayoutParams(pinLp);}
             if (w != null) {
-                if (sv.getMeasuredHeight() > max) w.setLayout(width, max);
+                if (measured.getMeasuredHeight() > max) w.setLayout(width, max);
                 else w.setLayout(width, WindowManager.LayoutParams.WRAP_CONTENT);
             }
             return d;

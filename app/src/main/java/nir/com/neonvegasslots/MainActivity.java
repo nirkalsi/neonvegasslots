@@ -442,7 +442,7 @@ public class MainActivity extends Activity implements SlotsView.Listener, Billin
             .content(new PaytableView(this, game.getThemeIdx()))
             .add(GameDialog.Btn.secondary("Close", null)).show();
     }
-    @Override public void onOpenMap() { dlg().title("City Tour").content(new MapView(this, game)).add(GameDialog.Btn.secondary("Close", null)).show(); }
+    @Override public void onOpenMap() { dlg().title("City Tour").content(new MapView(this, game)).pinnedChrome().add(GameDialog.Btn.secondary("Close", null)).show(); }
 
     @Override public void onOutOfCoins() {
         GameDialog.Builder b = dlg().title("Out of coins")

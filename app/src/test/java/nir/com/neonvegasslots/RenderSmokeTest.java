@@ -146,7 +146,7 @@ public class RenderSmokeTest {
         MainActivity a=activity();java.lang.reflect.Field f=MainActivity.class.getDeclaredField("game");f.setAccessible(true);SlotsView game=(SlotsView)f.get(a);
         game.restore("500;0;1;0;0;16;0");java.lang.reflect.Field trophies=SlotsView.class.getDeclaredField("trophyMask");trophies.setAccessible(true);trophies.setInt(game,0b101011);
         a.onOpenMap();Dialog d=latestDialog();renderComposed(a,d,"/tmp/renders/neonvegasslots-journey-unlocked-composed.png");
-        android.widget.ScrollView sv=journeyScroller(d.getWindow().getDecorView());sv.scrollTo(0,100000);renderComposed(a,d,"/tmp/renders/neonvegasslots-journey-collected-composed.png");
+        android.widget.ScrollView sv=journeyScroller(d.getWindow().getDecorView());sv.scrollTo(0,(int)((42+SlotArt.THEMES.length*154-10)*a.getResources().getDisplayMetrics().density));renderComposed(a,d,"/tmp/renders/neonvegasslots-journey-collected-composed.png");
     }
 
     private android.widget.ScrollView journeyScroller(View v){

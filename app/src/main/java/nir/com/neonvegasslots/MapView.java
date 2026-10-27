@@ -29,7 +29,7 @@ final class MapView extends View {
             SlotArt.Theme t=SlotArt.THEMES[i];boolean open=g.getLevel()>=t.unlockLevel,sel=g.getThemeIdx()==i;float x=stopX(i),y=stopY(i),ww=Math.min(w*.58f,174*d),hh=88*d;
             RectF r=new RectF(x-ww/2,y-hh/2,x+ww/2,y+hh/2);Path clip=new Path();clip.addRoundRect(r,14*d,14*d,Path.Direction.CW);
             c.save();c.clipPath(clip);c.translate(r.left,r.top);landmark(c,ww,hh,t,i);c.restore();
-            if(!open){p.setColor(0xAA080B18);c.drawRoundRect(r,14*d,14*d,p);text(c,"LOCKED",x,y+4*d,13,0xFFBDC6D8);}
+            if(!open){p.setColor(0xAA080B18);c.drawRoundRect(r,14*d,14*d,p);}
             p.setStyle(Paint.Style.STROKE);p.setStrokeWidth((sel?3:1)*d);p.setColor(sel?t.title:open?t.neon:0xFF596074);c.drawRoundRect(r,14*d,14*d,p);p.setStyle(Paint.Style.FILL);
             if(sel){p.setColor(t.title);c.drawCircle(r.right-8*d,r.top+8*d,10*d,p);text(c,"YOU",r.right-8*d,r.top+11*d,7,0xFF182335);}
             text(c,t.name,x,y+hh/2+20*d,14,open?t.title:0xFF9DA8BE);
@@ -50,6 +50,9 @@ final class MapView extends View {
         p.setShader(new LinearGradient(0,0,0,h,t.skyTop,t.skyBottom,Shader.TileMode.CLAMP));c.drawRect(0,0,w,h,p);p.setShader(null);
         p.setColor(t.lit);c.drawCircle(w*.8f,h*.22f,h*.1f,p);
         for(int k=0;k<8;k++){float x=w*k/8f,bh=h*(.3f+.08f*((k+index)%4));p.setColor(k%2==0?t.back:t.front);c.drawRect(x,h-bh,x+w*.1f,h,p);for(int q=0;q<3;q++){p.setColor((k+q)%2==0?t.neon:t.lit);c.drawRect(x+w*.025f,h-bh+h*.07f+q*h*.09f,x+w*.04f,h-bh+h*.1f+q*h*.09f,p);}}
+        if(index==1){p.setColor(t.neon);p.setStrokeWidth(4*d);c.drawLine(w*.78f,h*.9f,w*.78f,h*.28f,p);for(int k=-1;k<=1;k++){Path palm=new Path();palm.moveTo(w*.78f,h*.28f);palm.quadTo(w*(.78f+k*.15f),h*.02f,w*(.78f+k*.21f),h*.3f);c.drawPath(palm,p);}}
+        if(index==2){p.setColor(t.neon);p.setStyle(Paint.Style.STROKE);p.setStrokeWidth(2*d);for(int k=0;k<3;k++){Path wave=new Path();wave.moveTo(0,h*(.72f+k*.1f));for(int q=0;q<4;q++)wave.quadTo(w*(q+.5f)/4,h*(.64f+k*.1f),w*(q+1)/4,h*(.72f+k*.1f));c.drawPath(wave,p);}p.setStyle(Paint.Style.FILL);}
+        if(index==3){p.setColor(t.title);Path crown=new Path();crown.moveTo(w*.34f,h*.28f);crown.lineTo(w*.31f,h*.06f);crown.lineTo(w*.44f,h*.16f);crown.lineTo(w*.5f,0);crown.lineTo(w*.57f,h*.16f);crown.lineTo(w*.69f,h*.06f);crown.lineTo(w*.66f,h*.28f);crown.close();c.drawPath(crown,p);}
         p.setColor(t.neon);p.setStyle(Paint.Style.STROKE);p.setStrokeWidth(2*d);c.drawRoundRect(w*.3f,h*.3f,w*.68f,h*.56f,4*d,4*d,p);p.setStyle(Paint.Style.FILL);
         text(c,new String[]{"VEGAS","SUNSET","LAGOON","ROYAL"}[index],w*.49f,h*.46f,11,t.title);
     }
