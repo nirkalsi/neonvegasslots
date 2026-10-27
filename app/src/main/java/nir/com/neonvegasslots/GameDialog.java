@@ -54,10 +54,13 @@ final class GameDialog {
     static java.util.function.BooleanSupplier busy;
     static final java.util.ArrayDeque<Builder> pending = new java.util.ArrayDeque<>();
     private static boolean drainScheduled = false;
+    private static int queueEpoch = 0;
     static void scheduleDrain(Activity a) {
         if (drainScheduled) return;
         drainScheduled = true;
+        final int epoch = queueEpoch;
         new android.os.Handler(android.os.Looper.getMainLooper()).postDelayed(() -> {
+            if (epoch != queueEpoch) return; // old Activity cannot drain or clear its replacement
             drainScheduled = false;
             if (a.isFinishing() || a.isDestroyed()) { pending.clear(); showing = false; return; }
             Builder b = pending.peek();
@@ -66,7 +69,7 @@ final class GameDialog {
             pending.poll().show();
         }, 700);
     }
-    static void resetQueue() { showing = false; cur = null; actionsSinceClose = 1; pending.clear(); drainScheduled = false; }
+    static void resetQueue() { queueEpoch++; showing = false; cur = null; actionsSinceClose = 1; pending.clear(); drainScheduled = false; }
 
     static final class Builder {
         private final Activity activity;
