@@ -263,6 +263,7 @@ public class MainActivity extends Activity implements SlotsView.Listener, Billin
 
     // ---------- rewarded free coins ----------
     private void freeCoins() {
+        if(game.pendingLevelReward()>0)return;
         long last = sp.getLong("last_free_ad", 0);
         long wait = 60000 - (System.currentTimeMillis() - last);
         if (wait > 0) {
@@ -477,7 +478,7 @@ public class MainActivity extends Activity implements SlotsView.Listener, Billin
     }
 
     @Override public void onLevelUp(int level, long reward) {
-        Toast.makeText(this, "Level " + level + "! +" + reward + " coins", Toast.LENGTH_SHORT).show();
+        // Reward is now collected once in the queued, save-safe gameplay level moment.
     }
 
     @Override public void saveState() {

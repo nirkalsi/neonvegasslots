@@ -62,6 +62,8 @@ public class SlotsView extends View {
     private long xp = 0;
     private int level = 1;
     private long levelFlashUntil = 0;
+    private long pendingLevelCoins=0,levelMomentAt=0;
+    private final RectF levelCollect=new RectF();
     private int themeIdx = 0;
     private long unlockFlashUntil = 0;
     private String unlockedName = null;
@@ -100,7 +102,7 @@ public class SlotsView extends View {
     /** True while a spin, win count-up, level-up or unlock animation is still resolving: popups wait. */
     boolean isBusyAnimating() {
         long n = System.currentTimeMillis();
-        return spinning || n < winFlashUntil || n < bigWinUntil || n < levelFlashUntil || n < unlockFlashUntil || n < trophyFlashUntil;
+        return pendingLevelCoins>0 || spinning || n < winFlashUntil || n < bigWinUntil || n < levelFlashUntil || n < unlockFlashUntil || n < trophyFlashUntil;
     }
     long getLastWin() { return lastWin; }
     public long getSpinsDone() { return spinsDone; }
@@ -159,10 +161,11 @@ public class SlotsView extends View {
         tryTrophyDrop(rng.nextFloat(), today);
     }
 
-    public String serialize() { return balance + ";" + spinsDone + ";" + betIdx + ";" + lastRegenAt + ";" + xp + ";" + level + ";" + themeIdx + ";" + trophyMask + ";" + trophyDay; }
+    public String serialize() { return balance + ";" + spinsDone + ";" + betIdx + ";" + lastRegenAt + ";" + xp + ";" + level + ";" + themeIdx + ";" + trophyMask + ";" + trophyDay + ";" + pendingLevelCoins; }
     public void restore(String s) {
         try {
-            String[] a = s.split(";");
+            String[] a = s.split(";",-1);
+            pendingLevelCoins=0;levelMomentAt=0;
             balance = Long.parseLong(a[0]);
             spinsDone = Long.parseLong(a[1]);
             betIdx = Math.min(BETS.length - 1, Math.max(0, Integer.parseInt(a[2]))); // clamped to the unlocked ladder after the level is read
@@ -176,7 +179,41 @@ public class SlotsView extends View {
             }
             if (a.length > 7) trophyMask = Integer.parseInt(a[7]) & 0xFFF;
             if (a.length > 8) trophyDay = a[8];
+            if(a.length>9&&!a[9].isEmpty())pendingLevelCoins=Math.max(0,Long.parseLong(a[9]));
         } catch (Exception ignored) {}
+    }
+
+    boolean levelMomentReady(){long n=nowMillis();return pendingLevelCoins>0&&!spinning&&n>=winFlashUntil&&n>=bigWinUntil;}
+    long pendingLevelReward(){return pendingLevelCoins;}
+    long collectLevelReward(){
+        if(!levelMomentReady())return 0;
+        long reward=pendingLevelCoins;pendingLevelCoins=0;levelMomentAt=0;levelCollect.setEmpty();
+        balance+=reward;persist();fx(SoundFx.Effect.WIN);GameDialog.noteAction();
+        float[] target=chipCenterOnScreen();if(getParent()!=null)ClaimBurst.play(this,reward,target[0],target[1]);
+        invalidate();return reward;
+    }
+    private void drawLevelCollect(Canvas c,float w,SlotArt.Theme th){
+        long n=nowMillis();if(levelMomentAt==0)levelMomentAt=n;
+        float t=Math.min(1,(n-levelMomentAt)/400f),q=t-1,pop=1+2.70158f*q*q*q+1.70158f*q*q;
+        float cy=getHeight()*.43f;
+        p.setStyle(Paint.Style.FILL);p.setColor(0x99000000);c.drawRect(0,0,w,getHeight(),p);
+        c.save();c.rotate((n-levelMomentAt)*.015f,w*.5f,cy);p.setColor(0x22FFD166);
+        for(int k=0;k<12;k++){Path ray=new Path();double a=k*Math.PI/6;ray.moveTo(w*.5f,cy);ray.lineTo(w*.5f+(float)Math.cos(a)*w*.8f,cy+(float)Math.sin(a)*w*.8f);ray.lineTo(w*.5f+(float)Math.cos(a+.15)*w*.8f,cy+(float)Math.sin(a+.15)*w*.8f);ray.close();c.drawPath(ray,p);}c.restore();
+        c.save();c.scale(Math.max(.01f,pop),Math.max(.01f,pop),w*.5f,cy);
+        p.setColor(th.panelBg);rf.set(w*.08f,cy-w*.38f,w*.92f,cy+w*.45f);c.drawRoundRect(rf,w*.06f,w*.06f,p);
+        p.setStyle(Paint.Style.STROKE);p.setStrokeWidth(4);p.setColor(th.title);c.drawRoundRect(rf,w*.06f,w*.06f,p);p.setStyle(Paint.Style.FILL);
+        p.setColor(th.title);c.drawCircle(w*.5f,cy-w*.18f,w*.12f,p);p.setColor(th.panelBg);p.setTextAlign(Paint.Align.CENTER);p.setFakeBoldText(true);p.setTextSize(w*.13f);c.drawText(""+level,w*.5f,cy-w*.13f,p);
+        p.setColor(0xFFFFFFFF);p.setTextSize(w*.075f);c.drawText("LEVEL UP!",w*.5f,cy+w*.015f,p);
+        p.setColor(th.title);p.setTextSize(w*.05f);c.drawText("+"+pendingLevelCoins+" coins",w*.5f,cy+w*.105f,p);
+        p.setColor(th.soft);p.setTextSize(w*.032f);c.drawText("Bet range: up to "+BETS[betCount(level)-1],w*.5f,cy+w*.17f,p);
+        c.drawText("Land: "+SlotArt.THEMES[unlockedCount(level)-1].name,w*.5f,cy+w*.22f,p);
+        levelCollect.set(w*.22f,cy+w*.28f,w*.78f,cy+w*.40f);p.setColor(th.spinBg);c.drawRoundRect(levelCollect,w*.055f,w*.055f,p);p.setColor(0xFFFFFFFF);p.setTextSize(w*.052f);c.drawText("COLLECT",w*.5f,cy+w*.359f,p);
+        c.restore();
+        if(n-levelMomentAt<1300){float age=(n-levelMomentAt)/1300f;
+            for(int k=0;k<28;k++){double a=k*2.399963;float radius=w*(.16f+age*.42f);float x=w*.5f+(float)Math.cos(a)*radius,y=cy+(float)Math.sin(a)*radius+age*age*w*.3f;
+                p.setColor(k%2==0?th.title:0xFFFFFFFF);p.setAlpha((int)(220*(1-age)));c.drawCircle(x,y,w*(.004f+(k%3)*.002f),p);}
+        }
+        p.setAlpha(255);p.setFakeBoldText(false);p.setStyle(Paint.Style.FILL);postInvalidateDelayed(33);
     }
 
     // HUD coin chip: dark pill, gold rim, coin disc, amount, green "+" that opens the shop (original art).
@@ -387,6 +424,7 @@ public class SlotsView extends View {
         invalidate();
     }
     private void spin() {
+        if(pendingLevelCoins>0)return;
         if (spinning) { quickStop(); return; }
         regen();
         long bet = BETS[betIdx];
@@ -422,9 +460,9 @@ public class SlotsView extends View {
             xp -= xpNeeded();
             level++;
             long reward = 150L * level;
-            balance += reward;
-            levelFlashUntil = System.currentTimeMillis() + 2000;
-            if (listener != null) listener.onLevelUp(level, reward);
+            pendingLevelCoins += reward; // held until Collect; saved with the new level
+            levelMomentAt=0;
+            levelFlashUntil=0;
         }
         int newUnlocks = unlockedCount(level);
         if (newUnlocks > oldUnlocks) {
@@ -433,7 +471,7 @@ public class SlotsView extends View {
         }
         maybeTrophy();
         persist();
-        boolean leveled = newUnlocks > oldUnlocks || levelFlashUntil > System.currentTimeMillis();
+        boolean leveled = pendingLevelCoins>0 || newUnlocks > oldUnlocks || levelFlashUntil > System.currentTimeMillis();
         boolean trophy = trophyFlashUntil > System.currentTimeMillis();
         if (autoSpin) {
             if (win >= 25 * bet || leveled || trophy || balance < BETS[betIdx]) autoSpin = false;
@@ -696,6 +734,7 @@ public class SlotsView extends View {
         art.trailCompact(cv, w, trailTop(), trailBottom(), level, xp, xpNeeded(), themeIdx, ju);
         if (setComplete(themeIdx)) art.frameOrnament(cv, w / 2, gridTop - w * .022f, w * .05f, th);
 
+        if(levelMomentReady())drawLevelCollect(cv,w,th); // final foreground layer above every control
         // legal line lives in Settings (Missions dialog), not on the game screen
     }
 
@@ -777,6 +816,7 @@ public class SlotsView extends View {
         float ctrlY = ctrlY(w, getHeight());
         float btnH = getHeight() * 0.07f;
         float x = e.getX(), y = e.getY();
+        if(pendingLevelCoins>0){if(levelMomentReady()&&levelCollect.contains(x,y))collectLevelReward();return true;}
         if (Math.abs(x-w*.90f)<=w*.065f && Math.abs(y-w*.18f)<=w*.065f) { if(listener!=null)listener.onOpenPaytable();return true; }
         if (chipPlus.contains(x, y)) { if (listener != null) listener.onOpenShop(); return true; }
         if (y >= ctrlY && y <= ctrlY + btnH) {
