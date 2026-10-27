@@ -48,9 +48,9 @@ final class TopIcons {
             case "SHOP": {
                 p.setColor(0xFFFFFFFF);
                 Path b = new Path(); b.moveTo(4 * u, 8 * u); b.lineTo(18 * u, 8 * u); b.lineTo(17 * u, 20 * u); b.lineTo(5 * u, 20 * u); b.close(); cv.drawPath(b, p);
-                p.setStyle(Paint.Style.STROKE); p.setStrokeWidth(2f * u); p.setColor(accent);
+                p.setStyle(Paint.Style.STROKE); p.setStrokeWidth(2f * u); p.setColor(0xFFFFFFFF);
                 cv.drawArc(new RectF(7 * u, 2 * u, 15 * u, 12 * u), 180, 180, false, p);
-                p.setStyle(Paint.Style.FILL); p.setColor(accent); cv.drawCircle(11 * u, 14 * u, 2.2f * u, p);
+                p.setStyle(Paint.Style.FILL);
                 break; }
             case "MORE GAMES": {
                 p.setColor(0xFFFFFFFF); cv.drawRoundRect(new RectF(1 * u, 5 * u, 21 * u, 17 * u), 6 * u, 6 * u, p);

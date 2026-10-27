@@ -703,4 +703,21 @@ public class RenderSmokeTest {
         Bitmap sheet=Bitmap.createBitmap(720,600,Bitmap.Config.ARGB_8888);Canvas cv=new Canvas(sheet);cv.drawBitmap(frames[0],0,0,null);cv.drawBitmap(frames[1],0,300,null);
         try(FileOutputStream o=new FileOutputStream("/tmp/renders/neonvegasslots-symbol-win-sheet.png")){sheet.compress(Bitmap.CompressFormat.PNG,100,o);}
     }
+    @GraphicsMode(GraphicsMode.Mode.NATIVE) @Config(qualifiers="w320dp-h640dp-420dpi")
+    @Test public void renderCompactHudNarrow()throws Exception{
+        MainActivity a=activity();java.lang.reflect.Field f=MainActivity.class.getDeclaredField("game");f.setAccessible(true);SlotsView g=(SlotsView)f.get(a);
+        g.restore("50;0;1;"+System.currentTimeMillis()+";0;1;0");
+        View root=a.findViewById(android.R.id.content);android.util.DisplayMetrics dm=a.getResources().getDisplayMetrics();
+        renderView(root,dm.widthPixels,dm.heightPixels,"/tmp/renders/neonvegasslots-compact-hud-narrow.png");
+    }
+    @GraphicsMode(GraphicsMode.Mode.NATIVE)
+    @Test public void balanceAnimationDoesNotChangeMoneyOrAdvancePerDraw()throws Exception{
+        final long[] clock={10000};SlotsView g=new SlotsView(RuntimeEnvironment.getApplication()){@Override long nowMillis(){return clock[0];}};
+        g.layout(0,0,720,1480);Bitmap b=Bitmap.createBitmap(720,1480,Bitmap.Config.ARGB_8888);g.draw(new Canvas(b));
+        java.lang.reflect.Field bal=SlotsView.class.getDeclaredField("balance");bal.setAccessible(true);bal.setLong(g,1000);
+        java.lang.reflect.Field shown=SlotsView.class.getDeclaredField("shownBalance");shown.setAccessible(true);
+        clock[0]+=33;g.draw(new Canvas(b));long first=shown.getLong(g);assertTrue(first>500&&first<1000);
+        g.draw(new Canvas(b));assertEquals(first,shown.getLong(g));assertEquals(1000,g.getBalance());
+        for(int i=0;i<60;i++){clock[0]+=33;g.draw(new Canvas(b));}assertEquals(1000,shown.getLong(g));assertEquals(1000,g.getBalance());
+    }
 }

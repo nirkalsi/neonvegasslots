@@ -19,13 +19,14 @@ final class IconTile extends View {
     private float phase = 0f;
     private ValueAnimator pulse;
     private final String baseDesc;
+    private final String label;
 
     IconTile(Context c, String key, int accent, int top, int bot, int rim, String desc, float iconDp) {
         super(c);
         d = c.getResources().getDisplayMetrics().density;
         this.top = top; this.bot = bot; this.rim = rim;
         icon = TopIcons.icon(c, key, accent, (int) iconDp);
-        baseDesc = desc;
+        baseDesc = desc;label=key.equals("FREE COINS")?"COINS":key;
         setContentDescription(desc);
         setClickable(true); setFocusable(true);
     }
@@ -66,7 +67,7 @@ final class IconTile extends View {
         float w = getWidth(), h = getHeight();
         float s = Math.min(w, h) - 16 * d; // margin leaves room for the pulse ring and badge
         float cx = w / 2f, cy = h / 2f;
-        rf.set(cx - s / 2, cy - s / 2, cx + s / 2, cy + s / 2);
+        rf.set(6*d, cy - s / 2, w-6*d, cy + s / 2);
         float rad = s * 0.30f;
         if (badge > 0) { // claim-ready: expanding gold ring
             float r = s / 2 + phase * 7 * d;
@@ -74,7 +75,7 @@ final class IconTile extends View {
             p.setShader(null); p.setColor(0xFFFFD84A); p.setAlpha((int) (200 * (1 - phase)));
             rf.inset(-phase * 7 * d, -phase * 7 * d);
             cv.drawRoundRect(rf, rad + phase * 7 * d, rad + phase * 7 * d, p);
-            rf.set(cx - s / 2, cy - s / 2, cx + s / 2, cy + s / 2);
+            rf.set(6*d, cy - s / 2, w-6*d, cy + s / 2);
         }
         p.setStyle(Paint.Style.FILL); p.setColor(0x66000000);
         rf.offset(0, 2 * d); cv.drawRoundRect(rf, rad, rad, p); rf.offset(0, -2 * d);
@@ -87,10 +88,13 @@ final class IconTile extends View {
         p.setShader(null);
         p.setStyle(Paint.Style.STROKE); p.setStrokeWidth(2f * d); p.setColor(rim);
         cv.drawRoundRect(rf, rad, rad, p);
-        int isz = icon.getIntrinsicWidth();
-        int ix = (int) (cx - isz / 2f), iy = (int) (cy - isz / 2f);
+        int isz = (int)(icon.getIntrinsicWidth()*.78f);
+        int ix = (int) (cx - isz / 2f), iy = (int) (cy - isz / 2f - 6*d);
         icon.setBounds(ix, iy, ix + isz, iy + isz);
         icon.draw(cv);
+        p.setStyle(Paint.Style.FILL);p.setShader(null);p.setColor(0xFFFFFFFF);p.setTypeface(Typeface.DEFAULT_BOLD);p.setTextAlign(Paint.Align.CENTER);p.setTextSize(12*getResources().getDisplayMetrics().scaledDensity);
+        cv.drawText(label,cx,rf.bottom-5*d,p);
+        if(isPressed()){p.setColor(0x44000000);cv.drawRoundRect(rf,rad,rad,p);}
         if (badge > 0) {
             float br = 8.5f * d, bx = rf.right - 1.5f * d, by = rf.top + 1.5f * d;
             p.setStyle(Paint.Style.FILL); p.setColor(0xFFFFFFFF); cv.drawCircle(bx, by, br + 1.5f * d, p);

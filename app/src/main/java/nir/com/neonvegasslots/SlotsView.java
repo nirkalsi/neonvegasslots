@@ -188,19 +188,30 @@ public class SlotsView extends View {
         float cx = chipCx > 0 ? chipCx : getWidth() / 2f, cy = chipCy > 0 ? chipCy : getHeight() * 0.12f;
         return new float[]{l[0] + cx, l[1] + cy};
     }
+    private long shownBalance=-1,lastBalanceFrame=Long.MIN_VALUE;
+    private long coinPulseUntil=0;
     private void drawCoinChip(Canvas cv, float w, float gridTop) {
-        String amt = String.format(java.util.Locale.US, "%,d", balance);
+        long clock=nowMillis();
+        if(shownBalance<0)shownBalance=balance;
+        if(clock!=lastBalanceFrame){
+            lastBalanceFrame=clock;
+            if(balance>shownBalance){shownBalance=Math.min(balance,shownBalance+Math.max(1,(balance-shownBalance+5)/6));coinPulseUntil=clock+180;}
+            else if(balance<shownBalance)shownBalance=balance;
+        }
+
+        String amt = String.format(java.util.Locale.US, "%,d", shownBalance);
         p.setTextAlign(Paint.Align.LEFT);
         p.setFakeBoldText(true);
         p.setTextSize(w * 0.052f);
         float tw = p.measureText(amt);
         float h = w * 0.092f, pad = h * 0.18f, disc = h - pad * 2;
         float cw = pad + disc + h * 0.28f + tw + h * 0.32f + disc + pad;
-        float cx = w / 2f - cw / 2f, cy = gridTop * 0.66f - h * 0.68f;
+        float cx = w / 2f - cw / 2f, cy = w * .026f;
         rf.set(cx, cy, cx + cw, cy + h);
         p.setStyle(Paint.Style.FILL); p.setColor(0xFF140A2A); cv.drawRoundRect(rf, h / 2, h / 2, p);
         p.setStyle(Paint.Style.STROKE); p.setStrokeWidth(Math.max(2f, w * 0.005f)); p.setColor(0xFFFFC83A); cv.drawRoundRect(rf, h / 2, h / 2, p);
         p.setStyle(Paint.Style.FILL);
+        if(clock<coinPulseUntil){p.setStyle(Paint.Style.STROKE);p.setStrokeWidth(w*.006f);p.setColor(0xAAFFF1A6);cv.drawRoundRect(rf,h/2,h/2,p);p.setStyle(Paint.Style.FILL);postInvalidateDelayed(33);}
         float dcx = cx + pad + disc / 2, dcy = cy + h / 2;
         chipCx = cx + cw / 2f; chipCy = dcy;
         if (balance < 100) { // refill timer: +5 coins per full minute below 100, also while the app is closed
@@ -438,13 +449,14 @@ public class SlotsView extends View {
     /** Reel cell height: a little taller than wide when the screen has room (doc: reels deserve more space), never smaller than square. */
     static float cellH(float w, float h) {
         float cw = w / 5f - 8;
-        float avail = h - h * 0.195f - (h * 0.07f + w * 0.10f + w * 0.19f + h * 0.05f);
+        float avail = h - gridTop(w,h) - (h * 0.07f + w * 0.10f + w * 0.19f + h * 0.05f);
         float k = Math.max(1f, Math.min(1.22f, (avail - 16) / (3 * cw)));
         return cw * k;
     }
-    static float ctrlY(float w, float h) { return h * 0.195f + cellH(w, h) * 3 + 16 + 24; }
+    static float ctrlY(float w, float h) { return gridTop(w,h) + cellH(w, h) * 3 + 16 + 24; }
     private float cellH() { return cellH(getWidth(), getHeight()); }
-    private float gridTop() { return getHeight() * 0.195f; }
+    static float gridTop(float w,float h){return Math.max(h*.145f,w*.29f);}
+    private float gridTop() { return gridTop(getWidth(),getHeight()); }
     private float trailTop() { return ctrlY(getWidth(), getHeight()) + getHeight() * 0.07f + getWidth() * 0.055f; }
     private float trailBottom() { return trailTop() + getWidth() * 0.19f; } // compact strip; the full map opens in a dialog
     private float trailNodeY() {
@@ -461,12 +473,12 @@ public class SlotsView extends View {
 
         float w = getWidth();
         // HUD bar: fully opaque backing for title and balance; scene art is clipped below
-        float bandH = getHeight() * 0.15f;
+        float bandH = gridTop()-getWidth()*.015f;
         int hud = 0xFF000000 | (((th.skyTop >> 16 & 0xFF) / 2) << 16) | (((th.skyTop >> 8 & 0xFF) / 2) << 8) | ((th.skyTop & 0xFF) / 2);
         p.setColor(hud);
         cv.drawRect(0, 0, w, bandH, p);
-        p.setShader(new LinearGradient(0, bandH, 0, getHeight() * .185f, hud & 0x00FFFFFF | 0x99000000, 0x00000000, Shader.TileMode.CLAMP));
-        cv.drawRect(0, bandH, w, getHeight() * .185f, p);
+        p.setShader(new LinearGradient(0, bandH, 0, gridTop(), hud & 0x00FFFFFF | 0x99000000, 0x00000000, Shader.TileMode.CLAMP));
+        cv.drawRect(0, bandH, w, gridTop(), p);
         p.setShader(null);
         p.setColor(th.neon & 0x00FFFFFF | 0x55000000);
         cv.drawRect(0, bandH - 1, w, bandH + 1, p);
@@ -475,17 +487,9 @@ public class SlotsView extends View {
         float cellH = cellH(w, getHeight());
         float gridH = cellH * 3 + 16;
 
-        // title
-        titleGlow = (float) ((now % 4000L) / 4000.0 * 6.2832); // elapsed-time pulse: same speed at any redraw cadence
+        // Brand stays on the loading screen; this space belongs to balance and reels.
+        titleGlow = (float) ((now % 4000L) / 4000.0 * 6.2832);
         p.setTextAlign(Paint.Align.CENTER);
-        p.setTextSize(w * 0.06f);
-        p.setFakeBoldText(true);
-        p.setColor(th.title);
-        p.setShadowLayer(14 + 6 * (float) Math.sin(titleGlow), 0, 0, th.titleGlow);
-        cv.drawText("NEON VEGAS SLOTS", w / 2, gridTop * 0.42f, p);
-        p.clearShadowLayer();
-        p.setFakeBoldText(false);
-
         // balance / win
         p.setTextSize(w * 0.05f);
         p.setColor(0xFFFFFFFF);
@@ -493,28 +497,22 @@ public class SlotsView extends View {
         // level + xp bar
         p.setTextSize(w * 0.034f);
         p.setColor(th.soft);
-        cv.drawText("LV " + level, w * 0.14f, gridTop * 0.90f, p);
-        float barL = w * 0.24f, barR = w * 0.76f, barY = gridTop * 0.835f, barH = w * 0.034f;
+        cv.drawText("LV " + level, w * 0.14f, w*.197f, p);
+        float barL = w * 0.24f, barR = w * 0.76f, barY = w*.150f, barH = w * 0.041f;
         rf.set(barL, barY, barR, barY + barH);
         p.setColor(0xCC000000); cv.drawRoundRect(rf, 8, 8, p);
         p.setStyle(Paint.Style.STROKE); p.setStrokeWidth(w * 0.004f); p.setColor(th.title); cv.drawRoundRect(rf, 8, 8, p); p.setStyle(Paint.Style.FILL);
         float frac = Math.min(1f, xp / (float) xpNeeded());
         rf.set(barL, barY, barL + (barR - barL) * frac, barY + barH);
         p.setColor(th.title); cv.drawRoundRect(rf, 8, 8, p);
+        String nextReward="Next Lv "+(level+1)+": +"+(150L*(level+1))+" coins";
+        p.setTextAlign(Paint.Align.CENTER);p.setTextSize(w*.034f);p.setColor(th.soft);
+        cv.drawText(nextReward,w*.50f,w*.255f,p);
         // Info/paytable entry beside XP, separate from currency and store.
-        float infoX=w*.90f, infoY=gridTop*.875f;
+        float infoX=w*.90f, infoY=w*.18f;
         p.setColor(th.panelBg);cv.drawCircle(infoX,infoY,w*.034f,p);
         p.setStyle(Paint.Style.STROKE);p.setStrokeWidth(w*.003f);p.setColor(th.title);cv.drawCircle(infoX,infoY,w*.034f,p);p.setStyle(Paint.Style.FILL);
         p.setTextAlign(Paint.Align.CENTER);p.setTextSize(w*.044f);p.setFakeBoldText(true);cv.drawText("i",infoX,infoY+w*.015f,p);p.setFakeBoldText(false);
-        if (lastWin > 0 && now < winFlashUntil && now >= bigWinUntil) {
-            p.setColor(0xFF7CFC00);
-            p.setTextSize(w * 0.06f);
-            p.setFakeBoldText(true);
-            long shown = lastWin * Math.min(100, (now - winStartAt) / 9) / 100;
-            cv.drawText("WIN +" + shown, w / 2, gridTop * 0.95f, p);
-            p.setFakeBoldText(false);
-        }
-
         // machine frame: neon marquee with chase bulbs
         art.frame(cv, 4, gridTop - 8, w - 4, gridTop + gridH + 8, th, phase);
 
@@ -779,7 +777,7 @@ public class SlotsView extends View {
         float ctrlY = ctrlY(w, getHeight());
         float btnH = getHeight() * 0.07f;
         float x = e.getX(), y = e.getY();
-        if (Math.abs(x-w*.90f)<=w*.065f && Math.abs(y-gridTop*.875f)<=w*.065f) { if(listener!=null)listener.onOpenPaytable();return true; }
+        if (Math.abs(x-w*.90f)<=w*.065f && Math.abs(y-w*.18f)<=w*.065f) { if(listener!=null)listener.onOpenPaytable();return true; }
         if (chipPlus.contains(x, y)) { if (listener != null) listener.onOpenShop(); return true; }
         if (y >= ctrlY && y <= ctrlY + btnH) {
             if (x >= w * 0.03f && x <= w * 0.40f) {

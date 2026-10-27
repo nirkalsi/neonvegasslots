@@ -182,9 +182,9 @@ public class MainActivity extends Activity implements SlotsView.Listener, Billin
         shop.setOnClickListener(v -> showShop());
         IconTile[] tiles = {coins, missionsTile, shop};
         for (int i = 0; i < tiles.length; i++) {
-            int size = (int) ((tiles[i] == shop ? 72 : 64) * dn); // every tap area is at least 48dp
+            int size = (int) ((tiles[i] == missionsTile ? 96 : 84) * dn); // every tap area is at least 48dp
             if (i > 0) row.addView(new View(this), new LinearLayout.LayoutParams(0, 1, 1f));
-            row.addView(tiles[i], new LinearLayout.LayoutParams(size, size));
+            row.addView(tiles[i], new LinearLayout.LayoutParams(size, (int)(72*dn)));
         }
         return row;
     }
