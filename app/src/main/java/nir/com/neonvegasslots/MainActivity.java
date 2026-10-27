@@ -553,7 +553,7 @@ public class MainActivity extends Activity implements SlotsView.Listener, Billin
     private void maybeAskNotifications() {
         if (isFinishing() || isDestroyed() || !Reminders.promptEnabled) return;
         if (!today().equals(sp.getString("daily_last", ""))) return; // daily bonus first; never stack dialogs
-        if (GameDialog.showing || !GameDialog.pending.isEmpty() || (game != null && game.isBusyAnimating()) || GameDialog.actionsSinceClose < 1) { handler.postDelayed(this::maybeAskNotifications, 1500); return; }
+        if (GameDialog.isOpen() || !GameDialog.pending.isEmpty() || (game != null && game.isBusyAnimating()) || GameDialog.actionsSinceClose < 1) { handler.postDelayed(this::maybeAskNotifications, 1500); return; }
         boolean enabled, rationale = false;
         android.app.NotificationManager nm = (android.app.NotificationManager) getSystemService(NOTIFICATION_SERVICE);
         enabled = nm == null || nm.areNotificationsEnabled();

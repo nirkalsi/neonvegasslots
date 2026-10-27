@@ -9,23 +9,24 @@ import org.robolectric.shadows.ShadowLooper;
 import java.util.concurrent.TimeUnit;
 
 @RunWith(RobolectricTestRunner.class)
+@org.robolectric.annotation.Config(sdk = 34)
 public class PopupQueueTest {
   private GameDialog.Builder b(Activity a) { return new GameDialog.Builder(a, GameDialog.fromTheme(SlotArt.THEMES[0])).title("t").add(GameDialog.Btn.secondary("Close", null)); }
   @Test public void oneAtATimeAndAnActionBetweenAutoPopups() {
     Activity a = Robolectric.buildActivity(Activity.class).setup().get();
     GameDialog.resetQueue(); GameDialog.busy = null;
     android.app.Dialog d1 = b(a).auto().show();
-    assertTrue(GameDialog.showing);
+    assertTrue(GameDialog.isOpen());
     b(a).auto().show();                       // second popup must wait, not stack
     assertEquals(1, GameDialog.pending.size());
     d1.dismiss();
     ShadowLooper.idleMainLooper(3, TimeUnit.SECONDS);
     assertEquals("no gameplay action yet: auto popup still waits", 1, GameDialog.pending.size());
-    assertFalse(GameDialog.showing);
+    assertFalse(GameDialog.isOpen());
     GameDialog.noteAction();
     ShadowLooper.idleMainLooper(3, TimeUnit.SECONDS);
     assertEquals(0, GameDialog.pending.size());
-    assertTrue(GameDialog.showing);
+    assertTrue(GameDialog.isOpen());
   }
   @Test public void nothingOpensWhileBusy() {
     Activity a = Robolectric.buildActivity(Activity.class).setup().get();
@@ -33,10 +34,10 @@ public class PopupQueueTest {
     final boolean[] busy = {true};
     GameDialog.busy = () -> busy[0];
     b(a).show();
-    assertFalse(GameDialog.showing);
+    assertFalse(GameDialog.isOpen());
     busy[0] = false;
     ShadowLooper.idleMainLooper(3, TimeUnit.SECONDS);
-    assertTrue(GameDialog.showing);
+    assertTrue(GameDialog.isOpen());
     GameDialog.busy = null; GameDialog.resetQueue();
   }
 }

@@ -45,6 +45,9 @@ final class GameDialog {
 
     /** Popup queue state (main thread only). */
     static boolean showing = false;
+    static android.app.Dialog cur;
+    /** True while a popup is on screen. Dialog dismiss callbacks arrive late, so also check the dialog itself. */
+    static boolean isOpen() { if (showing && (cur == null || !cur.isShowing())) showing = false; return showing; }
     /** Gameplay actions (spins, merges, taps on the board) since the last popup closed. Starts at 1 so the first popup is not blocked. */
     static int actionsSinceClose = 1;
     static void noteAction() { actionsSinceClose++; }
@@ -59,11 +62,11 @@ final class GameDialog {
             if (a.isFinishing() || a.isDestroyed()) { pending.clear(); showing = false; return; }
             Builder b = pending.peek();
             if (b == null) return;
-            if (showing || (busy != null && busy.getAsBoolean()) || (b.auto && actionsSinceClose < 1)) { scheduleDrain(a); return; }
+            if (isOpen() || (busy != null && busy.getAsBoolean()) || (b.auto && actionsSinceClose < 1)) { scheduleDrain(a); return; }
             pending.poll().show();
         }, 700);
     }
-    static void resetQueue() { showing = false; actionsSinceClose = 1; pending.clear(); drainScheduled = false; }
+    static void resetQueue() { showing = false; cur = null; actionsSinceClose = 1; pending.clear(); drainScheduled = false; }
 
     static final class Builder {
         private final Activity activity;
@@ -85,9 +88,9 @@ final class GameDialog {
             Dialog d = build();
             if (activity.isFinishing() || activity.isDestroyed()) return d; // never attach a window to a dead activity (BadTokenException seen on Test Lab)
             // Popup queue: one popup at a time, never while the reels spin; the rest wait their turn.
-            if (showing || (busy != null && busy.getAsBoolean()) || (auto && actionsSinceClose < 1)) { pending.add(this); scheduleDrain(activity); return d; }
-            showing = true;
-            d.setOnDismissListener(x -> { showing = false; actionsSinceClose = 0; scheduleDrain(activity); });
+            if (isOpen() || (busy != null && busy.getAsBoolean()) || (auto && actionsSinceClose < 1)) { pending.add(this); scheduleDrain(activity); return d; }
+            showing = true; cur = d;
+            d.setOnDismissListener(x -> { if (cur == d) { showing = false; actionsSinceClose = 0; } scheduleDrain(activity); });
             d.show();
             View content = d.getWindow() != null ? d.getWindow().getDecorView() : null;
             if (content != null) {

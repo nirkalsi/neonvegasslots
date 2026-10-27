@@ -346,8 +346,14 @@ public class SlotsView extends View {
     @Override protected void onDetachedFromWindow() { lpHandler.removeCallbacks(longPressAuto); stopAuto(); super.onDetachedFromWindow(); }
     @Override protected void onWindowVisibilityChanged(int v) { if (v != VISIBLE) stopAuto(); super.onWindowVisibilityChanged(v); }
 
+    /** Tap SPIN while the reels run: the remaining reels stop left to right, 110 ms apart. */
+    private void quickStop() {
+        long now = System.currentTimeMillis(); int k = 0;
+        for (int c = 0; c < 5; c++) if (stopAt[c] > now + 110L * (k + 1)) { stopAt[c] = now + 110L * (k + 1); k++; } else if (stopAt[c] > now) k++;
+        invalidate();
+    }
     private void spin() {
-        if (spinning) return;
+        if (spinning) { quickStop(); return; }
         regen();
         long bet = BETS[betIdx];
         if (balance < bet) { if (listener != null) listener.onOutOfCoins(); return; }
@@ -586,8 +592,8 @@ public class SlotsView extends View {
         }
         // SPIN: the hero button
         rf.set(w * 0.43f, ctrlY, w * 0.97f, ctrlY + btnH);
-        int sTop = autoSpin ? 0xFFFF6B63 : spinning ? 0xFF8A8A8A : (canSpin ? 0xFF86F26A : lighten(th.spinOff, 0.12f));
-        int sBot = autoSpin ? 0xFFB71C1C : spinning ? 0xFF4A4A4A : (canSpin ? 0xFF13A53C : darken(th.spinOff, 0.2f));
+        int sTop = autoSpin ? 0xFFFF6B63 : spinning ? 0xFFFFB24A : (canSpin ? 0xFF86F26A : lighten(th.spinOff, 0.12f));
+        int sBot = autoSpin ? 0xFFB71C1C : spinning ? 0xFFD9660F : (canSpin ? 0xFF13A53C : darken(th.spinOff, 0.2f));
         modernButton(cv, rf, sTop, sBot, canSpin ? 0xFFFFE9A8 : 0x66FFFFFF, pulse);
         p.setColor(0xFFFFFFFF);
         p.setShadowLayer(5, 0, 3, 0x99000000);
@@ -597,11 +603,9 @@ public class SlotsView extends View {
             cv.drawRoundRect(scx - sr * 0.8f - btnH * 0.3f, scy - sr * 0.8f, scx + sr * 0.8f - btnH * 0.3f, scy + sr * 0.8f, 6, 6, p);
             p.setTextSize(w * 0.06f); p.setTextAlign(Paint.Align.LEFT);
             cv.drawText(String.valueOf(autoCount), scx + btnH * 0.05f, scy + btnH * 0.2f, p);
-        } else if (spinning) {
-            float ang = (now % 900) / 900f * 360f;
-            p.setStyle(Paint.Style.STROKE); p.setStrokeWidth(sr * 0.3f); p.setStrokeCap(Paint.Cap.ROUND);
-            cv.drawArc(scx - sr, scy - sr, scx + sr, scy + sr, ang, 250, false, p);
-            p.setStrokeCap(Paint.Cap.BUTT); p.setStyle(Paint.Style.FILL);
+        } else if (spinning) { // STOP state: stays coloured and tappable (quick-stop), never a grey loading spinner
+            p.setTextAlign(Paint.Align.CENTER); p.setTextSize(btnH * 0.46f);
+            cv.drawText("STOP", scx, scy + btnH * 0.16f, p);
         } else {
             spinIcon(cv, scx - btnH * 0.28f, scy, btnH * 0.30f);
             loopIcon(cv, scx + btnH * 0.62f, scy, btnH * 0.16f, 0xCCFFFFFF); // hold = auto
@@ -705,6 +709,7 @@ public class SlotsView extends View {
             } else if (x > w * 0.40f && x <= w * 0.97f) {
                 // tap: one spin; hold ~0.5 s: the spin continues as auto; any tap while auto stops it
                 if (autoSpin) stopAuto();
+                else if (spinning) quickStop();
                 else { spin(); spinHeld = true; lpHandler.postDelayed(longPressAuto, 550); }
             }
             return true;

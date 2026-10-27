@@ -329,7 +329,9 @@ public class RenderSmokeTest {
         sc.dispatchTouchEvent(evT(t, t + 40, MotionEvent.ACTION_UP, gw * 0.69f, cy));
         assertTrue("SPIN via scroll container charges the bet", g.getBalance() < bal0);
         assertFalse("short tap must not start auto", g.isAuto());
-        org.robolectric.shadows.ShadowLooper.idleMainLooper(2500, java.util.concurrent.TimeUnit.MILLISECONDS);
+        Thread.sleep(2400);
+        renderView(root, w, h, "/tmp/renders/neonvegasslots-spin-end.png"); org.robolectric.shadows.ShadowLooper.idleMainLooper(300, java.util.concurrent.TimeUnit.MILLISECONDS);
+        assertFalse("spin finished before long press", g.isSpinning());
         java.util.function.Supplier<Float> cyNow = () -> { float gh2 = g.getHeight(); return gh2 * 0.22f + (g.getWidth() / 5f - 8) * 3 + 16 + 24 + gh2 * 0.035f - sc.getScrollY(); };
         t = 4000;
         sc.dispatchTouchEvent(evT(t, t, MotionEvent.ACTION_DOWN, gw * 0.69f, cyNow.get()));
