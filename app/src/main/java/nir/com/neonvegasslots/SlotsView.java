@@ -536,6 +536,7 @@ public class SlotsView extends View {
         int phase = (int) (now / 350);
         if (!art.sceneBackdrop(cv, getWidth(), getHeight(), th.skyTop)) art.backdrop(cv, getWidth(), getHeight(), th, phase);
 
+        drawVegasAmbient(cv,getWidth(),getHeight(),now,now<bigWinUntil);
         float w = getWidth();
         // HUD bar: fully opaque backing for title and balance; scene art is clipped below
         float bandH = gridTop()-getWidth()*.015f;
@@ -776,6 +777,21 @@ public class SlotsView extends View {
         }
     }
 
+    private void drawVegasAmbient(Canvas c,float w,float h,long n,boolean win){
+        // Original distant towers in the side margins; no foreground controls or outcomes move.
+        c.save();c.clipRect(0,h*.15f,w,h);
+        for(int side=0;side<2;side++)for(int tower=0;tower<3;tower++){float bw=w*.065f,x=side==0?tower*bw*.65f:w-bw-tower*bw*.65f,top=h*(.31f+tower*.07f);
+            p.setColor(0xAA111938);c.drawRect(x,top,x+bw,h*.93f,p);
+            for(int row=0;row<15;row++)for(int col=0;col<2;col++){long phase=(n/850+row*7+col*3+tower*11+side*13)%9;p.setColor(phase<6?0x88FFDE85:0x441C2E56);float xx=x+bw*(.18f+col*.42f),yy=top+row*bw*.7f;if(yy<h*.92f)c.drawRect(xx,yy,xx+bw*.13f,yy+bw*.21f,p);}
+        }
+        c.restore();p.setAlpha(255);postInvalidateDelayed(win?33:160);
+    }
+    private void drawVegasSpotlights(Canvas c,float w,float h,long n){
+        c.save();c.clipRect(0,gridTop(),w,ctrlY(w,h));
+        for(int side=0;side<2;side++){float sx=w*(side==0?.06f:.94f),sy=h*.91f;double a=-Math.PI/2+Math.sin(n/630.0+side*2)*.56;float reach=h*.8f;
+            Path beam=new Path();beam.moveTo(sx,sy);beam.lineTo(sx+(float)Math.cos(a-.07)*reach,sy+(float)Math.sin(a-.07)*reach);beam.lineTo(sx+(float)Math.cos(a+.07)*reach,sy+(float)Math.sin(a+.07)*reach);beam.close();p.setColor(side==0?0x3838E1FF:0x38FF3FA2);c.drawPath(beam,p);}
+        c.restore();p.setAlpha(255);
+    }
     static int neonLitLetters(String sign,long elapsed){return Math.min(sign.length(),Math.max(0,(int)(elapsed/65)+1));}
     static long shownTierWin(long amount,long elapsed,long duration){float t=Math.max(0,Math.min(1,elapsed/(duration*.78f)));return Math.round(amount*(1-Math.pow(1-t,2)));}
     static int presentationTier(long shown,long bet,int finalTier){return Math.min(finalTier,winTier(shown,Math.max(1,bet)));}
@@ -785,6 +801,7 @@ public class SlotsView extends View {
         float cy = getHeight() * 0.42f;
         p.setColor(0x99000000);
         cv.drawRect(0, 0, w, getHeight(), p);
+        drawVegasSpotlights(cv,w,getHeight(),now);
         float in = Math.min(1f, t / 0.12f);
         float pop = in < 1f ? 0.6f + 0.4f * in : 1f + 0.05f * (float) Math.sin(now / 140.0);
         p.setTextAlign(Paint.Align.CENTER);

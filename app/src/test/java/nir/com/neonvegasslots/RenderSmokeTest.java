@@ -505,6 +505,8 @@ public class RenderSmokeTest {
         try {
             callPrivate(a, "maybeDailyBonus");
             renderLatestDialog("neonvegasslots-daily-narrow", 560, 1240);
+            Dialog d=latestDialog();android.widget.ScrollView sc=findScroll(d.getWindow().getDecorView());assertNotNull(sc);sc.scrollTo(0,100000);assertTrue(sc.getScrollY()>0);
+            renderLatestDialog("neonvegasslots-daily-narrow-bottom",560,1240);
         } finally {
             RuntimeEnvironment.getApplication().getResources().getConfiguration().fontScale = 1.0f;
         }
