@@ -29,6 +29,12 @@ public class Reminders extends BroadcastReceiver {
         NotificationManager nm = (NotificationManager) c.getSystemService(Context.NOTIFICATION_SERVICE);
         return nm != null && nm.areNotificationsEnabled();
     }
+    /** The reminder text says the daily bonus is ready, so only post it when that is true: not claimed yet on today's date (same date rule as MainActivity). */
+    static boolean bonusReady(String dailyLast, String today) { return dailyLast == null || !dailyLast.equals(today); }
+    static boolean bonusReadyNow(Context c) {
+        String today = new java.text.SimpleDateFormat("yyyy-MM-dd", java.util.Locale.US).format(new java.util.Date());
+        return bonusReady(c.getSharedPreferences(MainActivity.PREFS, Context.MODE_PRIVATE).getString("daily_last", ""), today);
+    }
     static boolean isOn(Context c) { return c.getSharedPreferences(MainActivity.PREFS, Context.MODE_PRIVATE).getBoolean(PREFS_KEY, false); }
     static void setOn(Context c, boolean on) {
         c.getSharedPreferences(MainActivity.PREFS, Context.MODE_PRIVATE).edit().putBoolean(PREFS_KEY, on).apply();
@@ -53,7 +59,7 @@ public class Reminders extends BroadcastReceiver {
         // Alarms do not survive a reboot: re-arm the single opt-in reminder, post nothing now.
         if (i != null && Intent.ACTION_BOOT_COMPLETED.equals(i.getAction())) { if (effective(c)) schedule(c); return; }
         NotificationManager nm = (NotificationManager) c.getSystemService(Context.NOTIFICATION_SERVICE);
-        if (nm == null) return;
+        if (nm == null || !bonusReadyNow(c)) return; // bonus already claimed today: nothing true to say
         if (android.os.Build.VERSION.SDK_INT >= 26)
             nm.createNotificationChannel(new NotificationChannel(CHANNEL, "Daily reminder", NotificationManager.IMPORTANCE_DEFAULT));
         Intent open = new Intent(c, MainActivity.class).addFlags(Intent.FLAG_ACTIVITY_NEW_TASK);
