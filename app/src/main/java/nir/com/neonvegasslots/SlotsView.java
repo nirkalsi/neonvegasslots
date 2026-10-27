@@ -63,6 +63,8 @@ public class SlotsView extends View {
     private long spinsDone = 0;
     private long lastRegenAt = System.currentTimeMillis();
     private long xp = 0;
+    private float xpAnimFrom=0;private long xpAnimAt=0;
+    float displayedXp(long n){if(xpAnimAt==0)return xp;float t=Math.max(0,Math.min(1,(n-xpAnimAt)/450f));return xpAnimFrom+(xp-xpAnimFrom)*(1-(1-t)*(1-t));}
     private int level = 1;
     private long levelFlashUntil = 0;
     private long pendingLevelCoins=0,levelMomentAt=0;
@@ -448,7 +450,7 @@ public class SlotsView extends View {
         long bet = BETS[betIdx];
         if (balance < bet) { if (listener != null) listener.onOutOfCoins(); return; }
         balance -= bet;
-        xp += xpForBet(bet);
+        xpAnimFrom=displayedXp(nowMillis());xpAnimAt=nowMillis();xp += xpForBet(bet);
         lastWin = 0;
         spinning = true;
         GameDialog.noteAction();
@@ -475,7 +477,7 @@ public class SlotsView extends View {
         }
         int oldUnlocks = unlockedCount(level);
         while (xp >= xpNeeded()) {
-            xp -= xpNeeded();
+            xp -= xpNeeded();xpAnimFrom=0;xpAnimAt=nowMillis();
             if(pendingLevelCoins==0)pendingLevelFrom=level;
             level++;
             long reward = 150L * level;
@@ -554,12 +556,12 @@ public class SlotsView extends View {
         // level + xp bar
         p.setTextSize(w * 0.034f);
         p.setColor(th.soft);
-        cv.drawText("LV " + level, w * 0.14f, w*.197f, p);
+        float bx=w*.14f,by=w*.177f,br=w*.040f;Path badge=new Path();for(int k=0;k<10;k++){double a=-Math.PI/2+k*Math.PI/5;float r=k%2==0?br:br*.56f;float x=bx+(float)Math.cos(a)*r,y=by+(float)Math.sin(a)*r;if(k==0)badge.moveTo(x,y);else badge.lineTo(x,y);}badge.close();p.setColor(th.title);cv.drawPath(badge,p);p.setColor(th.panelBg);p.setTextSize(w*.025f);p.setFakeBoldText(true);cv.drawText(""+level,bx,by+w*.009f,p);p.setFakeBoldText(false);
         float barL = w * 0.24f, barR = w * 0.76f, barY = w*.150f, barH = w * 0.041f;
         rf.set(barL, barY, barR, barY + barH);
         p.setColor(0xCC000000); cv.drawRoundRect(rf, 8, 8, p);
         p.setStyle(Paint.Style.STROKE); p.setStrokeWidth(w * 0.004f); p.setColor(th.title); cv.drawRoundRect(rf, 8, 8, p); p.setStyle(Paint.Style.FILL);
-        float frac = Math.min(1f, xp / (float) xpNeeded());
+        float frac = Math.min(1f, displayedXp(now) / (float) xpNeeded());if(xpAnimAt>0&&now-xpAnimAt<450)postInvalidateDelayed(16);
         rf.set(barL, barY, barL + (barR - barL) * frac, barY + barH);
         p.setColor(th.title); cv.drawRoundRect(rf, 8, 8, p);
         String nextReward="Next Lv "+(level+1)+": +"+(150L*(level+1))+" coins";
