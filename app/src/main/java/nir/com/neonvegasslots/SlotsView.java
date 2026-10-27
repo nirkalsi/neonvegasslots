@@ -539,9 +539,9 @@ public class SlotsView extends View {
 
         drawVegasAmbient(cv,getWidth(),getHeight(),now,now<bigWinUntil);
         float w = getWidth();
-        // HUD bar: fully opaque backing for title and balance; scene art is clipped below
+        // Translucent night-glass HUD lets the city read behind the opaque balance/XP pills.
         float bandH = gridTop()-getWidth()*.015f;
-        int hud = 0xFF000000 | (((th.skyTop >> 16 & 0xFF) / 2) << 16) | (((th.skyTop >> 8 & 0xFF) / 2) << 8) | ((th.skyTop & 0xFF) / 2);
+        int hud = 0xB0000000 | (((th.skyTop >> 16 & 0xFF) / 2) << 16) | (((th.skyTop >> 8 & 0xFF) / 2) << 8) | ((th.skyTop & 0xFF) / 2);
         p.setColor(hud);
         cv.drawRect(0, 0, w, bandH, p);
         p.setShader(new LinearGradient(0, bandH, 0, gridTop(), hud & 0x00FFFFFF | 0x99000000, 0x00000000, Shader.TileMode.CLAMP));
@@ -780,11 +780,15 @@ public class SlotsView extends View {
 
     private void drawVegasAmbient(Canvas c,float w,float h,long n,boolean win){
         // Original distant towers in the side margins; no foreground controls or outcomes move.
-        c.save();c.clipRect(0,h*.15f,w,h);
-        for(int side=0;side<2;side++)for(int tower=0;tower<3;tower++){float bw=w*.065f,x=side==0?tower*bw*.65f:w-bw-tower*bw*.65f,top=h*(.31f+tower*.07f);
+        c.save();c.clipRect(0,0,w,h);
+        for(int side=0;side<2;side++)for(int tower=0;tower<3;tower++){float bw=w*.065f,x=side==0?tower*bw*.65f:w-bw-tower*bw*.65f,top=h*(.015f+tower*.055f);
             p.setColor(0xAA111938);c.drawRect(x,top,x+bw,h*.93f,p);
             for(int row=0;row<15;row++)for(int col=0;col<2;col++){long phase=(n/850+row*7+col*3+tower*11+side*13)%9;p.setColor(phase<6?0x88FFDE85:0x441C2E56);float xx=x+bw*(.18f+col*.42f),yy=top+row*bw*.7f;if(yy<h*.92f)c.drawRect(xx,yy,xx+bw*.13f,yy+bw*.21f,p);}
         }
+        // Distant hotel roofs, observation wheel and neon signs belong to the scene, never the controls.
+        for(int k=0;k<7;k++){float x=w*(.14f+k*.11f),bw=w*.09f,top=h*(.05f+(k%3)*.035f);p.setColor(0xDD172141);c.drawRect(x,top,x+bw,h*.4f,p);p.setColor(0xFF6B52A8);c.drawRect(x,top,x+bw,top+w*.009f,p);for(int row=0;row<7;row++)for(int col=0;col<3;col++){p.setColor((n/1000+k*7+row*3+col)%8<5?0x99FFD997:0x4428375E);float xx=x+bw*(.15f+col*.27f),yy=top+w*(.025f+row*.025f);c.drawRect(xx,yy,xx+bw*.09f,yy+w*.009f,p);}}
+        float wx=w*.79f,wy=h*.16f,wr=w*.10f;p.setStyle(Paint.Style.STROKE);p.setStrokeWidth(w*.004f);p.setColor(0x8874D9FA);c.drawCircle(wx,wy,wr,p);for(int k=0;k<12;k++){double a=k*Math.PI/6;p.setColor(k%2==0?0xAAFF75D1:0xAA65E8FF);c.drawLine(wx,wy,wx+(float)Math.cos(a)*wr,wy+(float)Math.sin(a)*wr,p);}p.setStyle(Paint.Style.FILL);
+        for(int side=0;side<2;side++){float sx=w*(side==0?.015f:.93f),sy=h*.055f;p.setColor(0xCC10112D);rf.set(sx,sy,sx+w*.055f,sy+w*.23f);c.drawRoundRect(rf,w*.01f,w*.01f,p);p.setStyle(Paint.Style.STROKE);p.setStrokeWidth(w*.003f);p.setColor(side==0?0xFFFF75C8:0xFF61EFFF);c.drawRoundRect(rf,w*.01f,w*.01f,p);p.setStyle(Paint.Style.FILL);p.setTypeface(GameFonts.display(getContext()));p.setTextAlign(Paint.Align.CENTER);p.setTextSize(w*.032f);String name=side==0?"VEGAS":"NEON";for(int k=0;k<name.length();k++)c.drawText(name.substring(k,k+1),sx+w*.0275f,sy+w*(.04f+k*.041f),p);}
         c.restore();p.setAlpha(255);postInvalidateDelayed(win?33:160);
     }
     private void drawVegasSpotlights(Canvas c,float w,float h,long n){
