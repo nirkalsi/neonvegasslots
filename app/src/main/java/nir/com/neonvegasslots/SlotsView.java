@@ -338,11 +338,6 @@ public class SlotsView extends View {
 
     private boolean autoSpin = false;          // session-only, never persisted
     private int autoCount = 0;
-    private int autoLimit = 0; // 0 = until a feature, never persisted
-    private boolean turbo = false; // session only
-    public boolean isTurbo() { return turbo; }
-    public void setTurbo(boolean value) { turbo = value; invalidate(); }
-    public int autoLimit() { return autoLimit; }
     private final Runnable autoRunner = new Runnable() { @Override public void run() { autoStep(); } };
     private SoundFx sfx;
     private final boolean[] stopSounded = new boolean[5];
@@ -355,17 +350,13 @@ public class SlotsView extends View {
         if (autoSpin) { autoSpin = false; invalidate(); }
     }
     public boolean isAuto() { return autoSpin; }
-    private void startAuto() { startAuto(0); }
-    public void startAuto(int count) {
-        if (count != 0 && count != 10 && count != 25 && count != 50) throw new IllegalArgumentException("Auto count must be 10, 25, 50 or 0 (until feature)");
+    private void startAuto() {
         if (balance < BETS[betIdx]) { if (listener != null) listener.onOutOfCoins(); return; }
-        autoLimit = count; autoSpin = true; autoCount = 0;
-        if (!spinning) autoStep(); else invalidate();
+        autoSpin=true;autoCount=0;if(!spinning)autoStep();else invalidate();
     }
     private void autoStep() {
         if (!autoSpin || spinning) return;
         if (balance < BETS[betIdx]) { stopAuto(); return; }
-        if (autoLimit > 0 && autoCount >= autoLimit) { stopAuto(); return; }
         autoCount++;
         spin();
     }
@@ -389,7 +380,7 @@ public class SlotsView extends View {
         spinning = true;
         GameDialog.noteAction();
         long now = System.currentTimeMillis();
-        for (int c = 0; c < 5; c++) { stopAt[c] = now + (turbo ? 260 : 600) + c * (turbo ? 80 : 150); stopSounded[c] = false; }
+        for (int c = 0; c < 5; c++) { stopAt[c] = now + 600 + c * 150; stopSounded[c] = false; }
         fx(SoundFx.Effect.SPIN);
         anticipationGiven = false;
         for (int r = 0; r < 3; r++) for (int c = 0; c < 5; c++) winCell[r][c] = false;
@@ -429,8 +420,7 @@ public class SlotsView extends View {
         boolean trophy = trophyFlashUntil > System.currentTimeMillis();
         if (autoSpin) {
             if (win >= 25 * bet || leveled || trophy || balance < BETS[betIdx]) autoSpin = false;
-            else if (autoLimit > 0 && autoCount >= autoLimit) stopAuto();
-            else postDelayed(autoRunner, win > 0 ? (turbo ? 1000 : 1900) : (turbo ? 250 : 700));
+            else postDelayed(autoRunner,win>0?1900:700);
         }
         if (listener != null) {
             if (win >= 25 * bet) listener.onBigWin(win, bet);
@@ -769,7 +759,7 @@ public class SlotsView extends View {
     private boolean spinHeld = false;       // finger is down on SPIN
     private final Runnable longPressAuto = new Runnable() { @Override public void run() {
         if (spinHeld && !autoSpin && balance >= BETS[betIdx]) {
-            autoLimit = 0; autoSpin = true; autoCount = 0;
+            autoSpin = true; autoCount = 0;
             performHapticFeedback(android.view.HapticFeedbackConstants.LONG_PRESS);
             if (!spinning) autoStep(); else invalidate();
         } } };
