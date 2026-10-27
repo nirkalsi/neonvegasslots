@@ -19,7 +19,6 @@ public class SlotsView extends View {
         void saveState();
         default void onOpenShop() {}
         default void onOpenMap() {}
-        default void onOpenAuto() {}
         default void onOpenPaytable() {}
     }
 
@@ -692,7 +691,7 @@ public class SlotsView extends View {
             p.setFakeBoldText(true); p.setTextAlign(Paint.Align.CENTER); p.setTextSize(w * 0.032f);
             p.setColor(th.soft); cv.drawText("BET", w * 0.215f, ly, p);
             if (lastWin > 0) { p.setColor(0xFFFFD166); cv.drawText("WIN " + lastWin, w * 0.70f, ly, p); }
-            else { p.setColor(th.soft); cv.drawText(autoSpin ? "AUTO - tap to stop" : spinning ? "TAP TO STOP" : "HOLD FOR AUTO", w * 0.70f, ly, p); }
+            else { p.setColor(th.soft); cv.drawText(autoSpin ? "AUTO - tap to stop" : spinning ? "TAP TO STOP" : "HOLD = AUTO", w * 0.70f, ly, p); }
             p.setFakeBoldText(false);
         }
         p.setFakeBoldText(false); p.setTextAlign(Paint.Align.CENTER); p.setTextSize(w * 0.045f);
@@ -769,9 +768,10 @@ public class SlotsView extends View {
     private final android.os.Handler lpHandler = new android.os.Handler(android.os.Looper.getMainLooper());
     private boolean spinHeld = false;       // finger is down on SPIN
     private final Runnable longPressAuto = new Runnable() { @Override public void run() {
-        if (spinHeld && !autoSpin && balance >= BETS[betIdx] && listener != null) {
-            spinHeld = false; performHapticFeedback(android.view.HapticFeedbackConstants.LONG_PRESS);
-            listener.onOpenAuto(); // the popup queue waits for this spin/win to settle
+        if (spinHeld && !autoSpin && balance >= BETS[betIdx]) {
+            autoLimit = 0; autoSpin = true; autoCount = 0;
+            performHapticFeedback(android.view.HapticFeedbackConstants.LONG_PRESS);
+            if (!spinning) autoStep(); else invalidate();
         } } };
 
     @Override public boolean onTouchEvent(MotionEvent e) {
