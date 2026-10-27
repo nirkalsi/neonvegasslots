@@ -320,6 +320,7 @@ public class SlotsView extends View {
     private void regen() { regenAt(System.currentTimeMillis()); }
     /** +5 coins per full minute while under 100 (cap 100); time while the app was closed counts, because lastRegenAt is saved. */
     void regenAt(long now) {
+        if (now < lastRegenAt) { lastRegenAt = now; return; } // clock moved backwards: no credit
         if (balance >= 100) { lastRegenAt = now; return; } // the refill clock only runs while below the cap
         if (now - lastRegenAt >= 60000) {
             long steps = (now - lastRegenAt) / 60000;

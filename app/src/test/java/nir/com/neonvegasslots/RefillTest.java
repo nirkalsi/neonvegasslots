@@ -38,4 +38,14 @@ public class RefillTest {
     @Test public void aboveCapIsNeverReduced() {
         SlotsView v = view(); v.setRefillStateForTest(5000, 0); v.regenAt(10_000_000L); assertEquals(5000, v.balanceForTest());
     }
+    @Test public void restoredSaveCreditsTimeAway_andKeepsItsPartialMinute() {
+        SlotsView v=view(); long t0=5_000_000L; v.setRefillStateForTest(0,t0);
+        String save=v.serialize(); SlotsView h=view(); h.restore(save);
+        h.regenAt(t0+7*60_000+30_000); assertEquals(35,h.balanceForTest());
+        assertEquals(t0+7*60_000,h.lastRegenAtForTest());
+    }
+    @Test public void backwardsClockDoesNotGrantCoins() {
+        SlotsView v=view();v.setRefillStateForTest(0,9_000_000L);v.regenAt(8_000_000L);
+        assertEquals(0,v.balanceForTest());assertEquals(8_000_000L,v.lastRegenAtForTest());
+    }
 }
