@@ -220,7 +220,7 @@ final class SlotArt {
             ink.setTextAlign(Paint.Align.CENTER); ink.setTypeface(Typeface.create("sans-serif",Typeface.BOLD));
             ink.setTextSize(w*.034f*rs); color(open?(sel?0xFFFFFFFF:cur.soft):0xFF6C7890);
             c.drawText(t.tag,x,ny+w*.094f*rs,ink);
-            if(!open){ ink.setTextSize(w*.020f*rs); color(0xFF8A96AC); c.drawText("Lv "+t.unlockLevel,x,ny+w*.118f*rs,ink); }
+            if(!open){ ink.setTextSize(w*.031f*rs); color(0xFF8A96AC); c.drawText("Lv "+t.unlockLevel,x,ny+w*.132f*rs,ink); }
         }
 
         // status line
