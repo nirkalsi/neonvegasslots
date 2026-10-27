@@ -41,4 +41,12 @@ public class RemindersTest {
     assertFalse(Reminders.isLegacy(1000L, 1000L));
     assertTrue(Reminders.isLegacy(1000L, 1000L + 3600000L));
   }
+  @org.junit.Test public void slotMessagesAreTrueOnly() {
+    assertNull(Reminders.messageFor(0, false)); assertNull(Reminders.messageFor(2, false));
+    assertNull(Reminders.messageFor(1, true)); assertNull(Reminders.messageFor(3, true));
+    assertNotNull(Reminders.messageFor(0, true)); assertNotNull(Reminders.messageFor(2, true));
+    int posted = 0; for (int k = 0; k < Reminders.SLOTS.length; k++) if (Reminders.messageFor(k, true) != null) posted++;
+    assertTrue(posted <= 2);
+    for (int sl : Reminders.SLOTS) assertTrue(sl >= 10 * 60 + 30 && sl <= 20 * 60 + 30);
+  }
 }

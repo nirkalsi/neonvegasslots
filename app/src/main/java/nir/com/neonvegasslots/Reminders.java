@@ -11,7 +11,7 @@ import android.content.SharedPreferences;
 import java.util.Calendar;
 
 /** Opt-in LOCAL daily reminder. Scheduled on the device with AlarmManager (inexact), no server, no push service,
- *  no data leaves the phone. Off by default. At most one reminder per day, never at night (fires at 10:30 local). */
+ *  no data leaves the phone. Off by default. Up to 4 slots a day, each posted only if true (in practice bonus-only: 2 a day at most), never before 10:30 or after 20:30. */
 public class Reminders extends BroadcastReceiver {
     static final String PREFS_KEY = "remind_on", CHANNEL = "daily_reminder";
 
@@ -23,6 +23,32 @@ public class Reminders extends BroadcastReceiver {
         return c.getTimeInMillis();
     }
 
+    // Local daily slots (hour*60+min): morning, early afternoon, evening, late evening. Never before 10:30 or after 20:30.
+    static final int[] SLOTS = {10 * 60 + 30, 13 * 60 + 30, 18 * 60 + 30, 20 * 60 + 30};
+    /** Next slot strictly after now + 2h (a player who just left is not nudged straight away). */
+    static long nextSlotAt(long nowMs) {
+        long min = nowMs + 2L * 3600000L;
+        for (int d = 0; d < 3; d++) for (int sl : SLOTS) {
+            Calendar c = Calendar.getInstance(); c.setTimeInMillis(nowMs); c.add(Calendar.DAY_OF_MONTH, d);
+            c.set(Calendar.HOUR_OF_DAY, sl / 60); c.set(Calendar.MINUTE, sl % 60); c.set(Calendar.SECOND, 0); c.set(Calendar.MILLISECOND, 0);
+            if (c.getTimeInMillis() > min) return c.getTimeInMillis();
+        }
+        return min + 3600000L;
+    }
+    /** What is TRUE at this slot, or null to post nothing. Only the daily bonus state is known on the device, so only that is ever claimed.
+     *  Slot 0: bonus ready. Slot 2: bonus still unclaimed. Slots 1 and 3 post nothing (no other true event exists). So at most 2 a day, usually 1. */
+    static String messageFor(int slot, boolean bonusReady) {
+        switch (slot) {
+            case 0: return bonusReady ? "Your daily bonus is ready. Free virtual coins." : null;
+            case 2: return bonusReady ? "Your daily bonus is still waiting for you." : null;
+            default: return null;
+        }
+    }
+    static int slotIndex(long ms) {
+        Calendar c = Calendar.getInstance(); c.setTimeInMillis(ms); int m = c.get(Calendar.HOUR_OF_DAY) * 60 + c.get(Calendar.MINUTE);
+        for (int i = 0; i < SLOTS.length; i++) if (SLOTS[i] == m) return i;
+        return -1;
+    }
     /** True only if the player opted in AND the system lets this app post notifications (permission not denied or revoked). */
     static boolean effective(Context c) {
         if (!isOn(c)) return false;
@@ -76,7 +102,7 @@ public class Reminders extends BroadcastReceiver {
     static void schedule(Context c) {
         if (!isOn(c)) return;
         AlarmManager am = (AlarmManager) c.getSystemService(Context.ALARM_SERVICE);
-        if (am != null) am.set(AlarmManager.RTC_WAKEUP, nextFireAt(System.currentTimeMillis()), pi(c));
+        if (am != null) am.set(AlarmManager.RTC_WAKEUP, nextSlotAt(System.currentTimeMillis()), pi(c));
     }
     static void cancel(Context c) {
         AlarmManager am = (AlarmManager) c.getSystemService(Context.ALARM_SERVICE);
@@ -88,15 +114,22 @@ public class Reminders extends BroadcastReceiver {
         // Alarms do not survive a reboot: re-arm the single opt-in reminder, post nothing now.
         if (i != null && Intent.ACTION_BOOT_COMPLETED.equals(i.getAction())) { if (effective(c)) schedule(c); return; }
         NotificationManager nm = (NotificationManager) c.getSystemService(Context.NOTIFICATION_SERVICE);
-        if (nm == null || !bonusReadyNow(c)) return; // bonus already claimed today: nothing true to say
+        if (nm == null) return;
+        long now = System.currentTimeMillis();
+        Calendar cal = Calendar.getInstance(); cal.setTimeInMillis(now);
+        // The alarm is inexact: classify by the nearest slot, and stay silent if it is more than 90 min from any slot.
+        int mins = cal.get(Calendar.HOUR_OF_DAY) * 60 + cal.get(Calendar.MINUTE), best = -1, bd = 1 << 30;
+        for (int k = 0; k < SLOTS.length; k++) { int d = Math.abs(SLOTS[k] - mins); if (d < bd) { bd = d; best = k; } }
+        String text = bd <= 90 ? messageFor(best, bonusReadyNow(c)) : null;
+        schedule(c); // chain the next slot (still opt-in; cancelled if the player returns first)
+        if (text == null) return; // nothing true to say at this slot
         if (android.os.Build.VERSION.SDK_INT >= 26)
             nm.createNotificationChannel(new NotificationChannel(CHANNEL, "Daily reminder", NotificationManager.IMPORTANCE_DEFAULT));
         Intent open = new Intent(c, MainActivity.class).addFlags(Intent.FLAG_ACTIVITY_NEW_TASK);
         PendingIntent op = PendingIntent.getActivity(c, 78, open, PendingIntent.FLAG_UPDATE_CURRENT | PendingIntent.FLAG_IMMUTABLE);
         android.app.Notification.Builder b = android.os.Build.VERSION.SDK_INT >= 26 ? new android.app.Notification.Builder(c, CHANNEL) : new android.app.Notification.Builder(c);
         b.setSmallIcon(c.getApplicationInfo().icon).setContentTitle(c.getString(R.string.app_name))
-         .setContentText("Your daily bonus is ready. Free virtual coins.").setContentIntent(op).setAutoCancel(true);
+         .setContentText(text).setContentIntent(op).setAutoCancel(true);
         nm.notify(77, b.build());
-        // one reminder only: the next one is scheduled when the player next leaves the game
     }
 }
