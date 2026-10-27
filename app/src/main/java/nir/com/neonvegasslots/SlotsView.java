@@ -286,7 +286,7 @@ public class SlotsView extends View {
         p.setColor(0xFFE09A12); cv.drawCircle(dcx, dcy, disc * 0.34f, p);
         p.setColor(0xFFFFE27A); cv.drawCircle(dcx - disc * 0.1f, dcy - disc * 0.1f, disc * 0.12f, p);
         p.setColor(0xFFFFFFFF);
-        cv.drawText(amt, cx + pad + disc + h * 0.28f, dcy + p.getTextSize() * 0.35f, p);
+        GameFonts.hero(cv,amt,cx+pad+disc+h*.28f,dcy+p.getTextSize()*.35f,p,0xFFFFFFFF,0xFFFFD778);
         float px = cx + cw - pad - disc / 2;
         p.setColor(0xFF22C55E); cv.drawCircle(px, dcy, disc / 2, p);
         p.setColor(0xFFFFFFFF); p.setStrokeWidth(Math.max(3f, disc * 0.13f)); p.setStyle(Paint.Style.STROKE);
@@ -531,6 +531,7 @@ public class SlotsView extends View {
 
     @Override protected void onDraw(Canvas cv) {
         long now = nowMillis();
+        p.setTypeface(GameFonts.display(getContext()));
         regen();
         SlotArt.Theme th = SlotArt.THEMES[themeIdx];
         int phase = (int) (now / 350);
@@ -735,7 +736,7 @@ public class SlotsView extends View {
             cv.drawText("STOP", scx, scy + btnH * 0.16f, p);
         } else {
             p.setTextAlign(Paint.Align.CENTER); p.setTextSize(btnH * .46f);
-            cv.drawText("SPIN", scx - btnH * .10f, scy + btnH * .16f, p);
+            GameFonts.hero(cv,"SPIN",scx-btnH*.10f,scy+btnH*.16f,p,0xFFFFFFFF,0xFFD9FFD0);
             loopIcon(cv, rf.right - btnH * .35f, scy, btnH * .14f, 0xCCFFFFFF); // hold opens auto choices
         }
         p.clearShadowLayer();

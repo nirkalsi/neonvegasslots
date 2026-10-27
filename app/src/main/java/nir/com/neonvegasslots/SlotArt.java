@@ -121,7 +121,7 @@ final class SlotArt {
     private void signTower(Canvas c,float w,float horizon,Theme t,int phase){
         float x=w*.90f, tw=w*.065f, top=horizon*.34f;
         color(t.front); c.drawRect(x,top,x+tw,horizon,ink);
-        ink.setTextAlign(Paint.Align.CENTER); ink.setTypeface(Typeface.create("sans-serif",Typeface.BOLD));
+        ink.setTextAlign(Paint.Align.CENTER); ink.setTypeface(displayFace);
         ink.setTextSize(tw*.42f);
         String s="SLOTS";
         for(int i=0;i<s.length();i++){
@@ -190,7 +190,7 @@ final class SlotArt {
         ink.setShader(new LinearGradient(0,top,w,bottom,cur.panelBg,0xFF0E0A10,Shader.TileMode.CLAMP));
         c.drawRoundRect(box,w*.025f,w*.025f,ink); ink.setShader(null);
         ink.setStyle(Paint.Style.STROKE); ink.setStrokeWidth(w*.004f); color(cur.panelLine); c.drawRoundRect(box,w*.025f,w*.025f,ink); ink.setStyle(Paint.Style.FILL);
-        ink.setTypeface(Typeface.create("sans-serif",Typeface.BOLD));
+        ink.setTypeface(displayFace);
         ink.setTextAlign(Paint.Align.LEFT); ink.setTextSize(w*.040f); color(cur.title);
         c.drawText("CITY TOUR",w*.09f,top+w*.062f,ink);
         ink.setTextAlign(Paint.Align.RIGHT); ink.setTextSize(w*.036f); color(cur.soft);
@@ -201,7 +201,7 @@ final class SlotArt {
         else if(ju!=null) l2="NEW UNLOCKED: "+ju+"!";
         else if(next!=null) l2="Next stop: "+next.name+" at Lv "+next.unlockLevel;
         else l2="Every one unlocked";
-        ink.setTextAlign(Paint.Align.LEFT); ink.setTypeface(Typeface.create("sans-serif",Typeface.NORMAL)); ink.setTextSize(w*.036f); color(cur.soft);
+        ink.setTextAlign(Paint.Align.LEFT); ink.setTypeface(bodyFace); ink.setTextSize(w*.036f); color(cur.soft);
         float tw=ink.measureText(l2); if(tw>w*.82f) ink.setTextSize(w*.036f*w*.82f/tw);
         c.drawText(l2,w*.09f,top+w*.108f,ink);
         float by=top+w*.128f, bh=w*.026f;
@@ -220,7 +220,7 @@ final class SlotArt {
         c.drawRoundRect(box,w*.025f,w*.025f,ink); ink.setShader(null);
         ink.setStyle(Paint.Style.STROKE); ink.setStrokeWidth(w*.004f); color(cur.panelLine); c.drawRoundRect(box,w*.025f,w*.025f,ink); ink.setStyle(Paint.Style.FILL);
 
-        ink.setTextAlign(Paint.Align.LEFT); ink.setTypeface(Typeface.create("sans-serif",Typeface.BOLD));
+        ink.setTextAlign(Paint.Align.LEFT); ink.setTypeface(displayFace);
         ink.setTextSize(w*.036f); color(cur.title);
         c.drawText("CITY TOUR - TAP A STOP YOU UNLOCKED",w*.09f,top+w*.058f,ink);
 
@@ -247,19 +247,19 @@ final class SlotArt {
                 ink.clearShadowLayer();
             }
             // label
-            ink.setTextAlign(Paint.Align.CENTER); ink.setTypeface(Typeface.create("sans-serif",Typeface.BOLD));
+            ink.setTextAlign(Paint.Align.CENTER); ink.setTypeface(displayFace);
             ink.setTextSize(w*.034f*rs); color(open?(sel?0xFFFFFFFF:cur.soft):0xFF6C7890);
             c.drawText(t.tag,x,ny+w*.094f*rs,ink);
             if(!open){ ink.setTextSize(w*.031f*rs); color(0xFF8A96AC); c.drawText("Lv "+t.unlockLevel,x,ny+w*.132f*rs,ink); }
         }
 
         // status line
-        ink.setTextAlign(Paint.Align.LEFT); ink.setTypeface(Typeface.create("sans-serif",Typeface.NORMAL));
+        ink.setTextAlign(Paint.Align.LEFT); ink.setTypeface(bodyFace);
         if(justUnlocked!=null && justUnlocked.startsWith("TROPHY:")){
-            color(0xFFFFD700); ink.setTypeface(Typeface.create("sans-serif",Typeface.BOLD));
+            color(0xFFFFD700); ink.setTypeface(displayFace);
             statusText(c,"TROPHY FOUND: "+justUnlocked.substring(7)+"!",w*.09f,top+height*.66f,w,rs);
         } else if(justUnlocked!=null){
-            color(cur.title); ink.setTypeface(Typeface.create("sans-serif",Typeface.BOLD));
+            color(cur.title); ink.setTypeface(displayFace);
             statusText(c,"NEW STOP UNLOCKED: "+justUnlocked+"!",w*.09f,top+height*.66f,w,rs);
         } else {
             Theme next=null; for(Theme t:THEMES) if(level<t.unlockLevel){next=t;break;}
@@ -269,7 +269,7 @@ final class SlotArt {
         }
 
         // trophy shelf: 12 cups grouped by stop; collected cups take their stop's color
-        ink.setTextSize(w*.033f*rs); color(cur.soft); ink.setTypeface(Typeface.create("sans-serif",Typeface.BOLD));
+        ink.setTextSize(w*.033f*rs); color(cur.soft); ink.setTypeface(displayFace);
         int got=Integer.bitCount(trophyMask);
         c.drawText("TROPHY SHELF  "+got+" / 12",w*.09f,top+height*.81f,ink);
         for(int i=0;i<12;i++){
@@ -309,12 +309,14 @@ final class SlotArt {
     }
 
     // ---------- symbols (unchanged art, kept from approved first increment) ----------
+    private Typeface displayFace=Typeface.DEFAULT_BOLD,bodyFace=Typeface.DEFAULT;
     private android.graphics.Bitmap[] bmp;
     private static final int[] SYM_FILE = {1,5,2,0,3,4};
     private final android.graphics.Paint bp = new android.graphics.Paint(android.graphics.Paint.ANTI_ALIAS_FLAG | android.graphics.Paint.FILTER_BITMAP_FLAG);
     private final android.graphics.RectF bd = new android.graphics.RectF();
     /** Original generated symbol art (res/drawable-nodpi). Falls back to the vector art when a bitmap is missing. */
     void loadBitmaps(android.content.Context ctx) {
+        displayFace=GameFonts.display(ctx);bodyFace=GameFonts.body(ctx);
         if (bmp != null) return;
         android.graphics.Bitmap[] b = new android.graphics.Bitmap[SYM_FILE.length];
         for (int i = 0; i < b.length; i++) {

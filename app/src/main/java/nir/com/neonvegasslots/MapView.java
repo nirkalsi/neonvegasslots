@@ -18,7 +18,7 @@ final class MapView extends View {
     float stopX(int i){return getWidth()*(i%2==0?.32f:.68f);}
     float stopY(int i){return head()+row()*i+58*d;}
     @Override protected void onMeasure(int ws,int hs){setMeasuredDimension(MeasureSpec.getSize(ws),(int)(head()+SlotArt.THEMES.length*(row()+112*d)+60*d));}
-    private void text(Canvas c,String s,float x,float y,float sp,int color){p.setColor(color);p.setTextAlign(Paint.Align.CENTER);p.setTypeface(Typeface.create("sans-serif",Typeface.BOLD));p.setTextSize(sp*getResources().getDisplayMetrics().scaledDensity);c.drawText(s,x,y,p);}
+    private void text(Canvas c,String s,float x,float y,float sp,int color){p.setColor(color);p.setTextAlign(Paint.Align.CENTER);p.setTypeface(GameFonts.display(getContext()));p.setTextSize(sp*getResources().getDisplayMetrics().scaledDensity);c.drawText(s,x,y,p);}
     @Override protected void onDraw(Canvas c){
         float w=getWidth();p.setColor(0xFF101224);c.drawRoundRect(0,0,w,getHeight(),16*d,16*d,p);
         text(c,"Choose your unlocked destination",w/2,25*d,13,0xFFFFDE8A);

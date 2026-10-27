@@ -97,6 +97,7 @@ public class MainActivity extends Activity implements SlotsView.Listener, Billin
                 .withEndAction(() -> shell.removeView(splash)).start(), Splash.SHOW_MS);
         }
         setContentView(shell);
+        GameFonts.apply(shell);
         if (android.os.Build.VERSION.SDK_INT >= 30) { // targetSdk 35+ forces edge-to-edge: keep content clear of system bars
             root.setOnApplyWindowInsetsListener((v, insets) -> {
                 android.graphics.Insets bars = insets.getInsets(android.view.WindowInsets.Type.systemBars());

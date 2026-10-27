@@ -6,7 +6,7 @@ final class PaytableView extends View {
  PaytableView(Context c,int t){super(c);art.loadBitmaps(c);theme=SlotArt.THEMES[t];}
  @Override protected void onMeasure(int w,int h){int width=MeasureSpec.getSize(w);setMeasuredDimension(width,(int)(width*1.20f));}
  @Override protected void onDraw(Canvas c){float w=getWidth(),rh=w*.13f;
-  p.setTypeface(Typeface.DEFAULT_BOLD);p.setTextAlign(Paint.Align.CENTER);p.setTextSize(w*.043f);p.setColor(theme.title);
+  p.setTypeface(GameFonts.display(getContext()));p.setTextAlign(Paint.Align.CENTER);p.setTextSize(w*.043f);p.setColor(theme.title);
   c.drawText("SYMBOL",w*.16f,w*.06f,p);c.drawText("3",w*.46f,w*.06f,p);c.drawText("4",w*.66f,w*.06f,p);c.drawText("5",w*.86f,w*.06f,p);
   for(int s=0;s<6;s++){float y=w*.14f+s*rh;art.symbol(c,s,w*.16f,y+rh*.35f,rh*.65f);p.setColor(theme.soft);p.setTextSize(w*.042f);
    for(int n=3;n<=5;n++)c.drawText(String.format(java.util.Locale.US,"%,d",SlotsView.symbolPayout(s,n)),w*(.46f+(n-3)*.20f),y+rh*.45f,p);

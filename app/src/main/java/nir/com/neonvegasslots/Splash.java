@@ -31,7 +31,7 @@ final class Splash extends View {
         p.setStyle(Paint.Style.STROKE); p.setStrokeWidth(r * 0.12f); p.setColor(0xFF8A5A00);
         c.drawCircle(cx, cy, r * 0.74f, p);
         p.setStyle(Paint.Style.FILL);
-        p.setColor(0xFF6B3F00); p.setTextAlign(Paint.Align.CENTER); p.setTypeface(Typeface.DEFAULT_BOLD);
+        p.setColor(0xFF6B3F00); p.setTextAlign(Paint.Align.CENTER); p.setTypeface(GameFonts.display(getContext()));
         p.setTextSize(r * 0.95f);
         c.drawText("7", cx, cy + r * 0.34f, p);
         p.setColor(0x88FFFFFF); c.drawCircle(cx - r * 0.45f, cy - r * 0.5f, r * 0.12f, p);
@@ -40,7 +40,7 @@ final class Splash extends View {
         c.drawText("NEON VEGAS", cx, h * 0.63f, p);
         p.setColor(0xFFFFFFFF); p.setTextSize(Math.min(w * 0.06f, 26 * d));
         c.drawText("SLOTS", cx, h * 0.63f + Math.min(w * 0.08f, 34 * d), p);
-        p.setTypeface(Typeface.DEFAULT); p.setColor(0xCCFFFFFF); p.setTextSize(Math.min(w * 0.034f, 14 * d));
+        p.setTypeface(GameFonts.body(getContext())); p.setColor(0xCCFFFFFF); p.setTextSize(Math.min(w * 0.034f, 14 * d));
         c.drawText("Simulated slots. Virtual coins, no cash value.", cx, h * 0.80f, p);
 
         float bw = w * 0.5f, bh = 5 * d, bx = cx - bw / 2f, by = h * 0.86f;

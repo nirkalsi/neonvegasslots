@@ -137,7 +137,7 @@ final class GameDialog {
                 LinearLayout titleRow = new LinearLayout(activity);
                 titleRow.setOrientation(LinearLayout.HORIZONTAL);
                 titleRow.setGravity(android.view.Gravity.CENTER_VERTICAL);
-                TextView t = new TextView(activity);
+                TextView t = new GameFonts.Heading(activity);
                 t.setText(title); t.setTextSize(20f); t.setTypeface(Typeface.DEFAULT_BOLD);
                 t.setTextColor(theme.title); t.setSingleLine(false);
                 titleRow.addView(t, new LinearLayout.LayoutParams(0, -2, 1f));
@@ -200,6 +200,7 @@ final class GameDialog {
                 b.setOnClickListener(v -> { d.dismiss(); if (btn.onClick != null) btn.onClick.run(); });
             }
 
+            GameFonts.apply(card);
             boolean pin=pinned&&pinSv!=null;ScrollView sv=null;
             if(pin)d.setContentView(card);else{sv=new ScrollView(activity);sv.addView(card);d.setContentView(sv);}
             d.setCancelable(cancelable);

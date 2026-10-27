@@ -92,7 +92,7 @@ final class IconTile extends View {
         int ix = (int) (cx - isz / 2f), iy = (int) (cy - isz / 2f - 6*d);
         icon.setBounds(ix, iy, ix + isz, iy + isz);
         icon.draw(cv);
-        p.setStyle(Paint.Style.FILL);p.setShader(null);p.setColor(0xFFFFFFFF);p.setTypeface(Typeface.DEFAULT_BOLD);p.setTextAlign(Paint.Align.CENTER);p.setTextSize(12*getResources().getDisplayMetrics().scaledDensity);
+        p.setStyle(Paint.Style.FILL);p.setShader(null);p.setColor(0xFFFFFFFF);p.setTypeface(GameFonts.display(getContext()));p.setTextAlign(Paint.Align.CENTER);p.setTextSize(12*getResources().getDisplayMetrics().scaledDensity);
         cv.drawText(label,cx,rf.bottom-5*d,p);
         if(isPressed()){p.setColor(0x44000000);cv.drawRoundRect(rf,rad,rad,p);}
         if (badge > 0) {
