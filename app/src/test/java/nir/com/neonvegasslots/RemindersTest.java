@@ -28,4 +28,11 @@ public class RemindersTest {
     assertEquals(0, org.robolectric.Shadows.shadowOf(am).getScheduledAlarms().size());
     assertFalse(Reminders.isOn(c));
   }
+  @Test public void consentPopupOnlyForNeverExposedPlayers() {
+    assertTrue(Reminders.shouldAsk(false, false, true, false));   // never exposed
+    assertFalse(Reminders.shouldAsk(true, false, true, false));   // already asked once (any answer)
+    assertFalse(Reminders.shouldAsk(false, true, true, false));   // already opted in
+    assertFalse(Reminders.shouldAsk(false, false, false, false)); // system notifications off: treated as a prior refusal
+    assertFalse(Reminders.shouldAsk(false, false, true, true));   // denied the system prompt once: never re-ask
+  }
 }

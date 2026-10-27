@@ -35,6 +35,19 @@ public class Reminders extends BroadcastReceiver {
         String today = new java.text.SimpleDateFormat("yyyy-MM-dd", java.util.Locale.US).format(new java.util.Date());
         return bonusReady(c.getSharedPreferences(MainActivity.PREFS, Context.MODE_PRIVATE).getString("daily_last", ""), today);
     }
+    static final String ASKED_KEY = "notif_consent_asked";
+    /** Show the one-time yes/no popup only to a player who has never been exposed to the question. A player who already
+     *  opted in, already answered, or whose system notifications are off / who denied the system prompt once (rationale true)
+     *  is treated as a prior refusal and is never asked again; Settings stays the route. Old builds stored no "asked" flag,
+     *  so these two system signals are the only evidence available of an earlier refusal. */
+    static boolean shouldAsk(boolean askedFlag, boolean remindOn, boolean notificationsEnabled, boolean rationaleShown) {
+        if (askedFlag || remindOn) return false;
+        if (!notificationsEnabled) return false;
+        if (rationaleShown) return false;
+        return true;
+    }
+    static boolean asked(Context c) { return c.getSharedPreferences(MainActivity.PREFS, Context.MODE_PRIVATE).getBoolean(ASKED_KEY, false); }
+    static void markAsked(Context c) { c.getSharedPreferences(MainActivity.PREFS, Context.MODE_PRIVATE).edit().putBoolean(ASKED_KEY, true).apply(); }
     static boolean isOn(Context c) { return c.getSharedPreferences(MainActivity.PREFS, Context.MODE_PRIVATE).getBoolean(PREFS_KEY, false); }
     static void setOn(Context c, boolean on) {
         c.getSharedPreferences(MainActivity.PREFS, Context.MODE_PRIVATE).edit().putBoolean(PREFS_KEY, on).apply();

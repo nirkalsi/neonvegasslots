@@ -131,6 +131,7 @@ public class MainActivity extends Activity implements SlotsView.Listener, Billin
         refreshQuestStrip();
         handler.postDelayed(this::maybeDailyBonus, 900);
         handler.postDelayed(this::maybeDay2Offer, 2000);
+        getWindow().getDecorView().post(this::maybeAskNotifications);
     }
 
     private android.widget.ProgressBar questBar;
@@ -537,6 +538,28 @@ public class MainActivity extends Activity implements SlotsView.Listener, Billin
     private SoundFx sfx;
     SoundFx sfxForTest() { return sfx; }
     private Button reminderBtn;
+    /** One-time yes/no notification question for players never asked before. No = never asked again (Settings still works). */
+    private void maybeAskNotifications() {
+        if (isFinishing()) return;
+        boolean enabled, rationale = false;
+        android.app.NotificationManager nm = (android.app.NotificationManager) getSystemService(NOTIFICATION_SERVICE);
+        enabled = nm == null || nm.areNotificationsEnabled();
+        if (android.os.Build.VERSION.SDK_INT >= 33) rationale = shouldShowRequestPermissionRationale("android.permission.POST_NOTIFICATIONS");
+        // Android 13+ before any prompt reports notifications disabled; only treat as a refusal if a rationale exists or the asked flag is set.
+        if (android.os.Build.VERSION.SDK_INT >= 33 && !enabled && !rationale) enabled = true;
+        if (!Reminders.shouldAsk(Reminders.asked(this), Reminders.isOn(this), enabled, rationale)) return;
+        Reminders.markAsked(this); // shown once, whatever the answer
+        new android.app.AlertDialog.Builder(this)
+            .setTitle("Get game reminders?")
+            .setMessage("Allow notifications for your daily bonus and new events? They run on this device only. You can change this any time in Settings.")
+            .setPositiveButton("Yes", (d, w) -> {
+                if (android.os.Build.VERSION.SDK_INT >= 33 && checkSelfPermission("android.permission.POST_NOTIFICATIONS") != android.content.pm.PackageManager.PERMISSION_GRANTED)
+                    requestPermissions(new String[]{"android.permission.POST_NOTIFICATIONS"}, 91);
+                else { Reminders.setOn(this, true); refreshReminderBtn(); }
+            })
+            .setNegativeButton("No", (d, w) -> {})
+            .setCancelable(true).show();
+    }
     private void refreshReminderBtn() {
         if (reminderBtn == null) return;
         boolean on = Reminders.isOn(this), blocked = on && !Reminders.effective(this);
