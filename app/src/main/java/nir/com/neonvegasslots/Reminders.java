@@ -41,7 +41,7 @@ public class Reminders extends BroadcastReceiver {
     static void schedule(Context c) {
         if (!isOn(c)) return;
         AlarmManager am = (AlarmManager) c.getSystemService(Context.ALARM_SERVICE);
-        if (am != null) am.set(AlarmManager.RTC, nextFireAt(System.currentTimeMillis()), pi(c));
+        if (am != null) am.set(AlarmManager.RTC_WAKEUP, nextFireAt(System.currentTimeMillis()), pi(c));
     }
     static void cancel(Context c) {
         AlarmManager am = (AlarmManager) c.getSystemService(Context.ALARM_SERVICE);
@@ -50,6 +50,8 @@ public class Reminders extends BroadcastReceiver {
 
     @Override public void onReceive(Context c, Intent i) {
         if (!isOn(c)) return;
+        // Alarms do not survive a reboot: re-arm the single opt-in reminder, post nothing now.
+        if (i != null && Intent.ACTION_BOOT_COMPLETED.equals(i.getAction())) { if (effective(c)) schedule(c); return; }
         NotificationManager nm = (NotificationManager) c.getSystemService(Context.NOTIFICATION_SERVICE);
         if (nm == null) return;
         if (android.os.Build.VERSION.SDK_INT >= 26)
