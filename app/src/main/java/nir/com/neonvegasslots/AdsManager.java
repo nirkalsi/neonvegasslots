@@ -4,8 +4,6 @@ import android.app.Activity;
 import android.content.Context;
 import android.widget.LinearLayout;
 import com.google.android.gms.ads.*;
-import com.google.android.gms.ads.interstitial.InterstitialAd;
-import com.google.android.gms.ads.interstitial.InterstitialAdLoadCallback;
 import com.google.android.gms.ads.rewarded.RewardedAd;
 import com.google.android.gms.ads.rewarded.RewardedAdLoadCallback;
 import com.google.android.ump.*;
@@ -17,10 +15,7 @@ public class AdsManager {
     private AdEvents events;
     public void setAdEvents(AdEvents e) { events = e; }
     private final Activity act;
-    private InterstitialAd inter;
     private RewardedAd rewarded;
-    private long lastInterAt = 0;
-    private int interRetry = 0;
     private int rewardedRetry = 0;
     private boolean initialized = false;
     private AdView bannerView;
@@ -48,7 +43,7 @@ public class AdsManager {
         if (initialized || adsRemoved) return;
         initialized = true;
         MobileAds.initialize(act, s -> {});
-        loadInter(); loadRewarded();
+        loadRewarded();
     }
 
     public void attachBanner(LinearLayout box) {
@@ -93,14 +88,6 @@ public class AdsManager {
         }, backoffMs(attempt));
     }
 
-    private void loadInter() {
-        InterstitialAd.load(act, BuildConfig.INTER_ID, new AdRequest.Builder().build(),
-            new InterstitialAdLoadCallback() {
-                @Override public void onAdLoaded(InterstitialAd ad) { inter = ad; }
-                @Override public void onAdFailedToLoad(LoadAdError e) { inter = null; scheduleRetry(() -> loadInter(), interRetry++); }
-            });
-    }
-
     private void loadRewarded() {
         RewardedAd.load(act, BuildConfig.REWARD_ID, new AdRequest.Builder().build(),
             new RewardedAdLoadCallback() {
@@ -109,21 +96,7 @@ public class AdsManager {
             });
     }
 
-    /** Show interstitial if pacing allows. Call with the completed-order count. */
-    public void maybeShowInterstitial(int spinsDone) {
-        if (adsRemoved) return;
-        if (inter == null || spinsDone < 6 || spinsDone % 6 != 0) return;
-        long now = System.currentTimeMillis();
-        if (now - lastInterAt < 120000) return;
-        lastInterAt = now;
-        if (events != null) events.onInterstitialShown();
-        InterstitialAd ad = inter; inter = null;
-        ad.setFullScreenContentCallback(new FullScreenContentCallback() {
-            @Override public void onAdDismissedFullScreenContent() { loadInter(); }
-            @Override public void onAdFailedToShowFullScreenContent(AdError e) { loadInter(); }
-        });
-        ad.show(act);
-    }
+    // No interstitials by design: the only fullscreen ad is the user-chosen rewarded ad.
 
     public boolean hasRewarded() { return !adsRemoved && rewarded != null; }
 

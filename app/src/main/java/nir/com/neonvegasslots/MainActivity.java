@@ -476,7 +476,7 @@ public class MainActivity extends Activity implements SlotsView.Listener, Billin
 
     @Override public void onSpinComplete(int spinsDone, long win, long bet) {
         missions.onSpin(win, bet, game.getLevel(), spinsDone);
-        ads.maybeShowInterstitial(spinsDone);
+        // interstitials never fire during play (AdMob: logical breaks only)
         refreshQuestStrip();
     }
 
