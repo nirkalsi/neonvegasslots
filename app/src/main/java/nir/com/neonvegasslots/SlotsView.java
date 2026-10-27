@@ -19,6 +19,7 @@ public class SlotsView extends View {
         void saveState();
         default void onOpenShop() {}
         default void onOpenMap() {}
+        default void onTrophyFound(int index) {}
         default void onOpenPaytable() {}
     }
 
@@ -145,6 +146,7 @@ public class SlotsView extends View {
                 trophyMask |= (1 << i);
                 trophyNewName = SlotArt.TROPHY_NAMES[i / 3][i % 3];
                 trophyFlashUntil = System.currentTimeMillis() + 4000;
+                if(listener!=null)listener.onTrophyFound(i);
                 break;
             }
         }

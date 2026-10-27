@@ -444,6 +444,13 @@ public class MainActivity extends Activity implements SlotsView.Listener, Billin
     }
     @Override public void onOpenMap() { dlg().title("City Tour").content(new MapView(this, game)).pinnedChrome().add(GameDialog.Btn.secondary("Close", null)).show(); }
 
+    @Override public void onTrophyFound(int index) {
+        TrophyReveal reveal=new TrophyReveal(this,index);
+        reveal.setLayoutParams(new android.widget.LinearLayout.LayoutParams(-1,(int)(170*getResources().getDisplayMetrics().density)));
+        dlg().title("Trophy discovered!").body(SlotArt.TROPHY_NAMES[index/3][index%3]+"\n"+SlotArt.THEMES[index/3].name+" collection. Cosmetic only; no coin cost or bonus.")
+            .content(reveal).add(GameDialog.Btn.primary("Keep playing",null)).auto().show();
+    }
+
     @Override public void onOutOfCoins() {
         GameDialog.Builder b = dlg().title("Out of coins")
             .body("Watch a short ad for +300 free coins?\nCoins also refill slowly over time.\n\nCoins are virtual only - no cash value, no prizes.")

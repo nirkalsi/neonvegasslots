@@ -169,6 +169,7 @@ final class GameDialog {
                 card.addView(b, lp);
             }
             if (content != null) {
+                if(content.getParent() instanceof android.view.ViewGroup)((android.view.ViewGroup)content.getParent()).removeView(content);
                 LinearLayout.LayoutParams lp = new LinearLayout.LayoutParams(-1, -2);
                 lp.topMargin = gap;
                 if(pinned){pinSv=new ScrollView(activity);pinSv.addView(content);pinLp=lp;card.addView(pinSv,lp);}else card.addView(content, lp);
