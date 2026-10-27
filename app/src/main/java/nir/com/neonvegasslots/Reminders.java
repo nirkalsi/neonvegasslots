@@ -35,6 +35,7 @@ public class Reminders extends BroadcastReceiver {
         String today = new java.text.SimpleDateFormat("yyyy-MM-dd", java.util.Locale.US).format(new java.util.Date());
         return bonusReady(c.getSharedPreferences(MainActivity.PREFS, Context.MODE_PRIVATE).getString("daily_last", ""), today);
     }
+    static boolean promptEnabled = true; // test seam: unit tests turn the first-run popup off
     static final String ASKED_KEY = "notif_consent_asked";
     /** Show the one-time yes/no popup only to a player who has never been exposed to the question. A player who already
      *  opted in, already answered, or whose system notifications are off / who denied the system prompt once (rationale true)

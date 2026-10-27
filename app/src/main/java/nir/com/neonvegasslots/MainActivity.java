@@ -540,7 +540,7 @@ public class MainActivity extends Activity implements SlotsView.Listener, Billin
     private Button reminderBtn;
     /** One-time yes/no notification question for players never asked before. No = never asked again (Settings still works). */
     private void maybeAskNotifications() {
-        if (isFinishing()) return;
+        if (isFinishing() || !Reminders.promptEnabled) return;
         boolean enabled, rationale = false;
         android.app.NotificationManager nm = (android.app.NotificationManager) getSystemService(NOTIFICATION_SERVICE);
         enabled = nm == null || nm.areNotificationsEnabled();
