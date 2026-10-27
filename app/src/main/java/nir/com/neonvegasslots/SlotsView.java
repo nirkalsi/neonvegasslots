@@ -412,7 +412,7 @@ public class SlotsView extends View {
         invalidate();
     }
 
-    private float gridTop() { return getHeight() * 0.22f; }
+    private float gridTop() { return getHeight() * 0.195f; }
     private float trailTop() { return gridTop() + (getWidth() / 5f - 8) * 3 + 16 + 24 + getHeight() * 0.07f + getWidth() * 0.055f; }
     private float trailBottom() { return getHeight() - getWidth() * 0.10f; }
     private float trailNodeY() {
@@ -445,7 +445,7 @@ public class SlotsView extends View {
         // title
         titleGlow = (float) ((now % 4000L) / 4000.0 * 6.2832); // elapsed-time pulse: same speed at any redraw cadence
         p.setTextAlign(Paint.Align.CENTER);
-        p.setTextSize(w * 0.075f);
+        p.setTextSize(w * 0.06f);
         p.setFakeBoldText(true);
         p.setColor(th.title);
         p.setShadowLayer(14 + 6 * (float) Math.sin(titleGlow), 0, 0, th.titleGlow);
@@ -461,7 +461,7 @@ public class SlotsView extends View {
         p.setTextSize(w * 0.034f);
         p.setColor(th.soft);
         cv.drawText("LV " + level, w * 0.14f, gridTop * 0.90f, p);
-        float barL = w * 0.24f, barR = w * 0.76f, barY = gridTop * 0.855f, barH = w * 0.022f;
+        float barL = w * 0.24f, barR = w * 0.76f, barY = gridTop * 0.835f, barH = w * 0.034f;
         rf.set(barL, barY, barR, barY + barH);
         p.setColor(th.cellStroke); cv.drawRoundRect(rf, 8, 8, p);
         float frac = Math.min(1f, xp / (float) xpNeeded());

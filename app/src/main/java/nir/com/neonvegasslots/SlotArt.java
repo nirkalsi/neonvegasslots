@@ -191,7 +191,7 @@ final class SlotArt {
         ink.setStyle(Paint.Style.STROKE); ink.setStrokeWidth(w*.004f); color(cur.panelLine); c.drawRoundRect(box,w*.025f,w*.025f,ink); ink.setStyle(Paint.Style.FILL);
 
         ink.setTextAlign(Paint.Align.LEFT); ink.setTypeface(Typeface.create("sans-serif",Typeface.BOLD));
-        ink.setTextSize(w*.030f); color(cur.title);
+        ink.setTextSize(w*.036f); color(cur.title);
         c.drawText("CITY TOUR - TAP A STOP YOU UNLOCKED",w*.09f,top+w*.058f,ink);
 
         // connector
@@ -218,8 +218,8 @@ final class SlotArt {
             }
             // label
             ink.setTextAlign(Paint.Align.CENTER); ink.setTypeface(Typeface.create("sans-serif",Typeface.BOLD));
-            ink.setTextSize(w*.024f*rs); color(open?(sel?0xFFFFFFFF:cur.soft):0xFF6C7890);
-            c.drawText(t.tag,x,ny+w*.088f*rs,ink);
+            ink.setTextSize(w*.034f*rs); color(open?(sel?0xFFFFFFFF:cur.soft):0xFF6C7890);
+            c.drawText(t.tag,x,ny+w*.094f*rs,ink);
             if(!open){ ink.setTextSize(w*.020f*rs); color(0xFF8A96AC); c.drawText("Lv "+t.unlockLevel,x,ny+w*.118f*rs,ink); }
         }
 
@@ -239,19 +239,21 @@ final class SlotArt {
         }
 
         // trophy shelf: 12 cups grouped by stop; collected cups take their stop's color
-        ink.setTextSize(w*.020f*rs); color(cur.soft); ink.setTypeface(Typeface.create("sans-serif",Typeface.BOLD));
+        ink.setTextSize(w*.033f*rs); color(cur.soft); ink.setTypeface(Typeface.create("sans-serif",Typeface.BOLD));
         int got=Integer.bitCount(trophyMask);
-        c.drawText("TROPHY SHELF  "+got+" / 12",w*.09f,top+height*.77f,ink);
+        c.drawText("TROPHY SHELF  "+got+" / 12",w*.09f,top+height*.81f,ink);
         for(int i=0;i<12;i++){
-            float x=w*(.11f+i*.0675f), y=top+height*.90f;
+            float x=w*(.11f+i*.0675f), y=top+height*.925f;
             boolean on=(trophyMask&(1<<i))!=0;
             trophyCup(c,x,y,w*.052f*rs,on,THEMES[i/3]);
         }
     }
     private void statusText(Canvas c, String s, float x, float y, float w, float rs) {
-        ink.setTextSize(w*.025f*rs);
+        int bi = s.indexOf("  \u2022  ");
+        if (bi > 0) { statusText(c, s.substring(0, bi), x, y - w*.012f, w, rs); statusText(c, s.substring(bi + 5), x, y + w*.040f*rs, w, rs); return; }
+        ink.setTextSize(w*.034f*rs);
         float tw = ink.measureText(s);
-        if (tw > w*.86f) ink.setTextSize(w*.025f*rs*w*.86f/tw); // shrink-to-fit: never clip or wrap into neighbours
+        if (tw > w*.86f) ink.setTextSize(w*.034f*rs*w*.86f/tw); // shrink-to-fit: never clip or wrap into neighbours
         c.drawText(s, x, y, ink);
     }
 

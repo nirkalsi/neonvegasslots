@@ -75,7 +75,7 @@ public class MainActivity extends Activity implements SlotsView.Listener, Billin
                 int vh = getHeight(), gh = game.getHeight();
                 if (!touched && vh > 0 && gh > vh) { // short screen: open with the reels AND the BET/SPIN row in view
                     float w = getWidth();
-                    int ctrlBottom = (int) (gh * 0.22f + 3 * (w / 5f - 8) + 16 + 24 + gh * 0.07f + 12);
+                    int ctrlBottom = (int) (gh * 0.195f + 3 * (w / 5f - 8) + 16 + 24 + gh * 0.07f + 12);
                     scrollTo(0, Math.max(0, Math.min(gh - vh, ctrlBottom - vh)));
                 }
             }
