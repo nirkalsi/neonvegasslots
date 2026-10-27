@@ -609,21 +609,14 @@ public class SlotsView extends View {
                     cv.drawRoundRect(rf,12,12,p); p.setStyle(Paint.Style.FILL);
                 }
                 if (spinning && now < stopAt[c]) {
-                    // scrolling strip: symbol + dimmed neighbours sliding upward, clipped to the cell
-                    float pitch = cellH * 0.82f;
-                    float scroll = (reelDistance(now-spinStartedAt) + c * 173 + r * 61) % pitch;
-                    cv.save();
-                    cv.clipRect(x + 2, y, x + cellW + 2, y + cellH);
-                    int sym = grid[r][c];
-                    float cx = x + 2 + cellW / 2, cy = y + cellH / 2;
-                    art.symbol(cv, sym, cx, cy - pitch + scroll, cellW * 0.74f);
-                    p.setColor(0x30FFFFFF); cv.drawRect(x + 2, cy - pitch * 1.4f + scroll, x + cellW + 2, cy - pitch * 0.55f + scroll, p);
-                    // Low-alpha motion echoes make the moving strip read as blur, never alter outcomes.
-                    for(int ghost=1;ghost<=3;ghost++){cv.saveLayerAlpha(x+2,y,x+cellW+2,y+cellH,45-ghost*9);art.symbol(cv,sym,cx,cy+scroll-ghost*cellH*.075f,cellW*.82f);cv.restore();}
-                    art.symbol(cv, sym, cx, cy + scroll, cellW * 0.82f);
-                    art.symbol(cv, sym, cx, cy + pitch + scroll, cellW * 0.74f);
-                    p.setColor(0x30FFFFFF); cv.drawRect(x + 2, cy + pitch * 0.55f + scroll, x + cellW + 2, cy + pitch * 1.4f + scroll, p);
-                    cv.restore();
+                    // Render one continuous column, not three separately clipped moving cells.
+                    if(r==0){float pitch=cellH+8,scroll=(reelDistance(now-spinStartedAt)+c*173)%pitch,cx=x+2+cellW/2;
+                        cv.save();cv.clipRect(x+2,gridTop,x+cellW+2,gridTop+gridH);
+                        for(int j=-1;j<4;j++){int sym=grid[Math.floorMod(j,3)][c];float cy=gridTop+cellH/2+j*pitch+scroll;
+                            for(int ghost=1;ghost<=3;ghost++){cv.saveLayerAlpha(x+2,gridTop,x+cellW+2,gridTop+gridH,45-ghost*9);art.symbol(cv,sym,cx,cy-ghost*cellH*.075f,cellW*.82f);cv.restore();}
+                            art.symbol(cv,sym,cx,cy,cellW*.82f);
+                        }cv.restore();}
+
                 } else {
                     float pls = (winCell[r][c] && now < winFlashUntil) ? 1f + 0.09f * (float) Math.sin(now / 110.0) : 1f; // winning symbols pulse
                     art.symbolAnimated(cv, grid[r][c], x + 2 + cellW / 2, y + cellH / 2, cellW * 0.84f * pls,now,winCell[r][c] && now < winFlashUntil);
