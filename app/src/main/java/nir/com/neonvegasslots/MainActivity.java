@@ -222,46 +222,31 @@ public class MainActivity extends Activity implements SlotsView.Listener, Billin
         dlg().title("Daily bonus - day " + streak)
             .body("Come back every day to grow your streak.\nCoins are virtual only - no cash value, no prizes.")
             .content(dailyBox)
-            .add(GameDialog.Btn.primary("Claim +" + bonus, () -> grantDaily(streak, bonus)))
-            .add(GameDialog.Btn.secondary("Watch ad for 2X", () -> ads.showRewarded(() -> grantDaily(streak, bonus * 2))))
+            .add(GameDialog.Btn.primary("Watch ad for 2X  -  +" + (bonus * 2), () -> ads.showRewarded(() -> grantDaily(streak, bonus * 2))))
+            .add(GameDialog.Btn.secondary("Claim +" + bonus, () -> grantDaily(streak, bonus)))
             .auto().show();
     }
 
     private View dailyLadder(int streak) {
-        SlotArt.Theme th = SlotArt.THEMES[game.getThemeIdx()];
-        float density = getResources().getDisplayMetrics().density;
-        LinearLayout row = new LinearLayout(this);
-        row.setOrientation(LinearLayout.HORIZONTAL);
-        row.setGravity(Gravity.CENTER);
-        row.setPadding(0, (int) (6 * density), 0, (int) (2 * density));
-        for (int i = 0; i < DAILY_BONUS.length; i++) {
-            TextView chip = new TextView(this);
-            chip.setText("DAY " + (i + 1) + "\n+" + DAILY_BONUS[i]);
-            chip.setTextSize(10.5f);
-            chip.setTypeface(Typeface.DEFAULT_BOLD);
-            chip.setGravity(Gravity.CENTER);
-            chip.setSingleLine(false);
-            android.graphics.drawable.GradientDrawable g = new android.graphics.drawable.GradientDrawable();
-            g.setCornerRadius(10 * density);
-            int todayIdx = Math.min(streak, DAILY_BONUS.length) - 1;
-            if (i == todayIdx) {             // today (streak beyond day 7 keeps day 7 highlighted, matching the capped reward)
-                g.setColor(GameDialog.withAlpha(th.neon, 0x30));
-                g.setStroke((int) (2 * density), th.neon);
-                chip.setTextColor(th.title);
-            } else if (i < todayIdx) {       // already claimed
-                g.setColor(GameDialog.withAlpha(th.panelLine, 0x22));
-                chip.setTextColor(GameDialog.withAlpha(th.soft, 0x88));
-            } else {                          // future days
-                g.setColor(GameDialog.withAlpha(th.panelLine, 0x40));
-                g.setStroke((int) (1 * density), GameDialog.withAlpha(th.neon, 0x33));
-                chip.setTextColor(th.soft);
+        SlotArt.Theme th=SlotArt.THEMES[game.getThemeIdx()];
+        float density=getResources().getDisplayMetrics().density;
+        LinearLayout track=new LinearLayout(this);track.setOrientation(LinearLayout.VERTICAL);
+        int current=Math.min(streak,DAILY_BONUS.length)-1;
+        for(int row=0;row<3;row++) {
+            LinearLayout line=new LinearLayout(this);line.setOrientation(LinearLayout.HORIZONTAL);
+            int from=row<2?row*3:6,to=row<2?from+3:7;
+            for(int i=from;i<to;i++) {
+                TextView card=new TextView(this);card.setGravity(Gravity.CENTER);card.setTypeface(Typeface.DEFAULT_BOLD);
+                card.setTextSize(i==6?18:14);card.setTextColor(i==current?th.title:th.soft);
+                String status=i<current?"  [claimed]":i==current?"  TODAY":"";
+                card.setText((i==6?"DAY 7 - TREASURE":"DAY "+(i+1))+status+"\n+"+String.format(java.util.Locale.US,"%,d",DAILY_BONUS[i])+" coins");
+                android.graphics.drawable.GradientDrawable bg=new android.graphics.drawable.GradientDrawable(android.graphics.drawable.GradientDrawable.Orientation.TOP_BOTTOM,new int[]{i==current?GameDialog.withAlpha(th.neon,0x55):th.panelBg,th.panelBg});
+                bg.setCornerRadius(12*density);bg.setStroke((int)(i==current?3*density:1*density),i==current?th.title:th.panelLine);card.setBackground(bg);
+                LinearLayout.LayoutParams lp=new LinearLayout.LayoutParams(0,(int)((i==6?78:64)*density),1);lp.setMargins((int)(3*density),(int)(3*density),(int)(3*density),(int)(3*density));line.addView(card,lp);
             }
-            chip.setBackground(g);
-            LinearLayout.LayoutParams lp = new LinearLayout.LayoutParams(0, (int) (54 * density), 1f);
-            lp.setMargins((int) (2 * density), 0, (int) (2 * density), 0);
-            row.addView(chip, lp);
+            track.addView(line,new LinearLayout.LayoutParams(-1,-2));
         }
-        return row;
+        return track;
     }
 
     private void grantDaily(int streak, long coins) {
@@ -447,6 +432,12 @@ public class MainActivity extends Activity implements SlotsView.Listener, Billin
 
     // ---------- SlotsView.Listener ----------
     @Override public void onOpenShop() { showShop(); }
+    @Override public void onOpenPaytable() {
+        dlg().title("Paytable & paylines")
+            .body("Five paylines. Match 3, 4 or 5 of the same symbol consecutively from the leftmost reel. All winning lines are added. Values below are at BET 10; rewards scale with your bet (rounded down per line). Virtual coins only, no cash value.")
+            .content(new PaytableView(this, game.getThemeIdx()))
+            .add(GameDialog.Btn.secondary("Close", null)).show();
+    }
     @Override public void onOpenAuto() { showAutoMenu(); }
     private void showAutoMenu() {
         game.stopAuto();

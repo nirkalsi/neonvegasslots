@@ -20,12 +20,14 @@ public class SlotsView extends View {
         default void onOpenShop() {}
         default void onOpenMap() {}
         default void onOpenAuto() {}
+        default void onOpenPaytable() {}
     }
 
     private static final int[] WEIGHT = {4, 7, 10, 16, 18, 12};
     private static final int[] PAY5 = {1200, 600, 360, 240, 180, 300};
     private static final int[] PAY4 = {300, 144, 96, 60, 48, 72};
     private static final int[] PAY3 = {96, 48, 36, 25, 25, 24};
+    static int symbolPayout(int symbol, int count) { return count >= 5 ? PAY5[symbol] : count == 4 ? PAY4[symbol] : count == 3 ? PAY3[symbol] : 0; }
     private static final int[][] LINES = {
         {1,1,1,1,1}, {0,0,0,0,0}, {2,2,2,2,2}, {0,1,2,1,0}, {2,1,0,1,2}
     };
@@ -504,6 +506,11 @@ public class SlotsView extends View {
         float frac = Math.min(1f, xp / (float) xpNeeded());
         rf.set(barL, barY, barL + (barR - barL) * frac, barY + barH);
         p.setColor(th.title); cv.drawRoundRect(rf, 8, 8, p);
+        // Info/paytable entry beside XP, separate from currency and store.
+        float infoX=w*.90f, infoY=gridTop*.875f;
+        p.setColor(th.panelBg);cv.drawCircle(infoX,infoY,w*.034f,p);
+        p.setStyle(Paint.Style.STROKE);p.setStrokeWidth(w*.003f);p.setColor(th.title);cv.drawCircle(infoX,infoY,w*.034f,p);p.setStyle(Paint.Style.FILL);
+        p.setTextAlign(Paint.Align.CENTER);p.setTextSize(w*.044f);p.setFakeBoldText(true);cv.drawText("i",infoX,infoY+w*.015f,p);p.setFakeBoldText(false);
         if (lastWin > 0 && now < winFlashUntil && now >= bigWinUntil) {
             p.setColor(0xFF7CFC00);
             p.setTextSize(w * 0.06f);
@@ -776,6 +783,7 @@ public class SlotsView extends View {
         float ctrlY = ctrlY(w, getHeight());
         float btnH = getHeight() * 0.07f;
         float x = e.getX(), y = e.getY();
+        if (Math.abs(x-w*.90f)<=w*.065f && Math.abs(y-gridTop*.875f)<=w*.065f) { if(listener!=null)listener.onOpenPaytable();return true; }
         if (chipPlus.contains(x, y)) { if (listener != null) listener.onOpenShop(); return true; }
         if (y >= ctrlY && y <= ctrlY + btnH) {
             if (x >= w * 0.03f && x <= w * 0.40f) {
