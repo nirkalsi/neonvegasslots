@@ -35,6 +35,7 @@ public class GameplayCaptureTest {
             final AtomicReference<MainActivity> act = new AtomicReference<>();
             sc.onActivity(a -> { act.set(a); sv.set(find(a.getWindow().getDecorView())); });
             SystemClock.sleep(3500);
+            final long beforeSpins=sv.get().getSpinsDone();
             long end = SystemClock.uptimeMillis() + 52000;
             int n = 0;
             while (SystemClock.uptimeMillis() < end) {
@@ -43,12 +44,14 @@ public class GameplayCaptureTest {
                 final int[] loc = new int[2]; final float[] g = new float[3];
                 in.runOnMainSync(() -> { v.getLocationOnScreen(loc); g[0] = v.getWidth(); g[1] = v.getHeight(); });
                 float w = g[0], h = g[1];
-                float ctrlY = h * 0.22f + (w / 5f - 8) * 3 + 16 + 24; float btnH = h * 0.07f;
+                if(v.pendingLevelReward()>0){in.runOnMainSync(v::collectLevelReward);SystemClock.sleep(1200);continue;}
+                float ctrlY = SlotsView.ctrlY(w,h); float btnH = h * 0.07f;
                 n++;
                 if (n == 3) { tap(in, loc, w * 0.36f, ctrlY + btnH / 2); SystemClock.sleep(900); } // bet up once
                 tap(in, loc, w * 0.70f, ctrlY + btnH / 2);
                 SystemClock.sleep(3600);
             }
+            org.junit.Assert.assertTrue("Capture must contain real completed spins, not idle taps",sv.get().getSpinsDone()>beforeSpins+2);
         }
     }
 }

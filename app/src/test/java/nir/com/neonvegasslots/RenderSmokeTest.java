@@ -202,23 +202,14 @@ public class RenderSmokeTest {
     }
 
     @GraphicsMode(GraphicsMode.Mode.NATIVE)
-    @Test public void renderRemoveAdsComposed() throws Exception {
-        MainActivity a = activity();
-        BillingManager bm = injectTestPrices(a);
-        bm.testPrices.put("remove_ads", "$4.99");
-        java.lang.reflect.Method m = MainActivity.class.getDeclaredMethod("offerRemoveAds", String.class);
-        m.setAccessible(true);
-        m.invoke(a, "test");
-        renderComposed(a, latestDialog(), "/tmp/renders/neonvegasslots-removeads-composed.png");
+    @Test public void removedPurchaseHasNoOfferEvenWhenOldSkuHasPrice() throws Exception {
+        MainActivity a=activity();BillingManager bm=injectTestPrices(a);bm.testPrices.put("remove_ads","$4.99");
+        a.onOutOfCoins();assertNull("removed purchase must never be offered",findButton(latestDialog().getWindow().getDecorView(),"Remove banner & interstitial ads"));
+        renderComposed(a,latestDialog(),"/tmp/renders/neonvegasslots-no-removeads-offer.png");
     }
 
-
-    @Test public void removeAdsOfferHiddenWithoutLivePrice() throws Exception {
-        MainActivity a = activity();
-        java.lang.reflect.Method m = MainActivity.class.getDeclaredMethod("offerRemoveAds", String.class);
-        m.setAccessible(true);
-        m.invoke(a, "test");
-        assertTrue("no remove-ads offer without a live localized price", ShadowDialog.getShownDialogs().isEmpty());
+    @Test public void removedOfferEntryPointIsAbsent() {
+        for(java.lang.reflect.Method m:MainActivity.class.getDeclaredMethods())assertFalse("no obsolete remove-ads purchase entry",m.getName().equals("offerRemoveAds"));
     }
 
     @Test public void outOfCoinsOmitsRemoveAdsWithoutPrice() throws Exception {
