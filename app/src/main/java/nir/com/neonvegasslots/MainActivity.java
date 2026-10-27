@@ -319,6 +319,9 @@ public class MainActivity extends Activity implements SlotsView.Listener, Billin
         TextView remNote = new TextView(this);
         remNote.setText("If you turn it on: one reminder at about 10:30 local time, at least 6 hours after you leave the game (it is cancelled if you come back first). It runs on this device, not a server.");
         remNote.setTextSize(11f); remNote.setTextColor(0xFFC9B8E0); remNote.setPadding(0, 6, 0, 12);
+        TextView legalNote = new TextView(this);
+        legalNote.setText("Free play only. Virtual coins - no real money, no prizes.");
+        legalNote.setTextSize(11f); legalNote.setTextColor(0xFFC9B8E0); legalNote.setPadding(0, 0, 0, 12);
         Button snd = new Button(this);
         snd.setAllCaps(false); snd.setBackgroundColor(0xFF3A1F66); snd.setTextColor(Color.WHITE);
         snd.setText("Sound effects: " + (SoundFx.isOn(this) ? "ON" : "OFF"));
@@ -327,7 +330,7 @@ public class MainActivity extends Activity implements SlotsView.Listener, Billin
         mus.setAllCaps(false); mus.setBackgroundColor(0xFF3A1F66); mus.setTextColor(Color.WHITE);
         mus.setText("Music: " + (Music.isOn(this) ? "ON" : "OFF"));
         mus.setOnClickListener(v -> { boolean on = !Music.isOn(this); Music.setOn(this, on); if (on) { if (music != null) music.start(); } else if (music != null) music.pause(); mus.setText("Music: " + (on ? "ON" : "OFF")); });
-        box.addView(snd); box.addView(mus); box.addView(rem); box.addView(remNote);
+        box.addView(snd); box.addView(mus); box.addView(rem); box.addView(remNote); box.addView(legalNote);
         dlg().title("Missions").content(box)
             .add(GameDialog.Btn.secondary("Close", null)).show();
     }

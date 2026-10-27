@@ -569,11 +569,11 @@ public class SlotsView extends View {
         rf.set(w * 0.03f, ctrlY, w * 0.40f, ctrlY + btnH);
         modernButton(cv, rf, lighten(th.betBg, 0.28f), darken(th.betBg, 0.25f), th.title, 0f);
         float bcy = rf.centerY(), bu = btnH * 0.2f;
-        coinIcon(cv, rf.centerX() - btnH * 0.62f, bcy, bu, th);
+        coinIcon(cv, rf.centerX() - btnH * 0.40f, bcy, bu, th);
         p.setFakeBoldText(true); p.setTextAlign(Paint.Align.CENTER); p.setColor(0xFFFFFFFF);
         String bl = betLabel(BETS[betIdx]);
         p.setTextSize(w * (bl.length() > 3 ? 0.044f : 0.054f));
-        cv.drawText(bl, rf.centerX() + btnH * 0.1f, bcy + btnH * 0.17f, p);
+        cv.drawText(bl, rf.centerX() + btnH * 0.22f, bcy + btnH * 0.17f, p);
         p.setStyle(Paint.Style.STROKE); p.setStrokeCap(Paint.Cap.ROUND); p.setStrokeWidth(btnH * 0.09f); p.setColor(0xFFFFFFFF);
         float mx = rf.left + btnH * 0.34f, px = rf.right - btnH * 0.34f;
         cv.drawLine(mx - bu * 0.7f, bcy, mx + bu * 0.7f, bcy, p);                    // minus
@@ -611,6 +611,14 @@ public class SlotsView extends View {
             loopIcon(cv, scx + btnH * 0.62f, scy, btnH * 0.16f, 0xCCFFFFFF); // hold = auto
         }
         p.clearShadowLayer();
+        { // labels under the control row: BET caption and WIN readout
+            float ly = ctrlY + btnH + w * 0.042f;
+            p.setFakeBoldText(true); p.setTextAlign(Paint.Align.CENTER); p.setTextSize(w * 0.032f);
+            p.setColor(th.soft); cv.drawText("BET", w * 0.215f, ly, p);
+            if (lastWin > 0) { p.setColor(0xFFFFD166); cv.drawText("WIN " + lastWin, w * 0.70f, ly, p); }
+            else { p.setColor(th.soft); cv.drawText(autoSpin ? "AUTO - tap to stop" : spinning ? "TAP TO STOP" : "TAP = SPIN   HOLD = AUTO", w * 0.70f, ly, p); }
+            p.setFakeBoldText(false);
+        }
         p.setFakeBoldText(false); p.setTextAlign(Paint.Align.CENTER); p.setTextSize(w * 0.045f);
 
         String ju;
@@ -619,10 +627,7 @@ public class SlotsView extends View {
         art.trail(cv, w, trailTop(), trailBottom(), level, xp, xpNeeded(), themeIdx, ju, trophyMask);
         if (setComplete(themeIdx)) art.frameOrnament(cv, w / 2, gridTop - w * .022f, w * .05f, th);
 
-        // disclaimer
-        p.setTextSize(w * 0.028f);
-        p.setColor(th.soft);
-        cv.drawText("Free play only. Virtual coins - no real money, no prizes.", w / 2, getHeight() - w * 0.03f, p);
+        // legal line lives in Settings (Missions dialog), not on the game screen
     }
 
     private void coinShower(Canvas cv, float w, float gridTop, float gridH, SlotArt.Theme th, long now) {
