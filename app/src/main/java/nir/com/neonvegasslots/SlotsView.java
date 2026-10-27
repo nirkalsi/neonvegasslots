@@ -742,7 +742,7 @@ public class SlotsView extends View {
             p.setFakeBoldText(true); p.setTextAlign(Paint.Align.CENTER); p.setTextSize(w * 0.032f);
             p.setColor(th.soft); cv.drawText("BET", w * 0.10f, ly, p);
             p.setColor(th.title);p.setTextSize(w*.026f);cv.drawText("MAX BET",w*.31f,ly,p);p.setTextSize(w*.032f);
-            if (lastWin > 0) { p.setColor(0xFFFFD166); cv.drawText("WIN " + displayedLastWin(now), w * 0.70f, ly, p); }
+            if (lastWin > 0) { p.setColor(0xFFFFD166); cv.drawText("WIN " + (now<bigWinUntil?shownTierWin(bigWinAmount,now-bigWinStartAt,bigWinMs):displayedLastWin(now)), w * 0.70f, ly, p); }
             else { p.setColor(th.soft); cv.drawText(autoSpin ? "AUTO - tap to stop" : spinning ? "TAP TO STOP" : "HOLD = AUTO", w * 0.70f, ly, p); }
             p.setFakeBoldText(false);
         }
@@ -775,6 +775,8 @@ public class SlotsView extends View {
         }
     }
 
+    static long shownTierWin(long amount,long elapsed,long duration){float t=Math.max(0,Math.min(1,elapsed/(duration*.78f)));return Math.round(amount*(1-Math.pow(1-t,2)));}
+    static int presentationTier(long shown,long bet,int finalTier){return Math.min(finalTier,winTier(shown,Math.max(1,bet)));}
     private void bigWinOverlay(Canvas cv, float w, SlotArt.Theme th, long now) {
         float t = (now - bigWinStartAt) / (float) bigWinMs;
         if (t < 0 || t > 1) return;
@@ -786,11 +788,13 @@ public class SlotsView extends View {
         p.setTextAlign(Paint.Align.CENTER);
         p.setFakeBoldText(true);
         p.setTextSize(w * 0.14f * pop);
-        p.setColor(TIER_COLOR[bigWinTier]);
+        long shown=shownTierWin(bigWinAmount,now-bigWinStartAt,bigWinMs);
+        int liveTier=presentationTier(shown,BETS[betIdx],bigWinTier);
+        p.setColor(TIER_COLOR[liveTier]);
         p.setShadowLayer(w * 0.03f * pop, 0, 0, 0xFFFFA000);
-        cv.drawText(TIER_NAME[bigWinTier], w / 2, cy, p);
+        cv.drawText(TIER_NAME[liveTier], w / 2, cy, p);
         p.clearShadowLayer();
-        long shown = bigWinAmount * Math.min(100, (long) (t * 140 * 3000f / bigWinMs)) / 100;
+
         p.setTextSize(w * 0.10f * pop);
         p.setColor(0xFFFFFFFF);
         p.setShadowLayer(w * 0.02f, 0, 0, 0xFF7CFC00);

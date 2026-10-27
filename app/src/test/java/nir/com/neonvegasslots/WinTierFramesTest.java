@@ -21,7 +21,7 @@ public class WinTierFramesTest {
     final long[] now = {100000};
     SlotsView v = new SlotsView(RuntimeEnvironment.getApplication()) { @Override long nowMillis() { return now[0]; } };
     v.restore("5000;0;5;0;0;10;3");
-    long bet = 10; long[] wins = {30 * bet, 80 * bet, 200 * bet};
+    long bet = SlotsView.betAmount(5); long[] wins = {30 * bet, 80 * bet, 200 * bet};
     for (int tier = 0; tier < 3; tier++) {
       for (int k = 0; k < 4; k++) {
         float frac = new float[]{0.1f, 0.3f, 0.6f, 0.9f}[k];
