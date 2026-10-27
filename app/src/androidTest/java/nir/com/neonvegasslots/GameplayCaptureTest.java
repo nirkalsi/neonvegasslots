@@ -44,7 +44,11 @@ public class GameplayCaptureTest {
                 final int[] loc = new int[2]; final float[] g = new float[3];
                 in.runOnMainSync(() -> { v.getLocationOnScreen(loc); g[0] = v.getWidth(); g[1] = v.getHeight(); });
                 float w = g[0], h = g[1];
-                if(v.pendingLevelReward()>0){in.runOnMainSync(v::collectLevelReward);SystemClock.sleep(1200);continue;}
+                if(v.pendingLevelReward()>0){
+                    final boolean[] ready={false};in.runOnMainSync(()->ready[0]=v.levelMomentReady());
+                    if(ready[0])tap(in,loc,w*.50f,h*.43f+w*.34f);
+                    SystemClock.sleep(1200);continue;
+                }
                 float ctrlY = SlotsView.ctrlY(w,h); float btnH = h * 0.07f;
                 n++;
                 if (n == 3) { tap(in, loc, w * 0.36f, ctrlY + btnH / 2); SystemClock.sleep(900); } // bet up once
