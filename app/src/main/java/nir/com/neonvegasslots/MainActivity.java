@@ -216,7 +216,7 @@ public class MainActivity extends Activity implements SlotsView.Listener, Billin
         long bonus = DAILY_BONUS[Math.min(streak, DAILY_BONUS.length) - 1];
         LinearLayout dailyBox = new LinearLayout(this);
         dailyBox.setOrientation(LinearLayout.VERTICAL);
-        dailyBox.addView(GameDialog.rewardHero(this, GameDialog.fromTheme(SlotArt.THEMES[game.getThemeIdx()])),
+        dailyBox.addView(DailyChest.hero(this),
             new LinearLayout.LayoutParams(-1, (int) (72 * getResources().getDisplayMetrics().density)));
         dailyBox.addView(dailyLadder(streak));
         dlg().title("Daily bonus - day " + streak)
@@ -233,16 +233,17 @@ public class MainActivity extends Activity implements SlotsView.Listener, Billin
         LinearLayout track=new LinearLayout(this);track.setOrientation(LinearLayout.VERTICAL);
         int current=Math.min(streak,DAILY_BONUS.length)-1;
         for(int row=0;row<3;row++) {
-            LinearLayout line=new LinearLayout(this);line.setOrientation(LinearLayout.HORIZONTAL);
+            LinearLayout line=new LinearLayout(this);line.setOrientation(LinearLayout.HORIZONTAL);line.setClipChildren(false);line.setClipToPadding(false);
             int from=row<2?row*3:6,to=row<2?from+3:7;
             for(int i=from;i<to;i++) {
                 TextView card=new TextView(this);card.setGravity(Gravity.CENTER);card.setTypeface(Typeface.DEFAULT_BOLD);
-                card.setTextSize(i==6?18:14);card.setTextColor(i==current?th.title:th.soft);
-                String status=i<current?"  [claimed]":i==current?"  TODAY":"";
-                card.setText((i==6?"DAY 7 - TREASURE":"DAY "+(i+1))+status+"\n+"+String.format(java.util.Locale.US,"%,d",DAILY_BONUS[i])+" coins");
+                card.setTextSize(i==6?18:i==current?12:14);card.setTextColor(i==current?th.title:th.soft);
+                String status=i<current?"  \u2713":i==current?"\nTODAY":"";
+                card.setText((i==6?"DAY 7 - TREASURE CHEST":"DAY "+(i+1))+status+"\n+"+String.format(java.util.Locale.US,"%,d",DAILY_BONUS[i])+" coins");
                 android.graphics.drawable.GradientDrawable bg=new android.graphics.drawable.GradientDrawable(android.graphics.drawable.GradientDrawable.Orientation.TOP_BOTTOM,new int[]{i==current?GameDialog.withAlpha(th.neon,0x55):th.panelBg,th.panelBg});
                 bg.setCornerRadius(12*density);bg.setStroke((int)(i==current?3*density:1*density),i==current?th.title:th.panelLine);card.setBackground(bg);
                 LinearLayout.LayoutParams lp=new LinearLayout.LayoutParams(0,(int)((i==6?78:64)*density),1);lp.setMargins((int)(3*density),(int)(3*density),(int)(3*density),(int)(3*density));line.addView(card,lp);
+                if(i==current){android.animation.ObjectAnimator bob=android.animation.ObjectAnimator.ofFloat(card,"translationY",0,-3*density,0);bob.setDuration(1600);bob.setRepeatCount(android.animation.ValueAnimator.INFINITE);bob.start();card.addOnAttachStateChangeListener(new View.OnAttachStateChangeListener(){public void onViewAttachedToWindow(View v){}public void onViewDetachedFromWindow(View v){bob.cancel();}});}
             }
             track.addView(line,new LinearLayout.LayoutParams(-1,-2));
         }
@@ -250,10 +251,11 @@ public class MainActivity extends Activity implements SlotsView.Listener, Billin
     }
 
     private void grantDaily(int streak, long coins) {
+        if(today().equals(sp.getString("daily_last","")))return; // duplicate earned callback/tap cannot pay twice
         sp.edit().putString("daily_last", today()).putInt("daily_streak", streak).apply();
         missions.onDailyClaimed(streak);
         game.addCoins(coins);
-        Toast.makeText(this, "+" + coins + " daily coins!", Toast.LENGTH_SHORT).show();
+        float[] target=game.chipCenterOnScreen();DailyChest.celebrate(this,game,coins,target[0],target[1]);
         handler.postDelayed(this::maybeAskNotifications, 700);
     }
 
@@ -327,7 +329,7 @@ public class MainActivity extends Activity implements SlotsView.Listener, Billin
         box.addView(h);
         for (MissionsManager.Item i : items) {
             LinearLayout line = new LinearLayout(this);
-            line.setOrientation(LinearLayout.HORIZONTAL);
+            line.setOrientation(LinearLayout.HORIZONTAL);line.setClipChildren(false);line.setClipToPadding(false);
             line.setGravity(Gravity.CENTER_VERTICAL);
             TextView t = new TextView(this);
             t.setTextSize(14f);
