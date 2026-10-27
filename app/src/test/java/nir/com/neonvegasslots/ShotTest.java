@@ -25,4 +25,16 @@ public class ShotTest {
     new java.io.File("/tmp/vf").mkdirs();
     try (FileOutputStream f = new FileOutputStream("/tmp/vf/shot-neonvegasslots.png")) { bm.compress(Bitmap.CompressFormat.PNG, 90, f); }
   }
+
+  @GraphicsMode(GraphicsMode.Mode.NATIVE)
+  @Test public void winShot() throws Exception {
+    SlotsView v = new SlotsView(RuntimeEnvironment.getApplication());
+    v.restore("50000;0;3;0;0;1;0");
+    java.lang.reflect.Field lw = SlotsView.class.getDeclaredField("lastWin"); lw.setAccessible(true); lw.setLong(v, 1200L);
+    v.measure(View.MeasureSpec.makeMeasureSpec(540, View.MeasureSpec.EXACTLY), View.MeasureSpec.makeMeasureSpec(1110, View.MeasureSpec.EXACTLY));
+    v.layout(0, 0, 540, 1110);
+    Bitmap bm = Bitmap.createBitmap(540, 1110, Bitmap.Config.ARGB_8888);
+    v.draw(new Canvas(bm));
+    try (FileOutputStream f = new FileOutputStream("/tmp/vf/shot-neonvegasslots-win.png")) { bm.compress(Bitmap.CompressFormat.PNG, 90, f); }
+  }
 }
