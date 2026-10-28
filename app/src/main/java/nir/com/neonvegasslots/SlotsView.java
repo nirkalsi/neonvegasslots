@@ -61,6 +61,8 @@ public class SlotsView extends View {
     private int[][] grid = new int[3][5];      // [row][col] symbol index
     private long balance = 500;
     private long lastWin = 0;
+    private long winCreditBase = -1;
+    static boolean profitable(long payout,long bet){return payout>bet;}
     private int betIdx = 1;                    // 10
     private long spinsDone = 0;
     private long lastRegenAt = System.currentTimeMillis();
@@ -159,7 +161,7 @@ public class SlotsView extends View {
                 trophyMask |= (1 << i);
                 trophyNewName = SlotArt.TROPHY_NAMES[i / 3][i % 3];
                 trophyFlashUntil = System.currentTimeMillis() + 4000;
-                if(listener!=null)listener.onTrophyFound(i);
+                // The compact journey strip is the single nonblocking discovery notification.
                 break;
             }
         }
@@ -254,12 +256,13 @@ public class SlotsView extends View {
     void welcomeGiftMoment(){shownBalance=0;welcomeUntil=nowMillis()+1700;coinPulseUntil=welcomeUntil;invalidate();}
     private long shownBalance=-1,lastBalanceFrame=Long.MIN_VALUE;
     private long coinPulseUntil=0;
-    private void drawCoinChip(Canvas cv, float w, float gridTop) {
-        long clock=nowMillis();
+    long creditedWinBalance(long n){return winCreditBase>=0&&lastWin>0&&n>=winStartAt&&n<winStartAt+1100?Math.min(balance,winCreditBase+displayedLastWin(n)):balance;}
+    private void drawCoinChip(Canvas cv, float w, float gridTop,long clock) {
         if(shownBalance<0)shownBalance=balance;
         if(clock!=lastBalanceFrame){
             lastBalanceFrame=clock;
-            if(balance>shownBalance){shownBalance=Math.min(balance,shownBalance+Math.max(1,(balance-shownBalance+5)/6));coinPulseUntil=clock+180;}
+            if(winCreditBase>=0&&lastWin>0&&clock>=winStartAt&&clock<winStartAt+1100){shownBalance=creditedWinBalance(clock);coinPulseUntil=clock+180;}
+            else if(balance>shownBalance){shownBalance=Math.min(balance,shownBalance+Math.max(1,(balance-shownBalance+5)/6));coinPulseUntil=clock+180;}
             else if(balance<shownBalance)shownBalance=balance;
         }
 
@@ -480,11 +483,11 @@ public class SlotsView extends View {
         long bet = BETS[betIdx];
         long win = evaluate(grid, bet, winCell);
         if (win > 0) {
-            balance += win; lastWin = win;
-            fx(win<25*bet?SoundFx.Effect.WIN:winTier(win,bet)==2?SoundFx.Effect.EPIC_WIN:winTier(win,bet)==1?SoundFx.Effect.MEGA_WIN:SoundFx.Effect.BIG_WIN);
+            winCreditBase=balance; balance += win; lastWin = win;
+            if(profitable(win,bet))fx(win<25*bet?SoundFx.Effect.WIN:winTier(win,bet)==2?SoundFx.Effect.EPIC_WIN:winTier(win,bet)==1?SoundFx.Effect.MEGA_WIN:SoundFx.Effect.BIG_WIN);
             winStartAt = System.currentTimeMillis();
             if (win >= 25 * bet) { bigWinTier = winTier(win, bet); bigWinMs = TIER_MS[bigWinTier]; bigWinStartAt = winStartAt; bigWinUntil = winStartAt + bigWinMs; bigWinAmount = win; winFlashUntil = winStartAt + bigWinMs; }
-            else winFlashUntil = winStartAt + 1600;
+            else winFlashUntil = winStartAt + (profitable(win,bet)?1600:500);
         }
         int oldUnlocks = unlockedCount(level);
         while (xp >= xpNeeded()) {
@@ -566,7 +569,7 @@ public class SlotsView extends View {
         // balance / win
         p.setTextSize(w * 0.05f);
         p.setColor(0xFFFFFFFF);
-        drawCoinChip(cv, w, gridTop);
+        drawCoinChip(cv, w, gridTop,now);
         // level + xp bar
         p.setTextSize(w * 0.034f);
         p.setColor(th.soft);
@@ -627,8 +630,8 @@ public class SlotsView extends View {
                         }cv.restore();}
 
                 } else {
-                    float pls = (winCell[r][c] && now < winFlashUntil) ? 1f + 0.09f * (float) Math.sin(now / 110.0) : 1f; // winning symbols pulse
-                    art.symbolAnimated(cv, grid[r][c], x + 2 + cellW / 2, y + cellH / 2, cellW * 0.84f * pls,now,winCell[r][c] && now < winFlashUntil);
+                    float pls = (winCell[r][c] && now < winFlashUntil && profitable(lastWin,BETS[betIdx])) ? 1f + 0.09f * (float) Math.sin(now / 110.0) : 1f; // winning symbols pulse
+                    art.symbolAnimated(cv, grid[r][c], x + 2 + cellW / 2, y + cellH / 2, cellW * 0.84f * pls,now,winCell[r][c] && now < winFlashUntil && profitable(lastWin,BETS[betIdx]));
                 }
             }
         }
@@ -692,7 +695,7 @@ public class SlotsView extends View {
         } else {
             postInvalidateDelayed(450); // idle ambient: chase bulbs and embers keep breathing
         }
-        if (now < winFlashUntil) coinShower(cv, w, gridTop, gridH, th, now);
+        if (now < winFlashUntil && profitable(lastWin,BETS[betIdx])) coinShower(cv, w, gridTop, gridH, th, now);
         if (now < bigWinUntil) bigWinOverlay(cv, w, th, now);
         if (now < levelFlashUntil) levelBurst(cv, w, gridTop, th, now);
 
@@ -754,7 +757,7 @@ public class SlotsView extends View {
             p.setFakeBoldText(true); p.setTextAlign(Paint.Align.CENTER); p.setTextSize(bodySize(w * 0.032f));
             // The bet is already shown on its coin control; this caption is its separate MAX action.
             p.setColor(th.title);p.setTextSize(bodySize(w*.026f));cv.drawText("MAX BET",w*.215f,ly,p);p.setTextSize(bodySize(w*.032f));
-            if (lastWin > 0) { p.setTextSize(moneySize(w*.032f));p.setColor(0xFFFFD166); cv.drawText("WIN " + (now<bigWinUntil?shownTierWin(bigWinAmount,now-bigWinStartAt,bigWinMs):displayedLastWin(now)), w * 0.70f, ly, p); }
+            if (lastWin > 0) { p.setTextSize(moneySize(w*.032f));p.setColor(0xFFFFD166); cv.drawText((profitable(lastWin,BETS[betIdx])?"WIN ":"RETURN ") + (now<bigWinUntil?shownTierWin(bigWinAmount,now-bigWinStartAt,bigWinMs):displayedLastWin(now)), w * 0.70f, ly, p); }
             else { p.setColor(th.soft); cv.drawText(autoSpin ? "AUTO - tap to stop" : spinning ? "TAP TO STOP" : "HOLD = AUTO", w * 0.70f, ly, p); }
             p.setFakeBoldText(false);
         }

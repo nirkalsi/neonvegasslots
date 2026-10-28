@@ -151,18 +151,10 @@ public class RenderSmokeTest {
 
     @GraphicsMode(GraphicsMode.Mode.NATIVE)
     @Test public void renderTrophyRevealComposed() throws Exception {
-        MainActivity a=activity();a.onTrophyFound(0);Dialog d=latestDialog();
-        TrophyReveal reveal=trophyView(d.getWindow().getDecorView());assertNotNull(reveal);reveal.setProgress(1);
-        renderComposed(a,d,"/tmp/renders/neonvegasslots-trophy-reveal-composed.png");
+        MainActivity a=activity();java.lang.reflect.Field f=MainActivity.class.getDeclaredField("game");f.setAccessible(true);SlotsView game=(SlotsView)f.get(a);game.tryTrophyDrop(.99f,"2026-10-27");assertFalse(GameDialog.isOpen());assertTrue(GameDialog.pending.isEmpty());renderView(a.findViewById(android.R.id.content),a.getResources().getDisplayMetrics().widthPixels,a.getResources().getDisplayMetrics().heightPixels,"/tmp/renders/neonvegasslots-trophy-nonblocking.png");
     }
-    @Test public void trophyDropQueuesUntilGameIsQuiet() throws Exception {
-        MainActivity a=activity();java.lang.reflect.Field f=MainActivity.class.getDeclaredField("game");f.setAccessible(true);SlotsView game=(SlotsView)f.get(a);
-        long before=game.getBalance();assertTrue(game.tryTrophyDrop(.99f,"2026-10-27"));
-        assertFalse("no reveal over spin result",GameDialog.isOpen());assertEquals(1,GameDialog.pending.size());
-        assertEquals(before,game.getBalance());assertEquals(1,Integer.bitCount(game.getTrophyMask()));
-        java.lang.reflect.Field flash=SlotsView.class.getDeclaredField("trophyFlashUntil");flash.setAccessible(true);flash.setLong(game,0);
-        org.robolectric.Shadows.shadowOf(android.os.Looper.getMainLooper()).idleFor(java.time.Duration.ofMillis(710));
-        assertTrue(GameDialog.isOpen());assertTrue(GameDialog.pending.isEmpty());
+    @Test public void trophyDropDoesNotQueueOrBlockPlay() throws Exception {
+        MainActivity a=activity();java.lang.reflect.Field f=MainActivity.class.getDeclaredField("game");f.setAccessible(true);SlotsView game=(SlotsView)f.get(a);long before=game.getBalance();assertTrue(game.tryTrophyDrop(.99f,"2026-10-27"));assertFalse(GameDialog.isOpen());assertTrue(GameDialog.pending.isEmpty());assertEquals(before,game.getBalance());assertEquals(1,Integer.bitCount(game.getTrophyMask()));org.robolectric.Shadows.shadowOf(android.os.Looper.getMainLooper()).idleFor(java.time.Duration.ofMillis(710));assertFalse(GameDialog.isOpen());assertTrue(GameDialog.pending.isEmpty());
     }
 
     private TrophyReveal trophyView(View v){if(v instanceof TrophyReveal)return (TrophyReveal)v;if(v instanceof android.view.ViewGroup){android.view.ViewGroup g=(android.view.ViewGroup)v;for(int i=0;i<g.getChildCount();i++){TrophyReveal t=trophyView(g.getChildAt(i));if(t!=null)return t;}}return null;}
