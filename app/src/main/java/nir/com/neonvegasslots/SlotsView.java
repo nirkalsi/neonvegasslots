@@ -108,10 +108,31 @@ public class SlotsView extends View {
 
     public SlotsView(Context c) {
         this(c,SpecialFeature.ENABLED); }
-    SlotsView(Context c,boolean enabled){super(c);specialEnabled=enabled;art.loadBitmaps(c);randomizeAll();}
+    SlotsView(Context c,boolean enabled){super(c);setFocusable(true);setImportantForAccessibility(IMPORTANT_FOR_ACCESSIBILITY_YES);specialEnabled=enabled;art.loadBitmaps(c);randomizeAll();}
     boolean usesSpecialFeature(){return specialEnabled;}
     boolean isSaveBlocked(){return saveFault;}
     int freeSpinsRemaining(){return specialEnabled?specialState.remaining:0;}
+
+    private void accessibilityFeedback(int id){pressControl(id);controlDown=false;controlReleaseAt=nowMillis();invalidate();}
+    static final int A11Y_SPIN=0x01020001,A11Y_BET_DOWN=0x01020002,A11Y_BET_UP=0x01020003,A11Y_MAX=0x01020004,A11Y_SHOP=0x01020005,A11Y_MAP=0x01020006,A11Y_INFO=0x01020007,A11Y_COLLECT=0x01020008;
+    @Override public void onInitializeAccessibilityNodeInfo(android.view.accessibility.AccessibilityNodeInfo info){
+        super.onInitializeAccessibilityNodeInfo(info);info.setClassName("android.view.View");info.setFocusable(true);
+        info.setContentDescription("Slot machine. "+balance+" coins. Level "+level+". Bet "+BETS[betIdx]+". "+(lastWin>0?"Last payout "+lastWin+" coins. ":"")+(freeSpinsRemaining()>0?freeSpinsRemaining()+" free spins remaining. ":"")+(saveFault?"Save error. Restart required.":""));
+        if(saveFault)return;
+        if(pendingLevelCoins>0){if(levelMomentReady())info.addAction(new android.view.accessibility.AccessibilityNodeInfo.AccessibilityAction(A11Y_COLLECT,"Collect "+pendingLevelCoins+" level reward coins"));return;}
+        info.addAction(new android.view.accessibility.AccessibilityNodeInfo.AccessibilityAction(A11Y_SPIN,autoSpin?"Stop auto spin":spinning?"Quick stop reels":freeSpinsRemaining()>0?"Use one free spin":"Spin for "+BETS[betIdx]+" coins"));
+        if(!spinning&&!autoSpin&&freeSpinsRemaining()==0){info.addAction(new android.view.accessibility.AccessibilityNodeInfo.AccessibilityAction(A11Y_BET_DOWN,"Decrease bet"));info.addAction(new android.view.accessibility.AccessibilityNodeInfo.AccessibilityAction(A11Y_BET_UP,"Increase bet"));info.addAction(new android.view.accessibility.AccessibilityNodeInfo.AccessibilityAction(A11Y_MAX,"Maximum unlocked bet"));}
+        info.addAction(new android.view.accessibility.AccessibilityNodeInfo.AccessibilityAction(A11Y_SHOP,"Open coin shop"));info.addAction(new android.view.accessibility.AccessibilityNodeInfo.AccessibilityAction(A11Y_MAP,"Open progression map"));info.addAction(new android.view.accessibility.AccessibilityNodeInfo.AccessibilityAction(A11Y_INFO,"Open paytable and rules"));
+    }
+    @Override public boolean performAccessibilityAction(int action,android.os.Bundle args){
+        if(action>=A11Y_SPIN&&action<=A11Y_COLLECT){if(saveFault)return false;if(pendingLevelCoins>0&&action!=A11Y_COLLECT)return false;
+            if(action==A11Y_COLLECT){if(!levelMomentReady())return false;accessibilityFeedback(7);collectLevelReward();return true;}
+            if(action==A11Y_SPIN){accessibilityFeedback(2);if(autoSpin)stopAuto();else if(spinning)quickStop();else spin();return true;}
+            if(action==A11Y_BET_DOWN||action==A11Y_BET_UP||action==A11Y_MAX){if(spinning||autoSpin||freeSpinsRemaining()>0)return false;accessibilityFeedback(action==A11Y_MAX?3:1);if(action==A11Y_MAX)maxBet();else betStep(action==A11Y_BET_DOWN?-1:1);return true;}
+            if(listener==null)return false;accessibilityFeedback(action==A11Y_SHOP?5:action==A11Y_MAP?6:4);if(action==A11Y_SHOP)listener.onOpenShop();else if(action==A11Y_MAP)listener.onOpenMap();else listener.onOpenPaytable();return true;
+        }
+        return super.performAccessibilityAction(action,args);
+    }
 
     long nowMillis() { return System.currentTimeMillis(); } // overridable for tests
 
