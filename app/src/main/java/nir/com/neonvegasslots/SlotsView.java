@@ -17,6 +17,7 @@ public class SlotsView extends View {
         void onBigWin(long win, long bet);
         void onLevelUp(int level, long reward);
         void saveState();
+        default boolean saveSpecialState(String snapshot){saveState();return true;}
         default void onOpenShop() {}
         default void onOpenMap() {}
         default void onTrophyFound(int index) {}
@@ -42,6 +43,7 @@ public class SlotsView extends View {
 
     int betIdx() { return betIdx; }
     void betStep(int dir) {
+        if(saveFault)return;
         if(specialEnabled&&(specialState.pending||specialState.remaining>0))return;
         int n = betCount(level);
         betIdx = ((betIdx + dir) % n + n) % n; betBumpAt=nowMillis();persist(); invalidate();
@@ -59,7 +61,7 @@ public class SlotsView extends View {
     private final RectF qr = new RectF();
     private Listener listener;
 
-    private final boolean specialEnabled;private SpecialFeature.State specialState=new SpecialFeature.State();private boolean specialQuick=false;private long bonusMomentUntil=0;
+    private final boolean specialEnabled;private SpecialFeature.State specialState=new SpecialFeature.State();private boolean specialQuick=false;private boolean saveFault=false;private long bonusMomentUntil=0;
     private int[][] grid = new int[3][5];      // [row][col] symbol index
     private long balance = 500;
     private long lastWin = 0;
@@ -108,19 +110,20 @@ public class SlotsView extends View {
         this(c,SpecialFeature.ENABLED); }
     SlotsView(Context c,boolean enabled){super(c);specialEnabled=enabled;art.loadBitmaps(c);randomizeAll();}
     boolean usesSpecialFeature(){return specialEnabled;}
+    boolean isSaveBlocked(){return saveFault;}
     int freeSpinsRemaining(){return specialEnabled?specialState.remaining:0;}
 
     long nowMillis() { return System.currentTimeMillis(); } // overridable for tests
 
     public void setListener(Listener l) { listener = l; }
-    public void addCoins(long n) { balance += n; persist(); invalidate(); }
+    public void addCoins(long n) { if(saveFault)throw new IllegalStateException("Reload required before coin delivery");balance += n; persist(); invalidate(); }
     public long getBalance() { return balance; }
     public int getLevel() { return level; }
     boolean isSpinning() { return spinning; }
     /** True while a spin, win count-up, level-up or unlock animation is still resolving: popups wait. */
     boolean isBusyAnimating() {
         long n = System.currentTimeMillis();
-        return pendingLevelCoins>0 || spinning || n < winFlashUntil || n < bigWinUntil || n < levelFlashUntil || n < unlockFlashUntil || n < trophyFlashUntil;
+        return saveFault || (specialEnabled&&n<bonusMomentUntil) || pendingLevelCoins>0 || spinning || n < winFlashUntil || n < bigWinUntil || n < levelFlashUntil || n < unlockFlashUntil || n < trophyFlashUntil;
     }
     long getLastWin() { return lastWin; }
     public long getSpinsDone() { return spinsDone; }
@@ -205,7 +208,7 @@ public class SlotsView extends View {
     }
 
     long displayedLastWin(long n){if(lastWin<=0)return 0;float t=Math.max(0,Math.min(1,(n-winStartAt)/1100f));return Math.round(lastWin*(1-Math.pow(1-t,3)));}
-    boolean levelMomentReady(){long n=nowMillis();return pendingLevelCoins>0&&!spinning&&n>=winFlashUntil&&n>=bigWinUntil;}
+    boolean levelMomentReady(){long n=nowMillis();return !saveFault&&pendingLevelCoins>0&&!spinning&&(!specialEnabled||n>=bonusMomentUntil)&&n>=winFlashUntil&&n>=bigWinUntil;}
     long pendingLevelReward(){return pendingLevelCoins;}
     long collectLevelReward(){
         if(!levelMomentReady())return 0;
@@ -383,7 +386,7 @@ public class SlotsView extends View {
         cv.drawPath(t, q);
     }
 
-    private void persist() { if (listener != null) listener.saveState(); }
+    private void persist() { if(listener!=null){if(specialEnabled){if(!listener.saveSpecialState(serialize())){saveFault=true;stopAuto();throw new IllegalStateException("Game save failed; reload required before another transaction");}}else listener.saveState();} }
 
     private int pickSymbol() { return pickSymbol(rng); }
     /** Weighted symbol draw; the single source of truth for reels, also used by the payout tests. */
@@ -414,7 +417,7 @@ public class SlotsView extends View {
         for (int r = 0; r < 3; r++) for (int c = 0; c < 5; c++) grid[r][c] = pickSymbol();
     }
 
-    private void regen() { regenAt(System.currentTimeMillis()); }
+    private void regen() { if(!saveFault)regenAt(System.currentTimeMillis()); }
     /** +5 coins per full minute while under 100 (cap 100); time while the app was closed counts, because lastRegenAt is saved. */
     void regenAt(long now) {
         if (now < lastRegenAt) { lastRegenAt = now; return; } // clock moved backwards: no credit
@@ -469,7 +472,7 @@ public class SlotsView extends View {
         invalidate();
     }
     private void spin() {
-        if(pendingLevelCoins>0 || (specialEnabled&&nowMillis()<bonusMomentUntil))return;
+        if(saveFault||pendingLevelCoins>0 || (specialEnabled&&nowMillis()<bonusMomentUntil))return;
         if (spinning) { quickStop(); return; }
         regen();
         long bet = BETS[betIdx];
@@ -493,7 +496,7 @@ public class SlotsView extends View {
     }
 
     private void finishSpin() {
-        if(!spinning)return;
+        if(saveFault||!spinning)return;
         spinning = false;if(sfx!=null)sfx.stopReelLoop();
         boolean free=specialEnabled&&specialState.free;
         if(!free)spinsDone++;
@@ -925,6 +928,7 @@ public class SlotsView extends View {
     @Override public boolean onTouchEvent(MotionEvent e) {
         int act = e.getActionMasked();
         if (act == MotionEvent.ACTION_UP || act == MotionEvent.ACTION_CANCEL) {boolean collect=act==MotionEvent.ACTION_UP&&controlDown&&pressedControl==7&&levelMomentReady()&&levelCollect.contains(e.getX(),e.getY());controlDown=false;controlReleaseAt=nowMillis();invalidate(); spinHeld = false; lpHandler.removeCallbacks(longPressAuto);if(collect)collectLevelReward(); return true; }
+        if(saveFault)return true;
         if (act != MotionEvent.ACTION_DOWN) return true;
         finishControlTip();
         float w = getWidth();

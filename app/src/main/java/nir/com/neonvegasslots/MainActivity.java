@@ -439,7 +439,7 @@ public class MainActivity extends Activity implements SlotsView.Listener, Billin
     @Override public void onOpenShop() { showShop(); }
     @Override public void onOpenPaytable() {
         dlg().title("Paytable & paylines")
-            .body("Five paylines. Match 3, 4 or 5 of the same symbol consecutively from the leftmost reel. All winning lines are added. Values below are at BET 10; rewards scale with your bet (rounded down per line). Virtual coins only, no cash value.")
+            .body("Five paylines. Match 3, 4 or 5 of the same symbol consecutively from the leftmost reel. All winning lines are added. Values below are at BET 10; rewards scale with your bet (rounded down per line). Virtual coins only, no cash value."+(game.usesSpecialFeature()?"\n\nWild replaces regular symbols on reels 2-4, never Bonus. Only the highest reward on each line is paid. Bonus on 3 or more different reels gives 5 free spins at the same bet, with no coin deduction. No Bonus symbols or retrigger during free spins. Free spins do not add paid-spin quest progress, XP or trophy rolls.":""))
             .content(new PaytableView(this, game.getThemeIdx()))
             .add(GameDialog.Btn.secondary("Close", null)).show();
     }
@@ -480,8 +480,11 @@ public class MainActivity extends Activity implements SlotsView.Listener, Billin
     }
 
     @Override public void saveState() {
-        if(game.usesSpecialFeature())sp.edit().putString(KEY,game.serialize()).commit();else sp.edit().putString(KEY, game.serialize()).apply();
+        if(game.isSaveBlocked())return;
+        if(game.usesSpecialFeature()){if(!saveSpecialState(game.serialize()))throw new IllegalStateException("Game save failed");}else sp.edit().putString(KEY, game.serialize()).apply();
     }
+
+    @Override public boolean saveSpecialState(String snapshot){return sp.edit().putString(KEY,snapshot).commit();}
 
     // ---------- BillingManager.Listener ----------
     @Override public void onAdsRemovedOwned() {
