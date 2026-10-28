@@ -12,9 +12,10 @@ public class ReelSamplingPreservationTest {
    for(View v:new View[]{ordinary,candidate}){v.layout(0,0,640,1040);spin.invoke(v);field("spinStartedAt").setLong(v,120000);field("lastRegenAt").setLong(v,120000);long[] deadlines=(long[])field("stopAt").get(v);for(int c=0;c<5;c++)deadlines[c]=120600+c*150;int[][] g=(int[][])field("grid").get(v);for(int r=0;r<3;r++)for(int c=0;c<5;c++)g[r][c]=(r+c)%6;}
    Bitmap bmp=Bitmap.createBitmap(640,1040,Bitmap.Config.ARGB_8888);Canvas canvas=new Canvas(bmp);
    for(int ms=0;ms<=2600;ms+=scenario==2?53:30){
-    for(View v:new View[]{ordinary,candidate}){v.clock=120000+ms;long[] deadlines=(long[])field("stopAt").get(v);if(scenario==1&&ms==240)for(int c=0;c<5;c++)deadlines[c]=v.clock+110*(c+1);if(scenario==2&&ms==954){int[][] g=(int[][])field("grid").get(v);for(int r=0;r<3;r++)for(int c=0;c<4;c++)g[r][c]=1;}v.draw(canvas);}
+    for(View v:new View[]{ordinary,candidate}){v.clock=120000+ms;long[] deadlines=(long[])field("stopAt").get(v);if(scenario==1&&ms==240)for(int c=0;c<5;c++)deadlines[c]=v.clock+110*(c+1);if(scenario==2&&ms==1060){int[][] g=(int[][])field("grid").get(v);for(int r=0;r<3;r++)for(int c=0;c<4;c++)g[r][c]=1;}v.draw(canvas);}
     assertEquals(a.calls,b.calls);int[][] ga=(int[][])field("grid").get(ordinary),gb=(int[][])field("grid").get(candidate);for(int r=0;r<3;r++)assertArrayEquals(ga[r],gb[r]);assertArrayEquals((long[])field("stopAt").get(ordinary),(long[])field("stopAt").get(candidate));assertEquals(SlotsView.evaluate(ga,10,null),SlotsView.evaluate(gb,10,null));
    }
+   if(scenario==2){assertTrue(field("anticipationGiven").getBoolean(ordinary));assertTrue(field("anticipationGiven").getBoolean(candidate));}
    field("lastRegenAt").setLong(ordinary,120000);field("lastRegenAt").setLong(candidate,120000);Method finish=SlotsView.class.getDeclaredMethod("finishSpin");finish.setAccessible(true);finish.invoke(ordinary);finish.invoke(candidate);assertEquals(ordinary.serialize(),candidate.serialize());assertEquals(ordinary.getLastWin(),candidate.getLastWin());assertEquals(a.calls,b.calls);String settled=candidate.serialize();finish.invoke(candidate);assertEquals(settled,candidate.serialize());
   }
  }
