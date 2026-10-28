@@ -845,7 +845,7 @@ public class SlotsView extends View {
         if (now < trophyFlashUntil) ju = "TROPHY:" + trophyNewName;
         else ju = now < unlockFlashUntil ? unlockedName : null;
         cv.save();float mapScale=controlScale(6,now);cv.scale(mapScale,mapScale,w*.5f,(trailTop()+trailBottom())*.5f);
-        art.trailCompact(cv, w, trailTop(), trailBottom(), level, xp, xpNeeded(), themeIdx, ju,bodySize(w*.036f));
+        art.trailCompact(cv, w, trailTop(), trailBottom(), level, Math.round(displayedXp(now)), xpNeeded(), themeIdx, ju,bodySize(w*.036f));
         if(controlDown&&pressedControl==6){p.setColor(0x44000000);cv.drawRoundRect(w*.05f,trailTop(),w*.95f,trailBottom(),w*.025f,w*.025f,p);}cv.restore();
         if (setComplete(themeIdx)) art.frameOrnament(cv, w / 2, gridTop - w * .022f, w * .05f, th);
 
