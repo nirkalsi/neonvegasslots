@@ -6,8 +6,7 @@ import android.media.AudioFormat;
 import android.media.AudioTrack;
 
 /** Original background music, synthesized in code (no third-party audio, so no licence to track).
- *  A soft looping pad plus a slow pentatonic arpeggio, 16 s loop; every partial is a whole number of
- *  cycles per loop so the loop point is click-free. Own on/off switch, on by default, paused whenever the
+ *  Original themed 16-second loop with quiet envelopes and a faded loop seam. Own on/off switch, on by default, paused whenever the
  *  game is not in the foreground (this also covers a rewarded ad taking over the screen). */
 public final class Music {
     static final String PREF = "music_on";
@@ -19,25 +18,16 @@ public final class Music {
     static short[] render() {
         int n = RATE * SECONDS;
         double[] buf = new double[n];
-        // chord pad, Am - F - C - G, 4 s each; frequencies snapped to whole cycles per loop
-        double[][] chords = {{220.00, 261.63, 329.63}, {174.61, 220.00, 261.63}, {196.00, 261.63, 329.63}, {196.00, 246.94, 293.66}};
-        int seg = n / 4;
-        for (int c = 0; c < 4; c++) for (double f0 : chords[c]) {
-            double f = Math.round(f0 * SECONDS) / (double) SECONDS;
-            for (int i = 0; i < seg; i++) {
-                double t = (double) i / seg, env = Math.sin(Math.PI * t); env *= env;
-                int k = c * seg + i;
-                buf[k] += 0.11 * env * Math.sin(2 * Math.PI * f * k / RATE);
-            }
+        // Original soft electric pulse: neon city, not the Dragon pluck loop.
+        double[] roots={110,87.31,130.81,98};int seg=n/4;
+        for(int chord=0;chord<4;chord++)for(double ratio:new double[]{2,2.5,3})for(int i=0;i<seg;i++){
+            double t=i/(double)RATE,env=Math.pow(Math.sin(Math.PI*i/seg),2),f=roots[chord]*ratio;
+            buf[chord*seg+i]+=.045*env*Math.sin(2*Math.PI*f*t)*(1+.12*Math.sin(2*Math.PI*2*t));
         }
-        // arpeggio, 8th notes at 0.5 s, A minor pentatonic, plucked decay
-        double[] scale = {440.00, 523.25, 587.33, 659.25, 783.99, 659.25, 587.33, 523.25};
-        int step = RATE / 2;
-        for (int s = 0; s < SECONDS * 2; s++) {
-            double f = scale[(s * 3 + s / 8) % scale.length];
-            for (int i = 0; i < step * 2 && s * step + i < n; i++) {
-                double env = Math.exp(-i / (RATE * 0.35)) * Math.min(1.0, i / 200.0);
-                buf[s * step + i] += 0.10 * env * Math.sin(2 * Math.PI * f * i / RATE);
+        int beat=RATE/2;double[] notes={440,523.25,659.25,587.33,523.25,392,440,329.63};
+        for(int step=0;step<SECONDS*2;step++){int start=step*beat;double bass=roots[(step/8)%4],f=notes[(step+step/8)%notes.length];
+            for(int i=0;i<beat&&start+i<n;i++){double t=i/(double)RATE,env=Math.min(1,t/.014)*Math.exp(-t*9);
+                buf[start+i]+=.11*env*Math.sin(2*Math.PI*bass*t)+.085*env*(Math.sin(2*Math.PI*f*t)+.20*Math.sin(2*Math.PI*f*2*t));
             }
         }
         short[] out = new short[n];
