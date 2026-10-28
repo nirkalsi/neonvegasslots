@@ -30,6 +30,7 @@ public class RedesignInputTest {
   SlotsView v=new SlotsView(RuntimeEnvironment.getApplication());v.layout(0,0,720,1480);
   v.restore("500;0;1;0;0;10;0"); // level 10 unlocks every stop
   MapView mv=new MapView(RuntimeEnvironment.getApplication(),v); mv.measure(android.view.View.MeasureSpec.makeMeasureSpec(720,android.view.View.MeasureSpec.EXACTLY),android.view.View.MeasureSpec.makeMeasureSpec(0,android.view.View.MeasureSpec.UNSPECIFIED)); mv.layout(0,0,720,mv.getMeasuredHeight());
+  mv.onTouchEvent(android.view.MotionEvent.obtain(0,0,android.view.MotionEvent.ACTION_DOWN,mv.stopX(3),mv.stopY(3),0));
   mv.onTouchEvent(android.view.MotionEvent.obtain(0,0,android.view.MotionEvent.ACTION_UP,mv.stopX(3),mv.stopY(3),0)); // the map now lives in a dialog
   assertEquals(3,v.getThemeIdx());
   assertEquals("3",v.serialize().split(";")[6]);

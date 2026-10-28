@@ -46,6 +46,8 @@ public class SlotsView extends View {
         betIdx = ((betIdx + dir) % n + n) % n; betBumpAt=nowMillis();persist(); invalidate();
     }
 
+    private float bodySize(float preferred){return Math.max(preferred,12*getResources().getDisplayMetrics().scaledDensity);}
+    private float moneySize(float preferred){return Math.max(preferred,18*getResources().getDisplayMetrics().scaledDensity);}
     private long betBumpAt=0;
     void maxBet(){if(spinning||autoSpin||pendingLevelCoins>0)return;betIdx=betCount(level)-1;betBumpAt=nowMillis();persist();invalidate();}
 
@@ -264,7 +266,7 @@ public class SlotsView extends View {
         String amt = String.format(java.util.Locale.US, "%,d", shownBalance);
         p.setTextAlign(Paint.Align.LEFT);
         p.setFakeBoldText(true);
-        p.setTextSize(w * 0.052f);
+        p.setTextSize(moneySize(w * 0.052f));
         float tw = p.measureText(amt);
         float h = w * 0.092f, pad = h * 0.18f, disc = h - pad * 2;
         float cw = pad + disc + h * 0.28f + tw + h * 0.32f + disc + pad;
@@ -278,9 +280,9 @@ public class SlotsView extends View {
         chipCx = cx + cw / 2f; chipCy = dcy;
         if (balance < 100) { // refill timer: +5 coins per full minute below 100, also while the app is closed
             long left = Math.max(0, 60000 - (System.currentTimeMillis() - lastRegenAt)) / 1000;
-            p.setTextSize(w * 0.036f); p.setFakeBoldText(true); p.setColor(0xFFBFE9C8);
+            p.setTextSize(bodySize(w * 0.036f)); p.setFakeBoldText(true); p.setColor(0xFFBFE9C8);
             cv.drawText(String.format(java.util.Locale.US, "+5 in %d:%02d", left / 60, left % 60), cx + cw + w * 0.025f, dcy + p.getTextSize() * 0.35f, p);
-            p.setTextSize(w * 0.052f);
+            p.setTextSize(moneySize(w * 0.052f));
         }
         p.setColor(0xFFFFC83A); cv.drawCircle(dcx, dcy, disc / 2, p);
         p.setColor(0xFFE09A12); cv.drawCircle(dcx, dcy, disc * 0.34f, p);
@@ -525,7 +527,8 @@ public class SlotsView extends View {
     private float cellH() { return cellH(getWidth(), getHeight()); }
     static float gridTop(float w,float h){return Math.max(h*.145f,w*.29f);}
     private float gridTop() { return gridTop(getWidth(),getHeight()); }
-    private float trailTop() { return ctrlY(getWidth(), getHeight()) + getHeight() * 0.07f + getWidth() * 0.055f; }
+    private float captionHeight(){return Math.max(getWidth()*.055f,moneySize(getWidth()*.032f)*1.35f);}
+    private float trailTop() { return ctrlY(getWidth(), getHeight()) + getHeight() * 0.07f + captionHeight(); }
     private float trailBottom() { return trailTop() + getWidth() * 0.19f; } // compact strip; the full map opens in a dialog
     private float trailNodeY() {
         float top = trailTop(), height = Math.min(trailBottom() - top, getWidth() * .68f);
@@ -575,9 +578,9 @@ public class SlotsView extends View {
         float frac = Math.min(1f, displayedXp(now) / (float) xpNeeded());if(xpAnimAt>0&&now-xpAnimAt<450)postInvalidateDelayed(16);
         rf.set(barL, barY, barL + (barR - barL) * frac, barY + barH);
         p.setColor(th.title); cv.drawRoundRect(rf, 8, 8, p);
-        String nextReward="Next Lv "+(level+1)+": +"+(150L*(level+1))+" coins";
-        p.setTextAlign(Paint.Align.CENTER);p.setTextSize(w*.034f);p.setColor(th.soft);
-        cv.drawText(nextReward,w*.50f,w*.255f,p);
+        String nextReward="+"+(150L*(level+1))+" at Lv "+(level+1);
+        p.setTextAlign(Paint.Align.CENTER);p.setTextSize(bodySize(w*.034f));p.setColor(th.soft);
+        cv.drawText(nextReward,w*.44f,w*.255f,p);
         // Info/paytable entry beside XP, separate from currency and store.
         float infoX=w*.90f, infoY=w*.18f;
         p.setColor(th.panelBg);cv.drawCircle(infoX,infoY,w*.034f,p);
@@ -705,9 +708,9 @@ public class SlotsView extends View {
         float bcy = rf.centerY(), bu = btnH * 0.2f;
         p.setFakeBoldText(true); p.setTextAlign(Paint.Align.CENTER); p.setColor(0xFFFFFFFF);
         String bl = betLabel(BETS[betIdx]);
-        p.setTextSize(w * (bl.length() > 3 ? 0.044f : 0.054f));
+        p.setTextSize(moneySize(w * (bl.length() > 3 ? 0.044f : 0.054f)));
         float textW=p.measureText(bl),coinR=btnH*.22f,gap=btnH*.13f;float groupW=coinR*2+gap+textW;float coinX=rf.centerX()-groupW/2+coinR;float valueX=rf.centerX()+groupW/2-textW/2;
-        coinIcon(cv,coinX,bcy,coinR,th);p.setColor(0xFFFFFFFF);p.setTextAlign(Paint.Align.CENTER);
+        if(groupW<rf.width()-btnH*1.45f)coinIcon(cv,coinX,bcy,coinR,th);else valueX=rf.centerX();p.setColor(0xFFFFFFFF);p.setTextAlign(Paint.Align.CENTER);
         cv.save();float bt=Math.min(1,Math.max(0,(now-betBumpAt)/260f));float bs=1+.15f*(float)Math.sin(bt*Math.PI);cv.scale(bs,bs,rf.centerX(),bcy);cv.drawText(bl, valueX, bcy + btnH * 0.17f, p);cv.restore();if(bt<1)postInvalidateDelayed(16);
         p.setStyle(Paint.Style.STROKE); p.setStrokeCap(Paint.Cap.ROUND); p.setStrokeWidth(btnH * 0.09f); p.setColor(0xFFFFFFFF);
         float mx = rf.left + btnH * 0.34f, px = rf.right - btnH * 0.34f;
@@ -747,11 +750,11 @@ public class SlotsView extends View {
         }
         p.clearShadowLayer();if(controlDown&&pressedControl==2){p.setColor(0x33000000);cv.drawRoundRect(w*.43f,ctrlY,w*.97f,ctrlY+btnH,btnH*.32f,btnH*.32f,p);}cv.restore();
         { // labels under the control row: BET caption and WIN readout
-            float ly = ctrlY + btnH + w * 0.042f;
-            p.setFakeBoldText(true); p.setTextAlign(Paint.Align.CENTER); p.setTextSize(w * 0.032f);
-            p.setColor(th.soft); cv.drawText("BET", w * 0.10f, ly, p);
-            p.setColor(th.title);p.setTextSize(w*.026f);cv.drawText("MAX BET",w*.31f,ly,p);p.setTextSize(w*.032f);
-            if (lastWin > 0) { p.setColor(0xFFFFD166); cv.drawText("WIN " + (now<bigWinUntil?shownTierWin(bigWinAmount,now-bigWinStartAt,bigWinMs):displayedLastWin(now)), w * 0.70f, ly, p); }
+            float ly = ctrlY + btnH + captionHeight()*.76f;
+            p.setFakeBoldText(true); p.setTextAlign(Paint.Align.CENTER); p.setTextSize(bodySize(w * 0.032f));
+            // The bet is already shown on its coin control; this caption is its separate MAX action.
+            p.setColor(th.title);p.setTextSize(bodySize(w*.026f));cv.drawText("MAX BET",w*.215f,ly,p);p.setTextSize(bodySize(w*.032f));
+            if (lastWin > 0) { p.setTextSize(moneySize(w*.032f));p.setColor(0xFFFFD166); cv.drawText("WIN " + (now<bigWinUntil?shownTierWin(bigWinAmount,now-bigWinStartAt,bigWinMs):displayedLastWin(now)), w * 0.70f, ly, p); }
             else { p.setColor(th.soft); cv.drawText(autoSpin ? "AUTO - tap to stop" : spinning ? "TAP TO STOP" : "HOLD = AUTO", w * 0.70f, ly, p); }
             p.setFakeBoldText(false);
         }
@@ -879,7 +882,7 @@ public class SlotsView extends View {
         if(pendingLevelCoins>0){if(levelMomentReady()&&levelCollect.contains(x,y))collectLevelReward();return true;}
         if (Math.abs(x-w*.90f)<=w*.065f && Math.abs(y-w*.18f)<=w*.065f) { if(listener!=null)listener.onOpenPaytable();return true; }
         if (chipPlus.contains(x, y)) { if (listener != null) listener.onOpenShop(); return true; }
-        if(x>=w*.21f&&x<=w*.40f&&y>ctrlY+btnH&&y<=ctrlY+btnH+w*.055f){maxBet();return true;}
+        if(x>=w*.03f&&x<=w*.40f&&y>ctrlY+btnH&&y<=ctrlY+btnH+captionHeight()){maxBet();return true;}
         if (y >= ctrlY && y <= ctrlY + btnH) {
             if (x >= w * 0.03f && x <= w * 0.40f) {
                 if (!spinning && !autoSpin){pressControl(1);betStep(x < w * 0.03f + w * 0.37f * 0.33f ? -1 : 1);}

@@ -1,0 +1,7 @@
+package nir.com.neonvegasslots;
+import android.graphics.*;import android.view.*;import java.io.*;import org.junit.*;import org.junit.runner.RunWith;import org.robolectric.*;import org.robolectric.annotation.*;
+@RunWith(RobolectricTestRunner.class)@Config(sdk=34,qualifiers="w320dp-h570dp-hdpi")@GraphicsMode(GraphicsMode.Mode.NATIVE)
+public class MainTypographyTest{
+ @Test public void mainCurrencyAtLargeFont()throws Exception{android.content.Context c=RuntimeEnvironment.getApplication();android.util.DisplayMetrics dm=c.getResources().getDisplayMetrics();float old=dm.scaledDensity;dm.scaledDensity=dm.density*1.35f;
+ try{SlotsView v=new SlotsView(c);java.lang.reflect.Method money=SlotsView.class.getDeclaredMethod("moneySize",float.class),body=SlotsView.class.getDeclaredMethod("bodySize",float.class);money.setAccessible(true);body.setAccessible(true);Assert.assertEquals(18*dm.scaledDensity,(Float)money.invoke(v,1f),.01f);Assert.assertEquals(12*dm.scaledDensity,(Float)body.invoke(v,1f),.01f);v.restore("999999;0;4;0;0;1;0");java.lang.reflect.Field f=SlotsView.class.getDeclaredField("lastWin");f.setAccessible(true);f.setLong(v,1250);v.measure(View.MeasureSpec.makeMeasureSpec(420,View.MeasureSpec.EXACTLY),View.MeasureSpec.makeMeasureSpec(850,View.MeasureSpec.EXACTLY));v.layout(0,0,420,850);Bitmap b=Bitmap.createBitmap(420,850,Bitmap.Config.ARGB_8888);v.draw(new Canvas(b));try(FileOutputStream o=new FileOutputStream("/tmp/renders/neonvegasslots-main-font135.png")){b.compress(Bitmap.CompressFormat.PNG,100,o);}}finally{dm.scaledDensity=old;}}
+}
