@@ -61,7 +61,7 @@ public class SlotsView extends View {
     private final RectF qr = new RectF();
     private Listener listener;
 
-    private final ReelLandingMotion[] landingMotion=new ReelLandingMotion[5];private final boolean smoothLanding;private final boolean[] frozenReel=new boolean[5];private final boolean specialEnabled;private SpecialFeature.State specialState=new SpecialFeature.State();private boolean specialQuick=false;private boolean saveFault=false;private long bonusMomentUntil=0;
+    private final ReelLandingMotion[] landingMotion=new ReelLandingMotion[5];private final boolean smoothLanding;private final boolean specialEnabled;private SpecialFeature.State specialState=new SpecialFeature.State();private boolean specialQuick=false;private boolean saveFault=false;private long bonusMomentUntil=0;
     private int[][] grid = new int[3][5];      // [row][col] symbol index
     private long balance = 500;
     private long lastWin = 0;
@@ -510,7 +510,7 @@ public class SlotsView extends View {
         GameDialog.noteAction();
         long now = System.currentTimeMillis();
         spinStartedAt=now;
-        for (int c = 0; c < 5; c++) { frozenReel[c]=false;stopAt[c] = now + 600 + c * 150;landingMotion[c]=new ReelLandingMotion(now,stopAt[c],c); stopSounded[c] = false; }
+        for (int c = 0; c < 5; c++) { stopAt[c] = now + 600 + c * 150;landingMotion[c]=new ReelLandingMotion(now,stopAt[c]+180,c); stopSounded[c] = false; }
         fx(SoundFx.Effect.SPIN);if(sfx!=null)sfx.startReelLoop();
         anticipationGiven = false;
         for (int r = 0; r < 3; r++) for (int c = 0; c < 5; c++) winCell[r][c] = false;
@@ -665,13 +665,13 @@ public class SlotsView extends View {
         for (int r = 0; r < 3; r++) {
             for (int c = 0; c < 5; c++) {
                 if (spinning && now < stopAt[c]) {
-                    if(smoothLanding&&stopAt[c]-now<=180)frozenReel[c]=true;
-                    if (!specialEnabled && !frozenReel[c] && now / 60 % 2 == 0) grid[r][c] = pickSymbol();
+                    if (!specialEnabled && now / 60 % 2 == 0) grid[r][c] = pickSymbol();
                 }
                 float x = 4 + c * (cellW + 8);
                 float y = gridTop + r * (cellH + 8);
                 // settle bounce: a just-stopped column drops in with a small overshoot
-                float settle = (now - stopAt[c]) / 260f;
+                long visibleStop=stopAt[c]+(smoothLanding?180:0);
+                float settle = (now - visibleStop) / 260f;
                 if (settle >= 0 && settle < 1) {if(smoothLanding)y+=cellW*.08f*(float)Math.sin(settle*Math.PI*2)*(1-settle);else y -= cellW * 0.12f * (1 - settle) * (float) Math.cos(settle * 6.9f);}
                 rf.set(x + 2, y, x + cellW + 2, y + cellH);
                 boolean hot = winCell[r][c] && flash;
@@ -680,12 +680,12 @@ public class SlotsView extends View {
                     p.setStyle(Paint.Style.STROKE); p.setStrokeWidth(2); p.setColor(th.cellHotStroke);
                     cv.drawRoundRect(rf,12,12,p); p.setStyle(Paint.Style.FILL);
                 }
-                if (spinning && now < stopAt[c]) {
+                if (spinning && now < visibleStop) {
                     // Render one continuous column, not three separately clipped moving cells.
-                    if(r==0){if(smoothLanding){if(landingMotion[c]==null)landingMotion[c]=new ReelLandingMotion(spinStartedAt,stopAt[c],c);landingMotion[c].deadline(now,stopAt[c]);}float pitch=cellH+8,scroll=smoothLanding?(float)(landingMotion[c].phase(now)*pitch%(3*pitch)):(reelDistance(now-spinStartedAt)+c*173)%pitch,cx=x+2+cellW/2;
+                    if(r==0){if(smoothLanding){if(landingMotion[c]==null)landingMotion[c]=new ReelLandingMotion(spinStartedAt,visibleStop,c);landingMotion[c].deadline(now,visibleStop);}float pitch=cellH+8,scroll=smoothLanding?(float)(landingMotion[c].phase(now)*pitch%(3*pitch)):(reelDistance(now-spinStartedAt)+c*173)%pitch,cx=x+2+cellW/2;
                         cv.save();cv.clipRect(x+2,gridTop,x+cellW+2,gridTop+gridH);
                         for(int j=smoothLanding?-4:-1;j<4;j++){int sym=grid[Math.floorMod(j,3)][c];float cy=gridTop+cellH/2+j*pitch+scroll;
-                            for(int ghost=1;ghost<=3;ghost++){cv.saveLayerAlpha(x+2,gridTop,x+cellW+2,gridTop+gridH,(int)((45-ghost*9)*(smoothLanding?Math.min(1,(stopAt[c]-now)/180f):1)));art.symbol(cv,sym,cx,cy-ghost*cellH*.075f,cellW*.82f);cv.restore();}
+                            for(int ghost=1;ghost<=3;ghost++){cv.saveLayerAlpha(x+2,gridTop,x+cellW+2,gridTop+gridH,(int)((45-ghost*9)*(smoothLanding?Math.min(1,(visibleStop-now)/180f):1)));art.symbol(cv,sym,cx,cy-ghost*cellH*.075f,cellW*.82f);cv.restore();}
                             art.symbol(cv,sym,cx,cy,cellW*.82f);
                         }cv.restore();}
 
@@ -723,7 +723,7 @@ public class SlotsView extends View {
             }
         }
         if (spinning) {
-            for (int c = 0; c < 5; c++) if (now >= stopAt[c] && !stopSounded[c]) { stopSounded[c] = true; fx(SoundFx.Effect.REEL_STOP); }
+            for (int c = 0; c < 5; c++) if (now >= stopAt[c]+(smoothLanding?180:0) && !stopSounded[c]) { stopSounded[c] = true; fx(SoundFx.Effect.REEL_STOP); }
             boolean allStopped = true;
             for (int c = 0; c < 5; c++) if (now < stopAt[c]) allStopped = false;
             boolean firstFourStopped = true;
@@ -753,7 +753,8 @@ public class SlotsView extends View {
                     p.setStyle(Paint.Style.FILL);
                 }
             }
-            if (allStopped) { post(this::finishSpin); }
+            boolean visualsStopped=allStopped;if(smoothLanding)for(int c=0;c<5;c++)if(now<stopAt[c]+180)visualsStopped=false;
+            if (visualsStopped) { post(this::finishSpin); }
             else postInvalidateDelayed(30);
         } else if (now < winFlashUntil || now < bigWinUntil || now < unlockFlashUntil || now < levelFlashUntil || now < trophyFlashUntil) {
             postInvalidateDelayed(60);
