@@ -344,6 +344,7 @@ final class SlotArt {
     }
     /** Skin-specific idle and win motion. Pure presentation: never changes symbol or payout. */
     void symbolAnimated(Canvas c,int id,float cx,float cy,float size,long now,boolean win){
+        if(SpecialFeature.ENABLED && id>=6){SpecialFeature.symbol(c,id,cx,cy,size,now,win,false);return;}
         float phase=now/210f+id*1.7f;
         float wave=(float)Math.sin(phase);
         c.save();
