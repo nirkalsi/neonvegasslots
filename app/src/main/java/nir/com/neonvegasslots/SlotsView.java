@@ -61,7 +61,7 @@ public class SlotsView extends View {
     private final RectF qr = new RectF();
     private Listener listener;
 
-    private final ReelLandingMotion[] landingMotion=new ReelLandingMotion[5];private final boolean smoothLanding;private final boolean specialEnabled;private SpecialFeature.State specialState=new SpecialFeature.State();private boolean specialQuick=false;private boolean saveFault=false;private long bonusMomentUntil=0;
+    private long logicalRewardAt=0;private final ReelLandingMotion[] landingMotion=new ReelLandingMotion[5];private final boolean smoothLanding;private final boolean specialEnabled;private SpecialFeature.State specialState=new SpecialFeature.State();private boolean specialQuick=false;private boolean saveFault=false;private long bonusMomentUntil=0;
     private int[][] grid = new int[3][5];      // [row][col] symbol index
     private long balance = 500;
     private long lastWin = 0;
@@ -201,9 +201,11 @@ public class SlotsView extends View {
     }
 
     private void maybeTrophy() {
-        String today = new SimpleDateFormat("yyyy-MM-dd", Locale.US).format(new Date());
+        String today = trophyDate(smoothLanding&&logicalRewardAt>0?logicalRewardAt:System.currentTimeMillis());
         tryTrophyDrop(rng.nextFloat(), today);
     }
+
+    static String trophyDate(long at){return new SimpleDateFormat("yyyy-MM-dd",Locale.US).format(new Date(at));}
 
     public String serialize() { return balance + ";" + spinsDone + ";" + betIdx + ";" + lastRegenAt + ";" + xp + ";" + level + ";" + themeIdx + ";" + trophyMask + ";" + trophyDay + ";" + pendingLevelCoins + ";" + pendingLevelFrom + (specialEnabled?";"+specialJson():""); }
     private String specialJson(){try{specialState.balance=balance;return specialState.json();}catch(Exception e){throw new IllegalStateException(e);}}
@@ -506,7 +508,7 @@ public class SlotsView extends View {
         if(specialEnabled){specialState.sequence++;specialState.pending=true;specialState.free=free;specialState.stake=bet;if(free)specialState.remaining--;specialQuick=false;for(int r=0;r<3;r++)for(int c=0;c<5;c++){double x=rng.nextDouble(),scatter=free?0:SpecialFeature.SCATTER_P,wild=c>=1&&c<=3?SpecialFeature.WILD_P:0;grid[r][c]=x<scatter?7:x<scatter+wild?6:pickSymbol();}specialState.grid=grid;specialState.award=SpecialFeature.evaluate(grid,bet);}
         xpAnimFrom=displayedXp(nowMillis());xpAnimAt=nowMillis();if(!free)xp += xpForBet(bet);
         lastWin = 0;
-        spinning = true;
+        spinning = true;logicalRewardAt=0;
         GameDialog.noteAction();
         long now = System.currentTimeMillis();
         spinStartedAt=now;
@@ -753,6 +755,7 @@ public class SlotsView extends View {
                     p.setStyle(Paint.Style.FILL);
                 }
             }
+            if(smoothLanding&&allStopped&&logicalRewardAt==0)logicalRewardAt=now;
             boolean visualsStopped=allStopped;if(smoothLanding)for(int c=0;c<5;c++)if(now<stopAt[c]+180)visualsStopped=false;
             if (visualsStopped) { post(this::finishSpin); }
             else postInvalidateDelayed(30);
