@@ -57,28 +57,12 @@ public class MainActivity extends Activity implements SlotsView.Listener, Billin
         sfx = new SoundFx(this);
         music = new Music(this);
         game.setSoundFx(sfx);
-        // Short screens: the game view is taller than the viewport so the progression trail panel keeps a readable size; scroll to reach it.
+        // Only scroll when square reels plus all controls and the compact map cannot fit.
         ScrollView gameScroll = new ScrollView(this) {
-            @Override protected void onMeasure(int wSpec, int hSpec) {
-                super.onMeasure(wSpec, hSpec);
-                float w = getMeasuredWidth();
-                int need = (int) ((w * 0.50f + 3 * (w / 5f - 8) * 1.22f + 40 + w * 0.155f) / 0.71f);
-                int vh = getMeasuredHeight();
-                int want = Math.max(vh, need);
-                // ScrollView measures its child UNSPECIFIED and ignores LayoutParams.height; minimum height is what it honours.
-                if (game.getMinimumHeight() != want) { game.setMinimumHeight(want); game.requestLayout(); }
-            }
-            private boolean touched = false; // until the player scrolls, keep the controls in view as the viewport changes (e.g. banner loads)
-            @Override public boolean onTouchEvent(android.view.MotionEvent e) { touched = true; return super.onTouchEvent(e); }
-            @Override public boolean onInterceptTouchEvent(android.view.MotionEvent e) { if (e.getActionMasked() == android.view.MotionEvent.ACTION_DOWN) touched = true; return super.onInterceptTouchEvent(e); }
-            @Override protected void onLayout(boolean changed, int l, int t, int r, int b) {
-                super.onLayout(changed, l, t, r, b);
-                int vh = getHeight(), gh = game.getHeight();
-                if (!touched && vh > 0 && gh > vh) { // short screen: open with the reels AND the BET/SPIN row in view
-                    float w = getWidth();
-                    int ctrlBottom = (int) (gh * 0.195f + 3 * (w / 5f - 8) * 1.22f + 16 + 24 + gh * 0.07f + 12);
-                    scrollTo(0, Math.max(0, Math.min(gh - vh, ctrlBottom - vh)));
-                }
+            @Override protected void onMeasure(int wSpec,int hSpec){
+                super.onMeasure(wSpec,hSpec);
+                int want=Math.max(getMeasuredHeight(),game.minimumContentHeight(getMeasuredWidth()));
+                if(game.getMinimumHeight()!=want){game.setMinimumHeight(want);super.onMeasure(wSpec,hSpec);}
             }
         };
         gameScroll.setFillViewport(true);
@@ -177,7 +161,14 @@ public class MainActivity extends Activity implements SlotsView.Listener, Billin
 
     private View buildButtonRow() {
         float dn = getResources().getDisplayMetrics().density;
-        LinearLayout row = new LinearLayout(this);
+        LinearLayout row = new LinearLayout(this){
+            @Override protected void onMeasure(int ws,int hs){
+                int available=View.MeasureSpec.getSize(ws)-getPaddingLeft()-getPaddingRight();
+                int limit=Math.max(1,available/3);
+                for(int i=0;i<getChildCount();i++){View child=getChildAt(i);if(child instanceof IconTile){android.view.ViewGroup.LayoutParams lp=child.getLayoutParams();lp.width=Math.min(limit,(int)((child==missionsTile?96:84)*getResources().getDisplayMetrics().density));child.setLayoutParams(lp);}}
+                super.onMeasure(ws,hs);
+            }
+        };
         row.setOrientation(LinearLayout.HORIZONTAL);
         row.setGravity(Gravity.CENTER_VERTICAL);
         row.setPadding((int) (6 * dn), (int) (2 * dn), (int) (6 * dn), 0);

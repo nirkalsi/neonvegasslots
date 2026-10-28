@@ -49,7 +49,7 @@ public class GameplayCaptureTest {
                     if(ready[0])tap(in,loc,w*.50f,h*.43f+w*.34f);
                     SystemClock.sleep(1200);continue;
                 }
-                float ctrlY = SlotsView.ctrlY(w,h); float btnH = h * 0.07f;
+                float ctrlY = v.controlsTop(); float btnH = v.controlsHeight();
                 n++;
                 if (n == 3) { tap(in, loc, w * 0.36f, ctrlY + btnH / 2); SystemClock.sleep(900); } // bet up once
                 tap(in, loc, w * 0.70f, ctrlY + btnH / 2);

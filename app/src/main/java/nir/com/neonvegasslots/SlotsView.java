@@ -519,23 +519,32 @@ public class SlotsView extends View {
         invalidate();
     }
 
-    /** Reel cell height: a little taller than wide when the screen has room (doc: reels deserve more space), never smaller than square. */
-    static float cellH(float w, float h) {
-        float cw = w / 5f - 8;
-        float avail = h - gridTop(w,h) - (h * 0.07f + w * 0.10f + w * 0.19f + h * 0.05f);
-        float k = Math.max(1f, Math.min(1.22f, (avail - 16) / (3 * cw)));
-        return cw * k;
+    /** Allocate actual content height first; spare space belongs to the reels. */
+    static float cellH(float w,float h){return cellH(w,h,w*.16f,h*.07f);}
+    private static float cellH(float w,float h,float caption,float controls){
+        float cw=w/5f-8;
+        float available=h-gridTop(w,h)-40-controls-caption-w*.19f-w*.035f;
+        return Math.max(cw,Math.min(cw*1.60f,(available-16)/3));
     }
-    static float ctrlY(float w, float h) { return gridTop(w,h) + cellH(w, h) * 3 + 16 + 24; }
-    private float cellH() { return cellH(getWidth(), getHeight()); }
+    static float ctrlY(float w,float h){return gridTop(w,h)+cellH(w,h)*3+40;}
+    private float cellH(){return cellH(getWidth(),getHeight(),captionHeight(),controlsHeight());}
+    float controlsHeight(){return Math.max(getHeight()*.07f,moneySize(getWidth()*.054f)*1.9f);}
+    float controlsTop(){return gridTop()+cellH()*3+40;}
+    int minimumContentHeight(int width){
+        float lo=width,hi=width*3f,caption=captionHeightFor(width);
+        for(int n=0;n<20;n++){float h=(lo+hi)/2;float bottom=gridTop(width,h)+3*(width/5f-8)+40+Math.max(h*.07f,moneySize(width*.054f)*1.9f)+caption+width*.19f+width*.035f;if(bottom>h)lo=h;else hi=h;}
+        return (int)Math.ceil(hi);
+    }
+    float contentBottomForTest(){return trailBottom();}
     static float gridTop(float w,float h){return Math.max(h*.145f,w*.29f);}
     private float gridTop() { return gridTop(getWidth(),getHeight()); }
     static String nextLevelRewardLabel(int level){return "Lv "+(level+1)+": +"+(150L*(level+1))+" coins";}
-    private float captionHeight(){return Math.max(44*getResources().getDisplayMetrics().density,moneySize(getWidth()*.032f)*1.55f);}
+    private float captionHeight(){return captionHeightFor(getWidth());}
+    private float captionHeightFor(float width){return Math.max(52*getResources().getDisplayMetrics().density,bodySize(width*.030f)*2.8f);}
     private boolean controlTipShown;
     private boolean controlTipSeen(){return getContext().getSharedPreferences("control_coach",0).getBoolean("hold_auto_seen",false);}
     private void finishControlTip(){if(controlTipShown)getContext().getSharedPreferences("control_coach",0).edit().putBoolean("hold_auto_seen",true).apply();}
-    private float trailTop() { return ctrlY(getWidth(), getHeight()) + getHeight() * 0.07f + captionHeight(); }
+    private float trailTop() { return controlsTop() + controlsHeight() + captionHeight(); }
     private float trailBottom() { return trailTop() + getWidth() * 0.19f; } // compact strip; the full map opens in a dialog
     private float trailNodeY() {
         float top = trailTop(), height = Math.min(trailBottom() - top, getWidth() * .68f);
@@ -564,7 +573,7 @@ public class SlotsView extends View {
         cv.drawRect(0, bandH - 1, w, bandH + 1, p);
         float cellW = w / 5f - 8;
         float gridTop = gridTop();
-        float cellH = cellH(w, getHeight());
+        float cellH = cellH();
         float gridH = cellH * 3 + 16;
 
         // Brand stays on the loading screen; this space belongs to balance and reels.
@@ -650,7 +659,7 @@ public class SlotsView extends View {
         art.frame(cv, w * .012f, gridTop - 5, w * .988f, gridTop + gridH + 5, th,
             spinning ? (int)(now / 100) : phase);
         if (!spinning && now < winFlashUntil) { // win line: a glowing path through the winning cells, left to right
-            float cw0 = w / 5f - 8, ch0 = cellH(w, getHeight()); float[] lx = new float[5], ly = new float[5]; int n = 0;
+            float cw0 = w / 5f - 8, ch0 = cellH(); float[] lx = new float[5], ly = new float[5]; int n = 0;
             for (int c = 0; c < 5; c++) for (int r = 0; r < 3; r++) if (winCell[r][c]) { lx[n] = 4 + c * (cw0 + 8) + 2 + cw0 / 2; ly[n] = gridTop + r * (ch0 + 8) + ch0 / 2; n++; break; }
             if (n >= 2) {
                 p.setStyle(Paint.Style.STROKE); p.setStrokeCap(Paint.Cap.ROUND); p.setStrokeJoin(Paint.Join.ROUND);
@@ -705,7 +714,7 @@ public class SlotsView extends View {
 
         // bet selector + SPIN (ported from DG)
         float ctrlY = gridTop + gridH + 24;
-        float btnH = getHeight() * 0.07f;
+        float btnH = controlsHeight();
         boolean canSpin = !spinning && balance >= BETS[betIdx];
         float pulse = canSpin && !autoSpin ? (float) (0.5 + 0.5 * Math.sin(now / 520.0)) : 0f;
         cv.save();float bsControl=controlScale(1,now);cv.scale(bsControl,bsControl,w*.215f,ctrlY+btnH/2);
@@ -726,13 +735,6 @@ public class SlotsView extends View {
         cv.drawLine(px, bcy - bu * 0.7f, px, bcy + bu * 0.7f, p);
         p.setStrokeCap(Paint.Cap.BUTT); p.setStyle(Paint.Style.FILL);
         p.setTextSize(bodySize(w*.026f));p.setColor(0xFFFFFFFF);cv.drawText("BET",rf.centerX(),rf.top+btnH*.29f,p);
-        if (betIdx + 1 < BETS.length && betIdx + 1 >= betCount(level)) { // next step is locked: gold pill on the BET button edge, padlock + "LV n"
-            float ph=w*.045f,pw=w*.29f,pcx=rf.centerX(),pcy=rf.top;
-            qr.set(pcx-pw/2,pcy-ph/2,pcx+pw/2,pcy+ph/2);p.setColor(0xFFFFD166);cv.drawRoundRect(qr,ph/2,ph/2,p);
-            p.setColor(0xFF3D2A00);p.setTextAlign(Paint.Align.CENTER);p.setFakeBoldText(true);p.setTextSize(w*.026f);
-            cv.drawText("Next "+betLabel(BETS[betIdx+1])+" at Lv "+BET_UNLOCK[betIdx+1],pcx,pcy+ph*.23f,p);
-
-        }
         if(controlDown&&pressedControl==1){p.setColor(0x33000000);cv.drawRoundRect(w*.03f,ctrlY,w*.40f,ctrlY+btnH,btnH*.32f,btnH*.32f,p);}
         cv.restore();cv.save();float ssControl=controlScale(2,now);cv.scale(ssControl,ssControl,w*.70f,ctrlY+btnH/2);
         // SPIN: the hero button
@@ -767,7 +769,10 @@ public class SlotsView extends View {
             modernButton(cv,qr,lighten(th.betBg,.18f),darken(th.betBg,.25f),th.title,0);
             if(controlDown&&pressedControl==3){p.setColor(0x33000000);cv.drawRoundRect(qr,qr.height()*.32f,qr.height()*.32f,p);}
             p.setTextAlign(Paint.Align.CENTER);p.setColor(th.title);p.setTextSize(bodySize(w*.030f));
-            cv.drawText("MAX BET",qr.centerX(),qr.centerY()-(p.ascent()+p.descent())/2,p);
+            boolean lockedNext=betIdx+1<BETS.length&&betIdx+1>=betCount(level);
+            float maxBaseline=lockedNext?qr.top+qr.height()*.37f:qr.centerY()-(p.ascent()+p.descent())/2;
+            cv.drawText("MAX BET",qr.centerX(),maxBaseline,p);
+            if(lockedNext){p.setTextSize(bodySize(w*.024f));p.setColor(th.soft);cv.drawText(betLabel(BETS[betIdx+1])+" at Lv "+BET_UNLOCK[betIdx+1],qr.centerX(),qr.top+qr.height()*.78f,p);}
             cv.restore();p.setTextSize(bodySize(w*.032f));
             if (lastWin > 0) { p.setTextSize(moneySize(w*.032f));p.setColor(0xFFFFD166); cv.drawText((profitable(lastWin,BETS[betIdx])?"WIN ":"RETURN ") + (now<bigWinUntil?shownTierWin(bigWinAmount,now-bigWinStartAt,bigWinMs):displayedLastWin(now)), w * 0.70f, ly, p); }
             else if(!spinning&&!autoSpin&&!controlTipSeen()) {
@@ -896,8 +901,8 @@ public class SlotsView extends View {
         finishControlTip();
         float w = getWidth();
         float gridTop = gridTop();
-        float ctrlY = ctrlY(w, getHeight());
-        float btnH = getHeight() * 0.07f;
+        float ctrlY = controlsTop();
+        float btnH = controlsHeight();
         float x = e.getX(), y = e.getY();
         if(pendingLevelCoins>0){if(levelMomentReady()&&levelCollect.contains(x,y))collectLevelReward();return true;}
         if (Math.abs(x-w*.90f)<=w*.065f && Math.abs(y-w*.18f)<=w*.065f) { if(listener!=null)listener.onOpenPaytable();return true; }
