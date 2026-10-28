@@ -763,10 +763,12 @@ public class SlotsView extends View {
             // A real button in the same touch region as the existing MAX shortcut.
             float capTop=ctrlY+btnH,capHeight=captionHeight();
             qr.set(w*.03f,capTop+4,w*.40f,capTop+capHeight-4);
+            cv.save();float maxScale=controlScale(3,now);cv.scale(maxScale,maxScale,qr.centerX(),qr.centerY());
             modernButton(cv,qr,lighten(th.betBg,.18f),darken(th.betBg,.25f),th.title,0);
+            if(controlDown&&pressedControl==3){p.setColor(0x33000000);cv.drawRoundRect(qr,qr.height()*.32f,qr.height()*.32f,p);}
             p.setTextAlign(Paint.Align.CENTER);p.setColor(th.title);p.setTextSize(bodySize(w*.030f));
             cv.drawText("MAX BET",qr.centerX(),qr.centerY()-(p.ascent()+p.descent())/2,p);
-            p.setTextSize(bodySize(w*.032f));
+            cv.restore();p.setTextSize(bodySize(w*.032f));
             if (lastWin > 0) { p.setTextSize(moneySize(w*.032f));p.setColor(0xFFFFD166); cv.drawText((profitable(lastWin,BETS[betIdx])?"WIN ":"RETURN ") + (now<bigWinUntil?shownTierWin(bigWinAmount,now-bigWinStartAt,bigWinMs):displayedLastWin(now)), w * 0.70f, ly, p); }
             else if(!spinning&&!autoSpin&&!controlTipSeen()) {
                 controlTipShown=true;p.setColor(th.soft);p.setTextSize(bodySize(w*.029f));
@@ -900,7 +902,7 @@ public class SlotsView extends View {
         if(pendingLevelCoins>0){if(levelMomentReady()&&levelCollect.contains(x,y))collectLevelReward();return true;}
         if (Math.abs(x-w*.90f)<=w*.065f && Math.abs(y-w*.18f)<=w*.065f) { if(listener!=null)listener.onOpenPaytable();return true; }
         if (chipPlus.contains(x, y)) { if (listener != null) listener.onOpenShop(); return true; }
-        if(x>=w*.03f&&x<=w*.40f&&y>ctrlY+btnH&&y<=ctrlY+btnH+captionHeight()){maxBet();return true;}
+        if(x>=w*.03f&&x<=w*.40f&&y>ctrlY+btnH&&y<=ctrlY+btnH+captionHeight()){if(!spinning&&!autoSpin){pressControl(3);maxBet();}return true;}
         if (y >= ctrlY && y <= ctrlY + btnH) {
             if (x >= w * 0.03f && x <= w * 0.40f) {
                 if (!spinning && !autoSpin){pressControl(1);betStep(x < w * 0.03f + w * 0.37f * 0.33f ? -1 : 1);}
