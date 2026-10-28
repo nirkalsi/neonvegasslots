@@ -480,7 +480,7 @@ public class MainActivity extends Activity implements SlotsView.Listener, Billin
     }
 
     @Override public void saveState() {
-        sp.edit().putString(KEY, game.serialize()).apply();
+        if(game.usesSpecialFeature())sp.edit().putString(KEY,game.serialize()).commit();else sp.edit().putString(KEY, game.serialize()).apply();
     }
 
     // ---------- BillingManager.Listener ----------

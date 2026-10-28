@@ -310,7 +310,7 @@ final class SlotArt {
 
     // ---------- symbols (unchanged art, kept from approved first increment) ----------
     private Typeface displayFace=Typeface.DEFAULT_BOLD,bodyFace=Typeface.DEFAULT;
-    private android.graphics.Bitmap[] bmp;
+    private android.graphics.Bitmap[] bmp;private final Bitmap[] specialBmp=new Bitmap[2];
     private static final int[] SYM_FILE = {1,5,2,0,3,4};
     private final android.graphics.Paint bp = new android.graphics.Paint(android.graphics.Paint.ANTI_ALIAS_FLAG | android.graphics.Paint.FILTER_BITMAP_FLAG);
     private final android.graphics.RectF bd = new android.graphics.RectF();
@@ -318,6 +318,7 @@ final class SlotArt {
     void loadBitmaps(android.content.Context ctx) {
         displayFace=GameFonts.display(ctx);bodyFace=GameFonts.body(ctx);
         if (bmp != null) return;
+        for(int i=0;i<2;i++){int rid=ctx.getResources().getIdentifier("special_"+(i+6),"drawable",ctx.getPackageName());if(rid!=0)specialBmp[i]=BitmapFactory.decodeResource(ctx.getResources(),rid);}
         android.graphics.Bitmap[] b = new android.graphics.Bitmap[SYM_FILE.length];
         for (int i = 0; i < b.length; i++) {
             int rid = ctx.getResources().getIdentifier("nvs_" + SYM_FILE[i], "drawable", ctx.getPackageName());
@@ -344,7 +345,7 @@ final class SlotArt {
     }
     /** Skin-specific idle and win motion. Pure presentation: never changes symbol or payout. */
     void symbolAnimated(Canvas c,int id,float cx,float cy,float size,long now,boolean win){
-        if(SpecialFeature.ENABLED && id>=6){SpecialFeature.symbol(c,id,cx,cy,size,now,win,false);return;}
+        if(id>=6){c.save();float pulse=1+(win?.08f:.018f)*(float)Math.sin(now/180f);c.scale(pulse,pulse,cx,cy);symbol(c,id,cx,cy,size);c.restore();return;}
         float phase=now/210f+id*1.7f;
         float wave=(float)Math.sin(phase);
         c.save();
@@ -362,6 +363,7 @@ final class SlotArt {
         ink.setShader(null);ink.clearShadowLayer();ink.setStyle(Paint.Style.FILL);c.restore();
     }
     void symbol(Canvas c, int id, float cx, float cy, float size) {
+        if(id>=6&&id<=7&&specialBmp[id-6]!=null){bd.set(cx-size*.56f,cy-size*.56f,cx+size*.56f,cy+size*.56f);c.drawBitmap(specialBmp[id-6],null,bd,bp);return;}
         if (bmp != null && id >= 0 && id < bmp.length && bmp[id] != null) {
             float h = size * 1.12f;
             bd.set(cx - h / 2, cy - h / 2, cx + h / 2, cy + h / 2);

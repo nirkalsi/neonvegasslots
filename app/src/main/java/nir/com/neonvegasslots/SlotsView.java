@@ -42,6 +42,7 @@ public class SlotsView extends View {
 
     int betIdx() { return betIdx; }
     void betStep(int dir) {
+        if(specialEnabled&&(specialState.pending||specialState.remaining>0))return;
         int n = betCount(level);
         betIdx = ((betIdx + dir) % n + n) % n; betBumpAt=nowMillis();persist(); invalidate();
     }
@@ -49,7 +50,7 @@ public class SlotsView extends View {
     private float bodySize(float preferred){return Math.max(preferred,12*getResources().getDisplayMetrics().scaledDensity);}
     private float moneySize(float preferred){return Math.max(preferred,18*getResources().getDisplayMetrics().scaledDensity);}
     private long betBumpAt=0;
-    void maxBet(){if(spinning||autoSpin||pendingLevelCoins>0)return;betIdx=betCount(level)-1;betBumpAt=nowMillis();persist();invalidate();}
+    void maxBet(){if(spinning||autoSpin||pendingLevelCoins>0||freeSpinsRemaining()>0)return;betIdx=betCount(level)-1;betBumpAt=nowMillis();persist();invalidate();}
 
     private final SlotArt art = new SlotArt();
     private final Random rng = new Random();
@@ -58,6 +59,7 @@ public class SlotsView extends View {
     private final RectF qr = new RectF();
     private Listener listener;
 
+    private final boolean specialEnabled;private SpecialFeature.State specialState=new SpecialFeature.State();private boolean specialQuick=false;private long bonusMomentUntil=0;
     private int[][] grid = new int[3][5];      // [row][col] symbol index
     private long balance = 500;
     private long lastWin = 0;
@@ -103,7 +105,10 @@ public class SlotsView extends View {
     private float titleGlow = 0f;
 
     public SlotsView(Context c) {
-        super(c); art.loadBitmaps(c); randomizeAll(); }
+        this(c,SpecialFeature.ENABLED); }
+    SlotsView(Context c,boolean enabled){super(c);specialEnabled=enabled;art.loadBitmaps(c);randomizeAll();}
+    boolean usesSpecialFeature(){return specialEnabled;}
+    int freeSpinsRemaining(){return specialEnabled?specialState.remaining:0;}
 
     long nowMillis() { return System.currentTimeMillis(); } // overridable for tests
 
@@ -174,7 +179,8 @@ public class SlotsView extends View {
         tryTrophyDrop(rng.nextFloat(), today);
     }
 
-    public String serialize() { return balance + ";" + spinsDone + ";" + betIdx + ";" + lastRegenAt + ";" + xp + ";" + level + ";" + themeIdx + ";" + trophyMask + ";" + trophyDay + ";" + pendingLevelCoins + ";" + pendingLevelFrom; }
+    public String serialize() { return balance + ";" + spinsDone + ";" + betIdx + ";" + lastRegenAt + ";" + xp + ";" + level + ";" + themeIdx + ";" + trophyMask + ";" + trophyDay + ";" + pendingLevelCoins + ";" + pendingLevelFrom + (specialEnabled?";"+specialJson():""); }
+    private String specialJson(){try{specialState.balance=balance;return specialState.json();}catch(Exception e){throw new IllegalStateException(e);}}
     public void restore(String s) {
         try {
             String[] a = s.split(";",-1);
@@ -194,6 +200,7 @@ public class SlotsView extends View {
             if (a.length > 8) trophyDay = a[8];
             if(a.length>9&&!a[9].isEmpty())pendingLevelCoins=Math.max(0,Long.parseLong(a[9]));
             pendingLevelFrom=a.length>10&&!a[10].isEmpty()?Math.max(1,Math.min(level,Integer.parseInt(a[10]))):Math.max(1,level-1);
+            if(specialEnabled&&a.length>11&&!a[11].isEmpty()){specialState=SpecialFeature.State.read(a[11]);grid=specialState.grid;spinning=specialState.pending;if(spinning){long now=nowMillis();spinStartedAt=now;for(int c=0;c<5;c++)stopAt[c]=now+600+c*150;}}
         } catch (Exception ignored) {}
     }
 
@@ -443,12 +450,12 @@ public class SlotsView extends View {
     }
     public boolean isAuto() { return autoSpin; }
     private void startAuto() {
-        if (balance < BETS[betIdx]) { if (listener != null) listener.onOutOfCoins(); return; }
+        if (balance < BETS[betIdx] && freeSpinsRemaining()==0) { if (listener != null) listener.onOutOfCoins(); return; }
         autoSpin=true;autoCount=0;if(!spinning)autoStep();else invalidate();
     }
     private void autoStep() {
         if (!autoSpin || spinning) return;
-        if (balance < BETS[betIdx]) { stopAuto(); return; }
+        if (balance < BETS[betIdx] && freeSpinsRemaining()==0) { stopAuto(); return; }
         autoCount++;
         spin();
     }
@@ -457,18 +464,21 @@ public class SlotsView extends View {
 
     /** Tap SPIN while the reels run: the remaining reels stop left to right, 110 ms apart. */
     private void quickStop() {
-        long now = System.currentTimeMillis(); int k = 0;
+        long now = System.currentTimeMillis(); int k = 0;if(specialEnabled)specialQuick=true;
         for (int c = 0; c < 5; c++) if (stopAt[c] > now + 110L * (k + 1)) { stopAt[c] = now + 110L * (k + 1); k++; } else if (stopAt[c] > now) k++;
         invalidate();
     }
     private void spin() {
-        if(pendingLevelCoins>0)return;
+        if(pendingLevelCoins>0 || (specialEnabled&&nowMillis()<bonusMomentUntil))return;
         if (spinning) { quickStop(); return; }
         regen();
         long bet = BETS[betIdx];
-        if (balance < bet) { if (listener != null) listener.onOutOfCoins(); return; }
-        balance -= bet;
-        xpAnimFrom=displayedXp(nowMillis());xpAnimAt=nowMillis();xp += xpForBet(bet);
+        boolean free=specialEnabled&&specialState.remaining>0;
+        if (free) bet=specialState.stake;
+        if (!free&&balance < bet) { if (listener != null) listener.onOutOfCoins(); return; }
+        if(!free)balance -= bet;
+        if(specialEnabled){specialState.sequence++;specialState.pending=true;specialState.free=free;specialState.stake=bet;if(free)specialState.remaining--;specialQuick=false;for(int r=0;r<3;r++)for(int c=0;c<5;c++){double x=rng.nextDouble(),scatter=free?0:SpecialFeature.SCATTER_P,wild=c>=1&&c<=3?SpecialFeature.WILD_P:0;grid[r][c]=x<scatter?7:x<scatter+wild?6:pickSymbol();}specialState.grid=grid;specialState.award=SpecialFeature.evaluate(grid,bet);}
+        xpAnimFrom=displayedXp(nowMillis());xpAnimAt=nowMillis();if(!free)xp += xpForBet(bet);
         lastWin = 0;
         spinning = true;
         GameDialog.noteAction();
@@ -483,10 +493,13 @@ public class SlotsView extends View {
     }
 
     private void finishSpin() {
+        if(!spinning)return;
         spinning = false;if(sfx!=null)sfx.stopReelLoop();
-        spinsDone++;
-        long bet = BETS[betIdx];
-        long win = evaluate(grid, bet, winCell);
+        boolean free=specialEnabled&&specialState.free;
+        if(!free)spinsDone++;
+        long bet = specialEnabled?specialState.stake:BETS[betIdx];
+        long win;if(specialEnabled){SpecialFeature.evaluate(grid,bet,winCell);win=specialState.award;}else win=evaluate(grid,bet,winCell);
+        if(specialEnabled){specialState.pending=false;specialState.settled=specialState.sequence;if(!specialState.free&&SpecialFeature.scatterReels(grid,5)>=3){specialState.remaining=5;bonusMomentUntil=nowMillis()+2200;}}
         if (win > 0) {
             winCreditBase=balance; balance += win; lastWin = win;
             if(profitable(win,bet))fx(win<25*bet?SoundFx.Effect.WIN:winTier(win,bet)==2?SoundFx.Effect.EPIC_WIN:winTier(win,bet)==1?SoundFx.Effect.MEGA_WIN:SoundFx.Effect.BIG_WIN);
@@ -509,17 +522,17 @@ public class SlotsView extends View {
             unlockedName = SlotArt.THEMES[newUnlocks - 1].name;
             unlockFlashUntil = System.currentTimeMillis() + 4000;
         }
-        maybeTrophy();
+        if(!free)maybeTrophy();
         persist();
         boolean leveled = pendingLevelCoins>0 || newUnlocks > oldUnlocks || levelFlashUntil > System.currentTimeMillis();
         boolean trophy = trophyFlashUntil > System.currentTimeMillis();
         if (autoSpin) {
-            if (win >= 25 * bet || leveled || trophy || balance < BETS[betIdx]) autoSpin = false;
-            else postDelayed(autoRunner,win>0?1900:700);
+            if (win >= 25 * bet || leveled || trophy || (balance < BETS[betIdx]&&freeSpinsRemaining()==0)) autoSpin = false;
+            else postDelayed(autoRunner,Math.max(win>0?1900:700,specialEnabled?bonusMomentUntil-nowMillis()+100:0));
         }
         if (listener != null) {
             if (win >= 25 * bet) listener.onBigWin(win, bet);
-            listener.onSpinComplete((int) spinsDone, win, bet);
+            if(!free)listener.onSpinComplete((int) spinsDone, win, bet);
         }
         invalidate();
     }
@@ -626,7 +639,7 @@ public class SlotsView extends View {
         for (int r = 0; r < 3; r++) {
             for (int c = 0; c < 5; c++) {
                 if (spinning && now < stopAt[c]) {
-                    if (now / 60 % 2 == 0) grid[r][c] = pickSymbol();
+                    if (!specialEnabled && now / 60 % 2 == 0) grid[r][c] = pickSymbol();
                 }
                 float x = 4 + c * (cellW + 8);
                 float y = gridTop + r * (cellH + 8);
@@ -654,6 +667,10 @@ public class SlotsView extends View {
                     art.symbolAnimated(cv, grid[r][c], x + 2 + cellW / 2, y + cellH / 2, cellW * 0.84f * pls,now,winCell[r][c] && now < winFlashUntil && profitable(lastWin,BETS[betIdx]));
                 }
             }
+        }
+        if(specialEnabled&&spinning&&anticipationGiven&&!specialQuick){
+            float pulse=.5f+.5f*(float)Math.sin(now/90f);p.setStyle(Paint.Style.STROKE);p.setStrokeWidth(4+3*pulse);p.setColor(th.title&0x00FFFFFF|((int)(160+90*pulse)<<24));
+            for(int col=0;col<5;col++)if(now<stopAt[col]){float gx=4+col*(cellW+8);cv.drawRoundRect(gx,gridTop-2,gx+cellW+4,gridTop+gridH+2,12,12,p);}p.setStyle(Paint.Style.FILL);
         }
         // Cabinet trim is above the reel strips so it is not hidden by the symbols.
         p.setStrokeWidth(Math.max(3, w * .006f));
@@ -684,7 +701,8 @@ public class SlotsView extends View {
             for (int c = 0; c < 5; c++) if (now < stopAt[c]) allStopped = false;
             boolean firstFourStopped = true;
             for (int c = 0; c < 4; c++) if (now < stopAt[c]) firstFourStopped = false;
-            if (firstFourStopped && now < stopAt[4]) {
+            if (specialEnabled&&!specialQuick&&!anticipationGiven){int stopped=0;for(int c=0;c<5;c++)if(now>=stopAt[c])stopped++;if(SpecialFeature.anticipation(grid,stopped,false)){for(int c=stopped;c<5;c++)stopAt[c]+=500;anticipationGiven=true;fx(SoundFx.Effect.ANTICIPATION);}}
+            if (!specialEnabled && firstFourStopped && now < stopAt[4]) {
                 int bestRun = 1;
                 for (int[] line : LINES) {
                     int s = grid[line[0]][0], run = 1;
@@ -716,13 +734,14 @@ public class SlotsView extends View {
             postInvalidateDelayed(450); // idle ambient: chase bulbs and embers keep breathing
         }
         if (now < winFlashUntil && profitable(lastWin,BETS[betIdx])) coinShower(cv, w, gridTop, gridH, th, now);
+        if(specialEnabled&&now<bonusMomentUntil){p.setColor(0xEE171027);rf.set(w*.14f,gridTop+gridH*.39f,w*.86f,gridTop+gridH*.61f);cv.drawRoundRect(rf,w*.04f,w*.04f,p);p.setColor(th.title);p.setFakeBoldText(true);p.setTextAlign(Paint.Align.CENTER);p.setTextSize(w*.052f);cv.drawText("5 FREE SPINS",w/2,gridTop+gridH*.49f,p);p.setTextSize(w*.031f);cv.drawText("Same bet. No coins deducted.",w/2,gridTop+gridH*.55f,p);p.setFakeBoldText(false);postInvalidateDelayed(30);}
         if (now < bigWinUntil) bigWinOverlay(cv, w, th, now);
         if (now < levelFlashUntil) levelBurst(cv, w, gridTop, th, now);
 
         // bet selector + SPIN (ported from DG)
         float ctrlY = gridTop + gridH + 24;
         float btnH = controlsHeight();
-        boolean canSpin = !spinning && balance >= BETS[betIdx];
+        boolean canSpin = !spinning && (balance >= BETS[betIdx]||freeSpinsRemaining()>0);
         float pulse = canSpin && !autoSpin ? (float) (0.5 + 0.5 * Math.sin(now / 520.0)) : 0f;
         cv.save();float bsControl=controlScale(1,now);cv.scale(bsControl,bsControl,w*.215f,ctrlY+btnH/2);
         // BET: minus / amount / plus (icons and numbers only)
@@ -762,7 +781,7 @@ public class SlotsView extends View {
             cv.drawText("STOP", scx, scy + btnH * 0.16f, p);
         } else {
             p.setTextAlign(Paint.Align.CENTER); p.setTextSize(btnH * .46f);
-            GameFonts.hero(cv,"SPIN",scx-btnH*.10f,scy+btnH*.16f,p,0xFFFFFFFF,0xFFD9FFD0);
+            GameFonts.hero(cv,freeSpinsRemaining()>0?"FREE "+freeSpinsRemaining():"SPIN",scx-btnH*.10f,scy+btnH*.16f,p,0xFFFFFFFF,0xFFD9FFD0);
             loopIcon(cv, rf.right - btnH * .35f, scy, btnH * .14f, 0xCCFFFFFF); // hold starts auto, tap stops it
         }
         p.clearShadowLayer();if(controlDown&&pressedControl==2){p.setColor(0x33000000);cv.drawRoundRect(w*.43f,ctrlY,w*.97f,ctrlY+btnH,btnH*.32f,btnH*.32f,p);}cv.restore();
