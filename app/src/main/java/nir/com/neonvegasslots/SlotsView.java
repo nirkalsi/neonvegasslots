@@ -302,7 +302,7 @@ public class SlotsView extends View {
         p.setColor(0xFFFFFFFF); p.setStrokeWidth(Math.max(3f, disc * 0.13f)); p.setStyle(Paint.Style.STROKE);
         cv.drawLine(px - disc * 0.22f, dcy, px + disc * 0.22f, dcy, p);
         cv.drawLine(px, dcy - disc * 0.22f, px, dcy + disc * 0.22f, p);
-        p.setStyle(Paint.Style.FILL); p.setFakeBoldText(false); p.setTextAlign(Paint.Align.CENTER);
+        p.setStyle(Paint.Style.FILL);if(controlDown&&pressedControl==5){p.setColor(0x44000000);cv.drawCircle(px,dcy,disc/2,p);} p.setFakeBoldText(false); p.setTextAlign(Paint.Align.CENTER);
         float pad2 = h * 0.2f; // generous touch target
         chipPlus.set(cx + cw - h * 1.3f, cy - pad2, cx + cw + pad2, cy + h + pad2);
     }
@@ -588,7 +588,7 @@ public class SlotsView extends View {
         // balance / win
         p.setTextSize(w * 0.05f);
         p.setColor(0xFFFFFFFF);
-        drawCoinChip(cv, w, gridTop,now);
+        cv.save();float chipScale=controlScale(5,now);cv.scale(chipScale,chipScale,w*.5f,w*.072f);drawCoinChip(cv, w, gridTop,now);cv.restore();
         // level + xp bar
         p.setTextSize(w * 0.034f);
         p.setColor(th.soft);
@@ -605,9 +605,10 @@ public class SlotsView extends View {
         cv.drawText(nextReward,w*.44f,w*.255f,p);
         // Info/paytable entry beside XP, separate from currency and store.
         float infoX=w*.90f, infoY=w*.18f;
+        cv.save();float infoScale=controlScale(4,now);cv.scale(infoScale,infoScale,infoX,infoY);
         p.setColor(th.panelBg);cv.drawCircle(infoX,infoY,w*.034f,p);
         p.setStyle(Paint.Style.STROKE);p.setStrokeWidth(w*.003f);p.setColor(th.title);cv.drawCircle(infoX,infoY,w*.034f,p);p.setStyle(Paint.Style.FILL);
-        p.setTextAlign(Paint.Align.CENTER);p.setTextSize(bodySize(w*.044f));p.setFakeBoldText(true);cv.drawText("i",infoX,infoY-(p.ascent()+p.descent())/2,p);p.setFakeBoldText(false);
+        p.setTextAlign(Paint.Align.CENTER);p.setTextSize(bodySize(w*.044f));p.setFakeBoldText(true);cv.drawText("i",infoX,infoY-(p.ascent()+p.descent())/2,p);p.setFakeBoldText(false);if(controlDown&&pressedControl==4){p.setColor(0x44000000);cv.drawCircle(infoX,infoY,w*.034f,p);}cv.restore();
         // machine frame: neon marquee with chase bulbs
         art.frame(cv, 4, gridTop - 8, w - 4, gridTop + gridH + 8, th, phase);
 
@@ -793,7 +794,9 @@ public class SlotsView extends View {
         String ju;
         if (now < trophyFlashUntil) ju = "TROPHY:" + trophyNewName;
         else ju = now < unlockFlashUntil ? unlockedName : null;
+        cv.save();float mapScale=controlScale(6,now);cv.scale(mapScale,mapScale,w*.5f,(trailTop()+trailBottom())*.5f);
         art.trailCompact(cv, w, trailTop(), trailBottom(), level, xp, xpNeeded(), themeIdx, ju,bodySize(w*.036f));
+        if(controlDown&&pressedControl==6){p.setColor(0x44000000);cv.drawRoundRect(w*.05f,trailTop(),w*.95f,trailBottom(),w*.025f,w*.025f,p);}cv.restore();
         if (setComplete(themeIdx)) art.frameOrnament(cv, w / 2, gridTop - w * .022f, w * .05f, th);
 
         if(now<welcomeUntil){p.setStyle(Paint.Style.FILL);p.setColor(0xDD140A2A);rf.set(w*.24f,gridTop+w*.02f,w*.76f,gridTop+w*.11f);cv.drawRoundRect(rf,w*.04f,w*.04f,p);p.setTextAlign(Paint.Align.CENTER);p.setFakeBoldText(true);p.setTextSize(w*.037f);p.setColor(th.title);cv.drawText("WELCOME GIFT",w*.5f,gridTop+w*.08f,p);p.setFakeBoldText(false);postInvalidateDelayed(33);}
@@ -911,8 +914,8 @@ public class SlotsView extends View {
         float btnH = controlsHeight();
         float x = e.getX(), y = e.getY();
         if(pendingLevelCoins>0){if(levelMomentReady()&&levelCollect.contains(x,y))collectLevelReward();return true;}
-        if (Math.abs(x-w*.90f)<=w*.065f && Math.abs(y-w*.18f)<=w*.065f) { if(listener!=null)listener.onOpenPaytable();return true; }
-        if (chipPlus.contains(x, y)) { if (listener != null) listener.onOpenShop(); return true; }
+        if (Math.abs(x-w*.90f)<=w*.065f && Math.abs(y-w*.18f)<=w*.065f) { if(listener!=null){pressControl(4);listener.onOpenPaytable();}return true; }
+        if (chipPlus.contains(x, y)) { if (listener != null){pressControl(5);listener.onOpenShop();} return true; }
         if(x>=w*.03f&&x<=w*.40f&&y>ctrlY+btnH&&y<=ctrlY+btnH+captionHeight()){if(!spinning&&!autoSpin){pressControl(3);maxBet();}return true;}
         if (y >= ctrlY && y <= ctrlY + btnH) {
             if (x >= w * 0.03f && x <= w * 0.40f) {
@@ -926,7 +929,7 @@ public class SlotsView extends View {
             }
             return true;
         }
-        if (y >= trailTop() && y <= trailBottom()) { if (listener != null) listener.onOpenMap(); return true; }
+        if (y >= trailTop() && y <= trailBottom()) { if (listener != null){pressControl(6);listener.onOpenMap();} return true; }
         // progression trail: tap an unlocked stop to apply its theme
         float tt = trailTop(), tb = trailBottom();
         if (y >= tt && y <= Math.min(tb, tt + w * .68f)) {
