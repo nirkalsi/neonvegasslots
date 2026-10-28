@@ -849,7 +849,7 @@ public class SlotsView extends View {
         if(controlDown&&pressedControl==6){p.setColor(0x44000000);cv.drawRoundRect(w*.05f,trailTop(),w*.95f,trailBottom(),w*.025f,w*.025f,p);}cv.restore();
         if (setComplete(themeIdx)) art.frameOrnament(cv, w / 2, gridTop - w * .022f, w * .05f, th);
 
-        if(now<welcomeUntil){p.setStyle(Paint.Style.FILL);p.setColor(0xDD140A2A);rf.set(w*.24f,gridTop+w*.02f,w*.76f,gridTop+w*.11f);cv.drawRoundRect(rf,w*.04f,w*.04f,p);p.setTextAlign(Paint.Align.CENTER);p.setFakeBoldText(true);p.setTextSize(w*.037f);p.setColor(th.title);cv.drawText("WELCOME GIFT",w*.5f,gridTop+w*.08f,p);p.setFakeBoldText(false);postInvalidateDelayed(33);}
+        if(now<welcomeUntil){p.setStyle(Paint.Style.FILL);p.setTextSize(bodySize(w*.037f));p.setFakeBoldText(true);float wh=p.descent()-p.ascent()+bodySize(w*.020f)*2,ww=Math.max(w*.52f,p.measureText("WELCOME GIFT")+bodySize(w*.020f)*2);p.setColor(0xDD140A2A);rf.set((w-ww)/2,gridTop+w*.02f,(w+ww)/2,gridTop+w*.02f+wh);cv.drawRoundRect(rf,w*.04f,w*.04f,p);p.setTextAlign(Paint.Align.CENTER);p.setColor(th.title);cv.drawText("WELCOME GIFT",w*.5f,rf.centerY()-(p.ascent()+p.descent())/2,p);p.setFakeBoldText(false);postInvalidateDelayed(33);}
         if(levelMomentReady())drawLevelCollect(cv,w,th); // final foreground layer above every control
         // legal line lives in Settings (Missions dialog), not on the game screen
     }
