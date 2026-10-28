@@ -15,6 +15,7 @@ public class BillingManager implements PurchasesUpdatedListener {
         void onAdsRemovedOwned();
         void onCoinsPurchased(long coins);
         void onProductsReady();
+        default boolean deliverPurchase(String token,String product,long coins,int energy){return false;}
     }
 
     private final Context ctx;
@@ -129,6 +130,10 @@ public class BillingManager implements PurchasesUpdatedListener {
         }
     }
 
+    private void deliverThenConsume(Purchase p,String id,long coins,int energy){
+        handler.post(()->{if(listener.deliverPurchase(p.getPurchaseToken(),id,coins,energy))bc.consumeAsync(ConsumeParams.newBuilder().setPurchaseToken(p.getPurchaseToken()).build(),(rr,token)->{});});
+    }
+
     private void handlePurchase(Purchase p) {
         if (p.getPurchaseState() != Purchase.PurchaseState.PURCHASED) return;
         for (String id : p.getProducts()) {
@@ -142,11 +147,7 @@ public class BillingManager implements PurchasesUpdatedListener {
                 int idx = Arrays.asList(PACK_IDS).indexOf(id);
                 if (idx >= 0) {
                     long coins = PACK_COINS[idx];
-                    bc.consumeAsync(ConsumeParams.newBuilder()
-                        .setPurchaseToken(p.getPurchaseToken()).build(), (rr, token) -> {
-                        if (rr.getResponseCode() == BillingClient.BillingResponseCode.OK)
-                            listener.onCoinsPurchased(coins);
-                    });
+                    deliverThenConsume(p,id,coins,0);
                 }
             }
         }

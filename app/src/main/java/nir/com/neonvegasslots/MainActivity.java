@@ -479,7 +479,9 @@ public class MainActivity extends Activity implements SlotsView.Listener, Billin
         // Reward is now collected once in the queued, save-safe gameplay level moment.
     }
 
+    private PurchaseDelivery purchaseDelivery;
     @Override public void saveState() {
+        if(purchaseDelivery!=null&&purchaseDelivery.blocked())return;
         if(game.isSaveBlocked())return;
         if(game.usesSpecialFeature()){if(!saveSpecialState(game.serialize()))throw new IllegalStateException("Game save failed");}else sp.edit().putString(KEY, game.serialize()).apply();
     }
@@ -495,6 +497,17 @@ public class MainActivity extends Activity implements SlotsView.Listener, Billin
             applyAdsRemoved();
             Toast.makeText(this, "Ads removed - thank you!", Toast.LENGTH_LONG).show();
         });
+    }
+
+    @Override public boolean deliverPurchase(String token,String product,long coins,int energy){
+        if(purchaseDelivery==null)purchaseDelivery=new PurchaseDelivery(sp,KEY);
+        boolean delivered=purchaseDelivery.deliver(token,product,coins,energy,new PurchaseDelivery.Game(){
+            public String snapshot(){return game.serialize();}
+            public void grant(long c,int e){game.grantPurchaseUnchecked(c,e);}
+            public void restore(String s){game.restore(s);}
+        });
+        if(!delivered)throw new IllegalStateException("Purchase grant not saved; Play consumption withheld");
+        return true;
     }
 
     @Override public void onCoinsPurchased(long coins) {

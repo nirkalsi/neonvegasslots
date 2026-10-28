@@ -116,6 +116,7 @@ public class SlotsView extends View {
     long nowMillis() { return System.currentTimeMillis(); } // overridable for tests
 
     public void setListener(Listener l) { listener = l; }
+    void grantPurchaseUnchecked(long coinsToAdd,int energyToAdd){if(saveFault)throw new IllegalStateException("Save blocked");balance=Math.addExact(balance,coinsToAdd);invalidate();}
     public void addCoins(long n) { if(saveFault)throw new IllegalStateException("Reload required before coin delivery");balance += n; persist(); invalidate(); }
     public long getBalance() { return balance; }
     public int getLevel() { return level; }
