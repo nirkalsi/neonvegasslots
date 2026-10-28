@@ -97,7 +97,7 @@ final class IconTile extends View {
         p.setShader(null);
         p.setStyle(Paint.Style.STROKE); p.setStrokeWidth(2f * d); p.setColor(rim);
         cv.drawRoundRect(rf, rad, rad, p);
-        int isz = (int)(icon.getIntrinsicWidth()*.78f);
+        int isz = (int)(icon.getIntrinsicWidth()*(label.equals("WATCH AD")?1.12f:.78f));
         int ix = (int) (cx - isz / 2f), iy = (int) (cy - isz / 2f - 6*d);
         icon.setBounds(ix, iy, ix + isz, iy + isz);
         icon.draw(cv);

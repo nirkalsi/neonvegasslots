@@ -706,7 +706,7 @@ public class SlotsView extends View {
         p.setFakeBoldText(true); p.setTextAlign(Paint.Align.CENTER); p.setColor(0xFFFFFFFF);
         String bl = betLabel(BETS[betIdx]);
         p.setTextSize(w * (bl.length() > 3 ? 0.044f : 0.054f));
-        float textW=p.measureText(bl),coinR=btnH*.15f,gap=btnH*.13f;float groupW=coinR*2+gap+textW;float coinX=rf.centerX()-groupW/2+coinR;float valueX=rf.centerX()+groupW/2-textW/2;
+        float textW=p.measureText(bl),coinR=btnH*.22f,gap=btnH*.13f;float groupW=coinR*2+gap+textW;float coinX=rf.centerX()-groupW/2+coinR;float valueX=rf.centerX()+groupW/2-textW/2;
         coinIcon(cv,coinX,bcy,coinR,th);p.setColor(0xFFFFFFFF);p.setTextAlign(Paint.Align.CENTER);
         cv.save();float bt=Math.min(1,Math.max(0,(now-betBumpAt)/260f));float bs=1+.15f*(float)Math.sin(bt*Math.PI);cv.scale(bs,bs,rf.centerX(),bcy);cv.drawText(bl, valueX, bcy + btnH * 0.17f, p);cv.restore();if(bt<1)postInvalidateDelayed(16);
         p.setStyle(Paint.Style.STROKE); p.setStrokeCap(Paint.Cap.ROUND); p.setStrokeWidth(btnH * 0.09f); p.setColor(0xFFFFFFFF);
