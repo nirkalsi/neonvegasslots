@@ -570,7 +570,7 @@ public class SlotsView extends View {
         // level + xp bar
         p.setTextSize(w * 0.034f);
         p.setColor(th.soft);
-        float bx=w*.14f,by=w*.177f,br=w*.040f;Path badge=new Path();for(int k=0;k<10;k++){double a=-Math.PI/2+k*Math.PI/5;float r=k%2==0?br:br*.56f;float x=bx+(float)Math.cos(a)*r,y=by+(float)Math.sin(a)*r;if(k==0)badge.moveTo(x,y);else badge.lineTo(x,y);}badge.close();p.setColor(th.title);cv.drawPath(badge,p);p.setColor(th.panelBg);p.setTextSize(w*.025f);p.setFakeBoldText(true);cv.drawText(""+level,bx,by+w*.009f,p);p.setFakeBoldText(false);
+        float bx=w*.14f,by=w*.177f,br=Math.max(w*.040f,bodySize(w*.025f)*.85f);Path badge=new Path();for(int k=0;k<10;k++){double a=-Math.PI/2+k*Math.PI/5;float r=k%2==0?br:br*.56f;float x=bx+(float)Math.cos(a)*r,y=by+(float)Math.sin(a)*r;if(k==0)badge.moveTo(x,y);else badge.lineTo(x,y);}badge.close();p.setColor(th.title);cv.drawPath(badge,p);p.setColor(th.panelBg);p.setTextSize(bodySize(w*.025f));p.setFakeBoldText(true);cv.drawText(""+level,bx,by-(p.ascent()+p.descent())/2,p);p.setFakeBoldText(false);
         float barL = w * 0.24f, barR = w * 0.76f, barY = w*.150f, barH = w * 0.041f;
         rf.set(barL, barY, barR, barY + barH);
         p.setColor(0xCC000000); cv.drawRoundRect(rf, 8, 8, p);
@@ -585,7 +585,7 @@ public class SlotsView extends View {
         float infoX=w*.90f, infoY=w*.18f;
         p.setColor(th.panelBg);cv.drawCircle(infoX,infoY,w*.034f,p);
         p.setStyle(Paint.Style.STROKE);p.setStrokeWidth(w*.003f);p.setColor(th.title);cv.drawCircle(infoX,infoY,w*.034f,p);p.setStyle(Paint.Style.FILL);
-        p.setTextAlign(Paint.Align.CENTER);p.setTextSize(w*.044f);p.setFakeBoldText(true);cv.drawText("i",infoX,infoY+w*.015f,p);p.setFakeBoldText(false);
+        p.setTextAlign(Paint.Align.CENTER);p.setTextSize(bodySize(w*.044f));p.setFakeBoldText(true);cv.drawText("i",infoX,infoY-(p.ascent()+p.descent())/2,p);p.setFakeBoldText(false);
         // machine frame: neon marquee with chase bulbs
         art.frame(cv, 4, gridTop - 8, w - 4, gridTop + gridH + 8, th, phase);
 
