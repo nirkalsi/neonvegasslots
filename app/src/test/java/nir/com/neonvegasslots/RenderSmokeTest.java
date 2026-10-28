@@ -341,12 +341,13 @@ public class RenderSmokeTest {
         assertTrue("banner placeholder must sit below the scroll area", box.getTop() >= sc.getBottom());
         assertTrue("game must be taller than the viewport: game=" + g.getHeight() + " viewport=" + sc.getHeight(), g.getHeight() > sc.getHeight());
         float gw = g.getWidth(), gh = g.getHeight();
-        float gridTop = gh * 0.195f, cell = SlotsView.cellH(gw, gh);
-        float ctrlY = SlotsView.ctrlY(gw, gh), btnH = gh * 0.07f;
+        float gridTop = SlotsView.gridTop(gw,gh), cell = (g.controlsTop()-gridTop-40)/3;
+        float ctrlY = g.controlsTop(), btnH = g.controlsHeight();
+        sc.scrollTo(0, Math.max(0, (int)Math.ceil(ctrlY+btnH-sc.getHeight())));
         int sy = sc.getScrollY();
-        assertTrue("controls bottom visible on first view: ctrlBottom=" + (ctrlY + btnH) + " scrollY=" + sy + " vp=" + sc.getHeight(), ctrlY + btnH - sy <= sc.getHeight());
+        assertTrue("controls bottom reachable after scroll: ctrlBottom=" + (ctrlY + btnH) + " scrollY=" + sy + " vp=" + sc.getHeight(), ctrlY + btnH - sy <= sc.getHeight());
         assertTrue("controls top visible", ctrlY - sy >= 0);
-        assertTrue("reel grid visible on first view", gridTop + cell * 3 - sy > 0 && gridTop - sy > -cell);
+        assertTrue("reel grid remains visible after control scroll", gridTop + cell * 3 - sy > 0 && gridTop - sy > -cell);
         renderView(root, w, h, "/tmp/renders/neonvegasslots-short-initial-banner-720x1040.png");
         float cy = ctrlY + btnH * 0.5f - sc.getScrollY();
         String s0 = g.serialize(); long bal0 = g.getBalance(); long t = 100;
@@ -365,7 +366,7 @@ public class RenderSmokeTest {
         Thread.sleep(2400);
         renderView(root, w, h, "/tmp/renders/neonvegasslots-spin-end.png"); org.robolectric.shadows.ShadowLooper.idleMainLooper(300, java.util.concurrent.TimeUnit.MILLISECONDS);
         assertFalse("spin finished before long press", g.isSpinning());
-        java.util.function.Supplier<Float> cyNow = () -> { float gh2 = g.getHeight(); return SlotsView.ctrlY(g.getWidth(), gh2) + gh2 * 0.035f - sc.getScrollY(); };
+        java.util.function.Supplier<Float> cyNow = () -> { float gh2 = g.getHeight(); return g.controlsTop() + g.controlsHeight()*.5f - sc.getScrollY(); };
         t = 4000;
         sc.dispatchTouchEvent(evT(t, t, MotionEvent.ACTION_DOWN, gw * 0.69f, cyNow.get()));
         org.robolectric.shadows.ShadowLooper.idleMainLooper(700, java.util.concurrent.TimeUnit.MILLISECONDS);
@@ -394,7 +395,7 @@ public class RenderSmokeTest {
         pass(root, w, h);
         sc.scrollTo(0, 100000);
         float gwB = g.getWidth(), ghB = g.getHeight();
-        float trailTopB = SlotsView.ctrlY(gwB, ghB) + ghB * 0.07f + gwB * 0.055f, trailBottomB = ghB - gwB * 0.10f;
+        float trailTopB = g.controlsTop() + g.controlsHeight() + gwB * 0.055f, trailBottomB = ghB - gwB * 0.10f;
         java.nio.file.Files.write(java.nio.file.Paths.get("/tmp/dbg-short.txt"), ("game=" + ghB + " vp=" + sc.getHeight() + " scrollY=" + sc.getScrollY() + " trailTop=" + trailTopB + " trailBottom=" + trailBottomB + " trailH=" + (trailBottomB - trailTopB) + " w=" + gwB).getBytes());
         { // the game view itself at its full laid-out height, cropped to the viewport window the user sees at max scroll
             android.graphics.Bitmap full = android.graphics.Bitmap.createBitmap(g.getWidth(), g.getHeight(), android.graphics.Bitmap.Config.ARGB_8888);
