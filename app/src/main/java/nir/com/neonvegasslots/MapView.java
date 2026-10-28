@@ -11,7 +11,7 @@ final class MapView extends View {
     private final SlotArt art=new SlotArt();
     private final Paint p=new Paint(3);
     private final float d;
-    private float downX,downY;private boolean dragged;
+    private float downX,downY;private boolean dragged;private int pressedStop=-1;private boolean stopDown;private long stopRelease;
     MapView(Context c,SlotsView g){super(c);this.g=g;d=c.getResources().getDisplayMetrics().density;setContentDescription("Journey map. Tap an unlocked destination to change theme. Trophy collection below.");}
     private float row(){return 154*d;}
     private float head(){return 42*d;}
@@ -27,15 +27,15 @@ final class MapView extends View {
         p.setStyle(Paint.Style.STROKE);p.setStrokeWidth(13*d);p.setColor(0xFF4A3A34);c.drawPath(road,p);p.setStrokeWidth(3*d);p.setColor(0xFFCDA966);c.drawPath(road,p);p.setStyle(Paint.Style.FILL);
         for(int i=0;i<SlotArt.THEMES.length;i++){
             SlotArt.Theme t=SlotArt.THEMES[i];boolean open=g.getLevel()>=t.unlockLevel,sel=g.getThemeIdx()==i;float x=stopX(i),y=stopY(i),ww=Math.min(w*.58f,174*d),hh=88*d;
-            RectF r=new RectF(x-ww/2,y-hh/2,x+ww/2,y+hh/2);Path clip=new Path();clip.addRoundRect(r,14*d,14*d,Path.Direction.CW);
+            c.save();float scale=stopScale(i);c.scale(scale,scale,x,y);RectF r=new RectF(x-ww/2,y-hh/2,x+ww/2,y+hh/2);Path clip=new Path();clip.addRoundRect(r,14*d,14*d,Path.Direction.CW);
             c.save();c.clipPath(clip);c.translate(r.left,r.top);landmark(c,ww,hh,t,i);c.restore();
-            if(!open){p.setColor(0xAA080B18);c.drawRoundRect(r,14*d,14*d,p);}
+            if(pressedStop==i&&stopDown){p.setColor(0x44000000);c.drawRoundRect(r,14*d,14*d,p);}if(!open){p.setColor(0xAA080B18);c.drawRoundRect(r,14*d,14*d,p);}
             p.setStyle(Paint.Style.STROKE);p.setStrokeWidth((sel?3:1)*d);p.setColor(sel?t.title:open?t.neon:0xFF596074);c.drawRoundRect(r,14*d,14*d,p);p.setStyle(Paint.Style.FILL);
             if(sel){float fs=getResources().getDisplayMetrics().scaledDensity;
                 p.setTypeface(GameFonts.display(getContext()));p.setTextSize(12*fs);float bw=p.measureText("YOU")+14*d,bh=18*fs;
                 float right=r.right-3*d,top=r.top+3*d;p.setColor(t.title);c.drawRoundRect(right-bw,top,right,top+bh,7*d,7*d,p);
                 text(c,"YOU",right-bw/2,top+bh/2-(p.ascent()+p.descent())/2,12,0xFF182335);}
-            text(c,t.name,x,y+hh/2+20*d,14,open?t.title:0xFF9DA8BE);
+            c.restore();text(c,t.name,x,y+hh/2+20*d,14,open?t.title:0xFF9DA8BE);
             text(c,sel?"CURRENT STOP":open?"Tap to visit":"Unlocks at Lv "+t.unlockLevel,x,y+hh/2+38*d,12,open?t.soft:0xFF9DA8BE);
         }
         float top=head()+SlotArt.THEMES.length*row()+12*d;
@@ -59,8 +59,12 @@ final class MapView extends View {
         p.setColor(t.neon);p.setStyle(Paint.Style.STROKE);p.setStrokeWidth(2*d);c.drawRoundRect(w*.3f,h*.3f,w*.68f,h*.56f,4*d,4*d,p);p.setStyle(Paint.Style.FILL);
         text(c,new String[]{"VEGAS","SUNSET","LAGOON","ROYAL"}[index],w*.49f,h*.46f,11,t.title);
     }
-    @Override public boolean onTouchEvent(MotionEvent e){if(e.getActionMasked()==MotionEvent.ACTION_DOWN){downX=e.getX();downY=e.getY();dragged=false;}
-        if(e.getActionMasked()==MotionEvent.ACTION_MOVE&&Math.hypot(e.getX()-downX,e.getY()-downY)>android.view.ViewConfiguration.get(getContext()).getScaledTouchSlop())dragged=true;
-        if(e.getActionMasked()==MotionEvent.ACTION_UP&&!dragged){for(int i=0;i<SlotArt.THEMES.length;i++)if(Math.abs(e.getX()-stopX(i))<getWidth()*.3f&&Math.abs(e.getY()-stopY(i))<48*d){g.selectTheme(i);invalidate();g.invalidate();performClick();break;}}return true;}
-    @Override public boolean performClick(){super.performClick();return true;}
+    private int stopAt(float x,float y){for(int i=0;i<SlotArt.THEMES.length;i++)if(Math.abs(x-stopX(i))<getWidth()*.3f&&Math.abs(y-stopY(i))<48*d)return i;return -1;}
+    private float stopScale(int i){if(pressedStop!=i)return 1;if(stopDown)return .95f;float t=(android.os.SystemClock.uptimeMillis()-stopRelease)/210f;if(t>=1){pressedStop=-1;return 1;}postInvalidateDelayed(16);return 1-.05f*(float)Math.cos(t*Math.PI*2)*(1-t);}
+    @Override public boolean onTouchEvent(MotionEvent e){int a=e.getActionMasked();
+        if(a==MotionEvent.ACTION_DOWN){downX=e.getX();downY=e.getY();dragged=false;pressedStop=stopAt(downX,downY);stopDown=pressedStop>=0;invalidate();}
+        if(a==MotionEvent.ACTION_MOVE&&Math.hypot(e.getX()-downX,e.getY()-downY)>android.view.ViewConfiguration.get(getContext()).getScaledTouchSlop()){dragged=true;stopDown=false;pressedStop=-1;invalidate();}
+        if(a==MotionEvent.ACTION_UP||a==MotionEvent.ACTION_CANCEL){int i=pressedStop;stopDown=false;stopRelease=android.os.SystemClock.uptimeMillis();
+            if(a==MotionEvent.ACTION_UP&&!dragged&&i>=0&&stopAt(e.getX(),e.getY())==i){g.selectTheme(i);g.invalidate();performClick();}invalidate();}return true;}
+    @Override public boolean performClick(){android.content.Context c=getContext();while(c instanceof android.content.ContextWrapper&&!(c instanceof MainActivity)){android.content.Context next=((android.content.ContextWrapper)c).getBaseContext();if(next==c)break;c=next;}if(c instanceof MainActivity)((MainActivity)c).playUi(false);performHapticFeedback(android.view.HapticFeedbackConstants.KEYBOARD_TAP);super.performClick();return true;}
 }
