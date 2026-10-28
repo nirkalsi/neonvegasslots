@@ -230,7 +230,7 @@ public class SlotsView extends View {
         p.setColor(th.title);p.setTextSize(rewardSize);c.drawText("+"+pendingLevelCoins+" coins",w*.5f,cy+w*.105f,p);
         p.setColor(th.soft);p.setTextSize(detail);c.drawText(levelBetReward(),w*.5f,detailY,p);
         c.drawText(levelLandReward(),w*.5f,secondY,p);
-        levelCollect.set(w*.22f,collectTop,w*.78f,collectBottom);p.setColor(th.spinBg);c.drawRoundRect(levelCollect,w*.055f,w*.055f,p);p.setColor(0xFFFFFFFF);p.setTextSize(bodySize(w*.052f));c.drawText("COLLECT",w*.5f,levelCollect.centerY()-(p.ascent()+p.descent())/2,p);
+        levelCollect.set(w*.22f,collectTop,w*.78f,collectBottom);c.save();float collectScale=controlScale(7,n);c.scale(collectScale,collectScale,levelCollect.centerX(),levelCollect.centerY());p.setColor(th.spinBg);c.drawRoundRect(levelCollect,w*.055f,w*.055f,p);p.setColor(0xFFFFFFFF);p.setTextSize(bodySize(w*.052f));c.drawText("COLLECT",w*.5f,levelCollect.centerY()-(p.ascent()+p.descent())/2,p);if(controlDown&&pressedControl==7){p.setColor(0x44000000);c.drawRoundRect(levelCollect,w*.055f,w*.055f,p);}c.restore();
         c.restore();
         drawLevelTheme(c,w,cy,n-levelMomentAt);
         if(n-levelMomentAt<1300){float age=(n-levelMomentAt)/1300f;
@@ -905,7 +905,7 @@ public class SlotsView extends View {
 
     @Override public boolean onTouchEvent(MotionEvent e) {
         int act = e.getActionMasked();
-        if (act == MotionEvent.ACTION_UP || act == MotionEvent.ACTION_CANCEL) {controlDown=false;controlReleaseAt=nowMillis();invalidate(); spinHeld = false; lpHandler.removeCallbacks(longPressAuto); return true; }
+        if (act == MotionEvent.ACTION_UP || act == MotionEvent.ACTION_CANCEL) {boolean collect=act==MotionEvent.ACTION_UP&&controlDown&&pressedControl==7&&levelMomentReady()&&levelCollect.contains(e.getX(),e.getY());controlDown=false;controlReleaseAt=nowMillis();invalidate(); spinHeld = false; lpHandler.removeCallbacks(longPressAuto);if(collect)collectLevelReward(); return true; }
         if (act != MotionEvent.ACTION_DOWN) return true;
         finishControlTip();
         float w = getWidth();
@@ -913,7 +913,7 @@ public class SlotsView extends View {
         float ctrlY = controlsTop();
         float btnH = controlsHeight();
         float x = e.getX(), y = e.getY();
-        if(pendingLevelCoins>0){if(levelMomentReady()&&levelCollect.contains(x,y))collectLevelReward();return true;}
+        if(pendingLevelCoins>0){if(levelMomentReady()&&levelCollect.contains(x,y))pressControl(7);return true;}
         if (Math.abs(x-w*.90f)<=w*.065f && Math.abs(y-w*.18f)<=w*.065f) { if(listener!=null){pressControl(4);listener.onOpenPaytable();}return true; }
         if (chipPlus.contains(x, y)) { if (listener != null){pressControl(5);listener.onOpenShop();} return true; }
         if(x>=w*.03f&&x<=w*.40f&&y>ctrlY+btnH&&y<=ctrlY+btnH+captionHeight()){if(!spinning&&!autoSpin){pressControl(3);maxBet();}return true;}
