@@ -530,7 +530,11 @@ public class SlotsView extends View {
     private float cellH() { return cellH(getWidth(), getHeight()); }
     static float gridTop(float w,float h){return Math.max(h*.145f,w*.29f);}
     private float gridTop() { return gridTop(getWidth(),getHeight()); }
-    private float captionHeight(){return Math.max(getWidth()*.055f,moneySize(getWidth()*.032f)*1.35f);}
+    static String nextLevelRewardLabel(int level){return "Lv "+(level+1)+": +"+(150L*(level+1))+" coins";}
+    private float captionHeight(){return Math.max(44*getResources().getDisplayMetrics().density,moneySize(getWidth()*.032f)*1.55f);}
+    private boolean controlTipShown;
+    private boolean controlTipSeen(){return getContext().getSharedPreferences("control_coach",0).getBoolean("hold_auto_seen",false);}
+    private void finishControlTip(){if(controlTipShown)getContext().getSharedPreferences("control_coach",0).edit().putBoolean("hold_auto_seen",true).apply();}
     private float trailTop() { return ctrlY(getWidth(), getHeight()) + getHeight() * 0.07f + captionHeight(); }
     private float trailBottom() { return trailTop() + getWidth() * 0.19f; } // compact strip; the full map opens in a dialog
     private float trailNodeY() {
@@ -581,7 +585,7 @@ public class SlotsView extends View {
         float frac = Math.min(1f, displayedXp(now) / (float) xpNeeded());if(xpAnimAt>0&&now-xpAnimAt<450)postInvalidateDelayed(16);
         rf.set(barL, barY, barL + (barR - barL) * frac, barY + barH);
         p.setColor(th.title); cv.drawRoundRect(rf, 8, 8, p);
-        String nextReward="+"+(150L*(level+1))+" at Lv "+(level+1);
+        String nextReward=nextLevelRewardLabel(level);
         p.setTextAlign(Paint.Align.CENTER);p.setTextSize(bodySize(w*.034f));p.setColor(th.soft);
         cv.drawText(nextReward,w*.44f,w*.255f,p);
         // Info/paytable entry beside XP, separate from currency and store.
@@ -714,13 +718,14 @@ public class SlotsView extends View {
         p.setTextSize(moneySize(w * (bl.length() > 3 ? 0.044f : 0.054f)));
         float textW=p.measureText(bl),coinR=btnH*.22f,gap=btnH*.13f;float groupW=coinR*2+gap+textW;float coinX=rf.centerX()-groupW/2+coinR;float valueX=rf.centerX()+groupW/2-textW/2;
         if(groupW<rf.width()-btnH*1.45f)coinIcon(cv,coinX,bcy,coinR,th);else valueX=rf.centerX();p.setColor(0xFFFFFFFF);p.setTextAlign(Paint.Align.CENTER);
-        cv.save();float bt=Math.min(1,Math.max(0,(now-betBumpAt)/260f));float bs=1+.15f*(float)Math.sin(bt*Math.PI);cv.scale(bs,bs,rf.centerX(),bcy);cv.drawText(bl, valueX, bcy + btnH * 0.17f, p);cv.restore();if(bt<1)postInvalidateDelayed(16);
+        cv.save();float bt=Math.min(1,Math.max(0,(now-betBumpAt)/260f));float bs=1+.15f*(float)Math.sin(bt*Math.PI);cv.scale(bs,bs,rf.centerX(),bcy);cv.drawText(bl, valueX, bcy + btnH * 0.29f, p);cv.restore();if(bt<1)postInvalidateDelayed(16);
         p.setStyle(Paint.Style.STROKE); p.setStrokeCap(Paint.Cap.ROUND); p.setStrokeWidth(btnH * 0.09f); p.setColor(0xFFFFFFFF);
         float mx = rf.left + btnH * 0.34f, px = rf.right - btnH * 0.34f;
         cv.drawLine(mx - bu * 0.7f, bcy, mx + bu * 0.7f, bcy, p);                    // minus
         cv.drawLine(px - bu * 0.7f, bcy, px + bu * 0.7f, bcy, p);                    // plus
         cv.drawLine(px, bcy - bu * 0.7f, px, bcy + bu * 0.7f, p);
         p.setStrokeCap(Paint.Cap.BUTT); p.setStyle(Paint.Style.FILL);
+        p.setTextSize(bodySize(w*.026f));p.setColor(0xFFFFFFFF);cv.drawText("BET",rf.centerX(),rf.top+btnH*.29f,p);
         if (betIdx + 1 < BETS.length && betIdx + 1 >= betCount(level)) { // next step is locked: gold pill on the BET button edge, padlock + "LV n"
             float ph=w*.045f,pw=w*.29f,pcx=rf.centerX(),pcy=rf.top;
             qr.set(pcx-pw/2,pcy-ph/2,pcx+pw/2,pcy+ph/2);p.setColor(0xFFFFD166);cv.drawRoundRect(qr,ph/2,ph/2,p);
@@ -749,16 +754,25 @@ public class SlotsView extends View {
         } else {
             p.setTextAlign(Paint.Align.CENTER); p.setTextSize(btnH * .46f);
             GameFonts.hero(cv,"SPIN",scx-btnH*.10f,scy+btnH*.16f,p,0xFFFFFFFF,0xFFD9FFD0);
-            loopIcon(cv, rf.right - btnH * .35f, scy, btnH * .14f, 0xCCFFFFFF); // hold opens auto choices
+            loopIcon(cv, rf.right - btnH * .35f, scy, btnH * .14f, 0xCCFFFFFF); // hold starts auto, tap stops it
         }
         p.clearShadowLayer();if(controlDown&&pressedControl==2){p.setColor(0x33000000);cv.drawRoundRect(w*.43f,ctrlY,w*.97f,ctrlY+btnH,btnH*.32f,btnH*.32f,p);}cv.restore();
         { // labels under the control row: BET caption and WIN readout
             float ly = ctrlY + btnH + captionHeight()*.76f;
             p.setFakeBoldText(true); p.setTextAlign(Paint.Align.CENTER); p.setTextSize(bodySize(w * 0.032f));
-            // The bet is already shown on its coin control; this caption is its separate MAX action.
-            p.setColor(th.title);p.setTextSize(bodySize(w*.026f));cv.drawText("MAX BET",w*.215f,ly,p);p.setTextSize(bodySize(w*.032f));
+            // A real button in the same touch region as the existing MAX shortcut.
+            float capTop=ctrlY+btnH,capHeight=captionHeight();
+            qr.set(w*.03f,capTop+4,w*.40f,capTop+capHeight-4);
+            modernButton(cv,qr,lighten(th.betBg,.18f),darken(th.betBg,.25f),th.title,0);
+            p.setTextAlign(Paint.Align.CENTER);p.setColor(th.title);p.setTextSize(bodySize(w*.030f));
+            cv.drawText("MAX BET",qr.centerX(),qr.centerY()-(p.ascent()+p.descent())/2,p);
+            p.setTextSize(bodySize(w*.032f));
             if (lastWin > 0) { p.setTextSize(moneySize(w*.032f));p.setColor(0xFFFFD166); cv.drawText((profitable(lastWin,BETS[betIdx])?"WIN ":"RETURN ") + (now<bigWinUntil?shownTierWin(bigWinAmount,now-bigWinStartAt,bigWinMs):displayedLastWin(now)), w * 0.70f, ly, p); }
-            else { p.setColor(th.soft); cv.drawText(autoSpin ? "AUTO - tap to stop" : spinning ? "TAP TO STOP" : "HOLD = AUTO", w * 0.70f, ly, p); }
+            else if(!spinning&&!autoSpin&&!controlTipSeen()) {
+                controlTipShown=true;p.setColor(th.soft);p.setTextSize(bodySize(w*.029f));
+                cv.drawText("Hold SPIN for auto",w*.70f,ctrlY+btnH+captionHeight()*.43f,p);
+                cv.drawText("Tap to stop",w*.70f,ctrlY+btnH+captionHeight()*.83f,p);
+            }
             p.setFakeBoldText(false);
         }
         p.setFakeBoldText(false); p.setTextAlign(Paint.Align.CENTER); p.setTextSize(w * 0.045f);
@@ -877,6 +891,7 @@ public class SlotsView extends View {
         int act = e.getActionMasked();
         if (act == MotionEvent.ACTION_UP || act == MotionEvent.ACTION_CANCEL) {controlDown=false;controlReleaseAt=nowMillis();invalidate(); spinHeld = false; lpHandler.removeCallbacks(longPressAuto); return true; }
         if (act != MotionEvent.ACTION_DOWN) return true;
+        finishControlTip();
         float w = getWidth();
         float gridTop = gridTop();
         float ctrlY = ctrlY(w, getHeight());
