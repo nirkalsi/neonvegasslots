@@ -58,4 +58,11 @@ public class SoundFxTest {
         SoundFx.setOn(c, true);
         assertTrue(SoundFx.isOn(c));
     }
+    @Test public void themeTimbreKeepsExactEffectDurationsAndPeakCaps(){
+        int[][] timing={{3,55},{1,40},{3,90},{6,110},{4,140},{2,20},{3,55},{5,120},{6,135}};
+        SoundFx.Effect[] fx={SoundFx.Effect.SPIN,SoundFx.Effect.REEL_STOP,SoundFx.Effect.WIN,SoundFx.Effect.BIG_WIN,SoundFx.Effect.ANTICIPATION,SoundFx.Effect.CLICK,SoundFx.Effect.COLLECT,SoundFx.Effect.MEGA_WIN,SoundFx.Effect.EPIC_WIN};
+        for(int i=0;i<fx.length;i++)assertEquals(timing[i][0]*(SoundFx.RATE*timing[i][1]/1000)+SoundFx.RATE*120/1000,SoundFx.render(fx[i]).length);
+        double sum=0;for(int i=0;i<4096;i++){double phase=2*Math.PI*i/4096;assertTrue(Math.abs(SoundFx.themeTone(phase))<=1);sum+=SoundFx.themeTone(phase)*Math.sin(3*phase);}assertEquals(.16,2*sum/4096,1e-8);
+    }
+
 }

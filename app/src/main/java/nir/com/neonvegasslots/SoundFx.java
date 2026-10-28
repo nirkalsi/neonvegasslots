@@ -43,6 +43,9 @@ public final class SoundFx {
             a[i]=(short)(12500*pulse*(.65*Math.sin(2*Math.PI*120*t)+.35*Math.sin(2*Math.PI*360*t)));}
         return a;
     }
+    /** Original harmonic color: soft odd-harmonic electric tone. */
+    static double themeTone(double phase){return .78*Math.sin(phase)+.16*Math.sin(3*phase)+.06*Math.sin(5*phase);}
+
     private static short[] seq(double[] freqs, int noteMs, double peak) {
         int per = RATE * noteMs / 1000, tail = RATE * 120 / 1000;
         short[] out = new short[per * freqs.length + tail];
@@ -52,7 +55,7 @@ public final class SoundFx {
             for (int i = 0; i < len && start + i < acc.length; i++) {
                 double t = i / (double) RATE;
                 double env = Math.min(1.0, i / (RATE * 0.004)) * Math.exp(-t * (n == freqs.length - 1 ? 9.0 : 16.0));
-                double s = Math.sin(2 * Math.PI * freqs[n] * t) + 0.25 * Math.sin(4 * Math.PI * freqs[n] * t);
+                double s = themeTone(2*Math.PI*freqs[n]*t);
                 acc[start + i] += s * env;
             }
         }
