@@ -18,7 +18,7 @@ final class MapView extends View {
     float stopX(int i){return getWidth()*(i%2==0?.32f:.68f);}
     float stopY(int i){return head()+row()*i+58*d;}
     @Override protected void onMeasure(int ws,int hs){setMeasuredDimension(MeasureSpec.getSize(ws),(int)(head()+SlotArt.THEMES.length*(row()+112*d)+60*d));}
-    private void text(Canvas c,String s,float x,float y,float sp,int color){p.setColor(color);p.setTextAlign(Paint.Align.CENTER);p.setTypeface(GameFonts.display(getContext()));p.setTextSize(sp*getResources().getDisplayMetrics().scaledDensity);c.drawText(s,x,y,p);}
+    private void text(Canvas c,String s,float x,float y,float sp,int color){p.setColor(color);p.setTextAlign(Paint.Align.CENTER);p.setTypeface(GameFonts.display(getContext()));p.setTextSize(Math.max(12,sp)*getResources().getDisplayMetrics().scaledDensity);c.drawText(s,x,y,p);}
     @Override protected void onDraw(Canvas c){
         float w=getWidth();p.setColor(0xFF101224);c.drawRoundRect(0,0,w,getHeight(),16*d,16*d,p);
         text(c,"Choose your unlocked destination",w/2,25*d,13,0xFFFFDE8A);
@@ -31,7 +31,10 @@ final class MapView extends View {
             c.save();c.clipPath(clip);c.translate(r.left,r.top);landmark(c,ww,hh,t,i);c.restore();
             if(!open){p.setColor(0xAA080B18);c.drawRoundRect(r,14*d,14*d,p);}
             p.setStyle(Paint.Style.STROKE);p.setStrokeWidth((sel?3:1)*d);p.setColor(sel?t.title:open?t.neon:0xFF596074);c.drawRoundRect(r,14*d,14*d,p);p.setStyle(Paint.Style.FILL);
-            if(sel){p.setColor(t.title);c.drawCircle(r.right-8*d,r.top+8*d,10*d,p);text(c,"YOU",r.right-8*d,r.top+11*d,7,0xFF182335);}
+            if(sel){float fs=getResources().getDisplayMetrics().scaledDensity;
+                p.setTypeface(GameFonts.display(getContext()));p.setTextSize(12*fs);float bw=p.measureText("YOU")+14*d,bh=18*fs;
+                float right=r.right-3*d,top=r.top+3*d;p.setColor(t.title);c.drawRoundRect(right-bw,top,right,top+bh,7*d,7*d,p);
+                text(c,"YOU",right-bw/2,top+bh/2-(p.ascent()+p.descent())/2,12,0xFF182335);}
             text(c,t.name,x,y+hh/2+20*d,14,open?t.title:0xFF9DA8BE);
             text(c,sel?"CURRENT STOP":open?"Tap to visit":"Unlocks at Lv "+t.unlockLevel,x,y+hh/2+38*d,12,open?t.soft:0xFF9DA8BE);
         }
