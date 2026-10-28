@@ -184,27 +184,27 @@ final class SlotArt {
     static float nodeX(float w,int i){return w*(.16f+i*.226f);}
 
     /** Compact progression strip (doc A6): one short card that opens the full map. Text >= 12sp at 360dp. */
-    void trailCompact(Canvas c,float w,float top,float bottom,int level,long xp,long needed,int selected,String ju){
+    void trailCompact(Canvas c,float w,float top,float bottom,int level,long xp,long needed,int selected,String ju,float minBody){
         Theme cur=THEMES[selected];
         box.set(w*.05f,top,w*.95f,bottom);
         ink.setShader(new LinearGradient(0,top,w,bottom,cur.panelBg,0xFF0E0A10,Shader.TileMode.CLAMP));
         c.drawRoundRect(box,w*.025f,w*.025f,ink); ink.setShader(null);
         ink.setStyle(Paint.Style.STROKE); ink.setStrokeWidth(w*.004f); color(cur.panelLine); c.drawRoundRect(box,w*.025f,w*.025f,ink); ink.setStyle(Paint.Style.FILL);
         ink.setTypeface(displayFace);
-        ink.setTextAlign(Paint.Align.LEFT); ink.setTextSize(w*.040f); color(cur.title);
-        c.drawText("CITY TOUR",w*.09f,top+w*.062f,ink);
-        ink.setTextAlign(Paint.Align.RIGHT); ink.setTextSize(w*.036f); color(cur.soft);
-        c.drawText("MAP  \u203A",w*.91f,top+w*.062f,ink);
+        ink.setTextAlign(Paint.Align.LEFT); ink.setTextSize(Math.max(minBody,w*.040f)); color(cur.title);
+        c.drawText("CITY TOUR",w*.09f,top+Math.max(w*.062f,minBody*1.12f),ink);
+        ink.setTextAlign(Paint.Align.RIGHT); ink.setTextSize(Math.max(minBody,w*.036f)); color(cur.soft);
+        c.drawText("MAP  \u203A",w*.91f,top+Math.max(w*.062f,minBody*1.12f),ink);
         Theme next=null; for(Theme t:THEMES) if(level<t.unlockLevel){next=t;break;}
         String l2;
         if(ju!=null&&ju.startsWith("TROPHY:")) l2="TROPHY FOUND: "+ju.substring(7)+"!";
         else if(ju!=null) l2="NEW UNLOCKED: "+ju+"!";
         else if(next!=null) l2="Next stop: "+next.name+" at Lv "+next.unlockLevel;
         else l2="Every one unlocked";
-        ink.setTextAlign(Paint.Align.LEFT); ink.setTypeface(bodyFace); ink.setTextSize(w*.036f); color(cur.soft);
-        float tw=ink.measureText(l2); if(tw>w*.82f) ink.setTextSize(w*.036f*w*.82f/tw);
-        c.drawText(l2,w*.09f,top+w*.108f,ink);
-        float by=top+w*.128f, bh=w*.026f;
+        ink.setTextAlign(Paint.Align.LEFT); ink.setTypeface(bodyFace); ink.setTextSize(Math.max(minBody,w*.036f)); color(cur.soft);
+        while(ink.measureText(l2)>w*.82f&&l2.length()>3){l2=l2.substring(0,l2.length()-2).trim()+"…";}
+        c.drawText(l2,w*.09f,top+Math.max(w*.108f,minBody*2.42f),ink);
+        float by=top+Math.max(w*.128f,minBody*2.8f), bh=w*.026f;
         box.set(w*.09f,by,w*.91f,by+bh); color(0x55000000); c.drawRoundRect(box,bh/2,bh/2,ink);
         float fr=needed>0?Math.min(1f,xp/(float)needed):0f;
         if(fr>0){ box.set(w*.09f,by,w*.09f+w*.82f*fr,by+bh); color(cur.title); c.drawRoundRect(box,bh/2,bh/2,ink); }

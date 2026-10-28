@@ -525,19 +525,19 @@ public class SlotsView extends View {
     }
 
     /** Allocate actual content height first; spare space belongs to the reels. */
-    static float cellH(float w,float h){return cellH(w,h,w*.16f,h*.07f);}
-    private static float cellH(float w,float h,float caption,float controls){
+    static float cellH(float w,float h){return cellH(w,h,w*.16f,h*.07f,w*.19f);}
+    private static float cellH(float w,float h,float caption,float controls,float trail){
         float cw=w/5f-8;
-        float available=h-gridTop(w,h)-40-controls-caption-w*.19f-w*.035f;
+        float available=h-gridTop(w,h)-40-controls-caption-trail-w*.035f;
         return Math.max(cw,Math.min(cw*1.60f,(available-16)/3));
     }
     static float ctrlY(float w,float h){return gridTop(w,h)+cellH(w,h)*3+40;}
-    private float cellH(){return cellH(getWidth(),getHeight(),captionHeight(),controlsHeight());}
+    private float cellH(){return cellH(getWidth(),getHeight(),captionHeight(),controlsHeight(),trailHeightFor(getWidth()));}
     float controlsHeight(){return Math.max(getHeight()*.07f,moneySize(getWidth()*.054f)*1.9f);}
     float controlsTop(){return gridTop()+cellH()*3+40;}
     int minimumContentHeight(int width){
         float lo=width,hi=width*3f,caption=captionHeightFor(width);
-        for(int n=0;n<20;n++){float h=(lo+hi)/2;float bottom=gridTop(width,h)+3*(width/5f-8)+40+Math.max(h*.07f,moneySize(width*.054f)*1.9f)+caption+width*.19f+width*.035f;if(bottom>h)lo=h;else hi=h;}
+        for(int n=0;n<20;n++){float h=(lo+hi)/2;float bottom=gridTop(width,h)+3*(width/5f-8)+40+Math.max(h*.07f,moneySize(width*.054f)*1.9f)+caption+trailHeightFor(width)+width*.035f;if(bottom>h)lo=h;else hi=h;}
         return (int)Math.ceil(hi);
     }
     float contentBottomForTest(){return trailBottom();}
@@ -549,8 +549,9 @@ public class SlotsView extends View {
     private boolean controlTipShown;
     private boolean controlTipSeen(){return getContext().getSharedPreferences("control_coach",0).getBoolean("hold_auto_seen",false);}
     private void finishControlTip(){if(controlTipShown)getContext().getSharedPreferences("control_coach",0).edit().putBoolean("hold_auto_seen",true).apply();}
+    private float trailHeightFor(float width){return Math.max(width*.19f,bodySize(width*.036f)*3.2f+width*.026f);}
     private float trailTop() { return controlsTop() + controlsHeight() + captionHeight(); }
-    private float trailBottom() { return trailTop() + getWidth() * 0.19f; } // compact strip; the full map opens in a dialog
+    private float trailBottom() { return trailTop() + trailHeightFor(getWidth()); } // compact strip; the full map opens in a dialog
     private float trailNodeY() {
         float top = trailTop(), height = Math.min(trailBottom() - top, getWidth() * .68f);
         return top + height * .38f;
@@ -792,7 +793,7 @@ public class SlotsView extends View {
         String ju;
         if (now < trophyFlashUntil) ju = "TROPHY:" + trophyNewName;
         else ju = now < unlockFlashUntil ? unlockedName : null;
-        art.trailCompact(cv, w, trailTop(), trailBottom(), level, xp, xpNeeded(), themeIdx, ju);
+        art.trailCompact(cv, w, trailTop(), trailBottom(), level, xp, xpNeeded(), themeIdx, ju,bodySize(w*.036f));
         if (setComplete(themeIdx)) art.frameOrnament(cv, w / 2, gridTop - w * .022f, w * .05f, th);
 
         if(now<welcomeUntil){p.setStyle(Paint.Style.FILL);p.setColor(0xDD140A2A);rf.set(w*.24f,gridTop+w*.02f,w*.76f,gridTop+w*.11f);cv.drawRoundRect(rf,w*.04f,w*.04f,p);p.setTextAlign(Paint.Align.CENTER);p.setFakeBoldText(true);p.setTextSize(w*.037f);p.setColor(th.title);cv.drawText("WELCOME GIFT",w*.5f,gridTop+w*.08f,p);p.setFakeBoldText(false);postInvalidateDelayed(33);}
